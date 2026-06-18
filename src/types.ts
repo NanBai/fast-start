@@ -1,5 +1,6 @@
 export type CliType = "codex" | "claude-code" | "cursor";
 export type TerminalType = "system" | "iterm2" | "ghostty";
+export type LaunchMode = "new-tab" | "new-window";
 
 export interface SessionData {
   id: string;
@@ -32,4 +33,9 @@ export const TERMINAL_LABELS: Record<TerminalType, string> = {
   system: "Terminal.app",
   iterm2: "iTerm2",
   ghostty: "Ghostty",
+};
+
+export const LAUNCH_MODE_LABELS: Record<LaunchMode, string> = {
+  "new-tab": "新标签页",
+  "new-window": "新窗口",
 };

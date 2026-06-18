@@ -18,6 +18,15 @@ pub enum TerminalType {
     Ghostty,
 }
 
+/// 启动时打开新 tab 还是新窗口（用户全局偏好）。
+/// 注意：Terminal.app 无法开 tab（AppleScript 硬限制），选 NewTab 时会回退到窗口。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LaunchMode {
+    NewTab,
+    NewWindow,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {

@@ -1,4 +1,4 @@
-use crate::models::{CommandSpec, TerminalType};
+use crate::models::{CommandSpec, LaunchMode, TerminalType};
 use crate::security::{applescript_string, shell_escape, validate_command_spec};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -20,8 +20,15 @@ impl LaunchError {
 
 pub trait TerminalLauncher {
     fn terminal_type(&self) -> TerminalType;
+    /// 探测该终端是否可用（如 Ghostty 未安装则 false）
     fn is_available(&self) -> bool;
-    fn launch(&self, spec: &CommandSpec) -> Result<(), LaunchError>;
+    /// 该终端是否支持在已有窗口开新 tab。Terminal.app 不支持（AppleScript 硬限制）。
+    fn supports_tab(&self) -> bool {
+        true
+    }
+    /// 按 mode 开窗口或 tab：cd 到 spec.cwd 并执行 spec 程序。
+    /// mode=NewTab 但终端不支持 tab（或无窗口可挂）时，实现自行回退到开窗口。
+    fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError>;
 }
 
 pub fn launchers() -> Vec<Box<dyn TerminalLauncher + Send + Sync>> {
@@ -70,15 +77,13 @@ fn terminal_applescript(shell_command: &str) -> String {
     )
 }
 
-fn iterm_applescript(shell_command: &str) -> String {
-    // 已有窗口 → 在当前窗口开新 tab（create tab）；否则复用冷启动时 iTerm 自己开的默认窗口。
-    // 多次启动时都堆在同一个 iTerm 窗口的 tab 里，而不是开一串独立窗口。
-    // 注意：
-    // - app 名是 "iTerm"（bundle 名），不是 "iTerm2"——用 "iTerm2" 不加载字典，
-    //   `create tab` 的 `tab` 会被当成未知 class name 报语法错。
-    // - 冷启动（无窗口）时不能 `create window`：会和 iTerm 自己启动时开的默认窗口
-    //   叠加成两个窗口。改为 activate 后轮询等待默认窗口出现即可。
-    // - `create tab` 必须在 `tell current window` 块内（单行 tell ... to create 不被接受）。
+/// iTerm2：有窗口开新 tab，无窗口（冷启动）等默认窗口出现并复用。
+/// 注意：
+/// - app 名是 "iTerm"（bundle 名），不是 "iTerm2"——用 "iTerm2" 不加载字典，
+///   `create tab` 的 `tab` 会被当成未知 class name 报语法错。
+/// - 冷启动不能 `create window`：会和 iTerm 自己启动时开的默认窗口叠加成两个。
+/// - `create tab` 必须在 `tell current window` 块内（单行 tell ... to create 不被接受）。
+fn iterm_open_tab_applescript(shell_command: &str) -> String {
     format!(
         "tell application \"iTerm\"\n\
          \x20\x20activate\n\
@@ -90,6 +95,27 @@ fn iterm_applescript(shell_command: &str) -> String {
          \x20\x20\x20\x20tell current window\n\
          \x20\x20\x20\x20\x20\x20create tab with default profile\n\
          \x20\x20\x20\x20end tell\n\
+         \x20\x20end if\n\
+         \x20\x20tell current session of current window\n\
+         \x20\x20\x20\x20write text {}\n\
+         \x20\x20end tell\n\
+         end tell",
+        applescript_string(shell_command)
+    )
+}
+
+/// iTerm2：开新窗口。有窗口时 `create window`；冷启动（无窗口）时 iTerm 自己会开
+/// 一个默认窗口，此时若再 `create window` 会叠加成两个——改为等默认窗口出现并复用。
+fn iterm_open_window_applescript(shell_command: &str) -> String {
+    format!(
+        "tell application \"iTerm\"\n\
+         \x20\x20activate\n\
+         \x20\x20if (count of windows) is 0 then\n\
+         \x20\x20\x20\x20repeat until (count of windows) > 0\n\
+         \x20\x20\x20\x20\x20\x20delay 0.1\n\
+         \x20\x20\x20\x20end repeat\n\
+         \x20\x20else\n\
+         \x20\x20\x20\x20create window with default profile\n\
          \x20\x20end if\n\
          \x20\x20tell current session of current window\n\
          \x20\x20\x20\x20write text {}\n\
@@ -193,7 +219,12 @@ impl TerminalLauncher for SystemTerminalLauncher {
         Path::new("/System/Applications/Utilities/Terminal.app").exists()
     }
 
-    fn launch(&self, spec: &CommandSpec) -> Result<(), LaunchError> {
+    /// Terminal.app 无法从 AppleScript 开新 tab（硬限制），始终开新窗口。
+    fn supports_tab(&self) -> bool {
+        false
+    }
+
+    fn launch(&self, spec: &CommandSpec, _mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
         let shell_command = build_shell_command(spec, &cwd);
         run_osascript(&terminal_applescript(&shell_command))
@@ -212,10 +243,14 @@ impl TerminalLauncher for ITerm2Launcher {
             || Path::new("/Applications/iTerm2.app").exists()
     }
 
-    fn launch(&self, spec: &CommandSpec) -> Result<(), LaunchError> {
+    fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
         let shell_command = build_shell_command(spec, &cwd);
-        run_osascript(&iterm_applescript(&shell_command))
+        let script = match mode {
+            LaunchMode::NewTab => iterm_open_tab_applescript(&shell_command),
+            LaunchMode::NewWindow => iterm_open_window_applescript(&shell_command),
+        };
+        run_osascript(&script)
     }
 }
 
@@ -262,17 +297,17 @@ impl TerminalLauncher for GhosttyLauncher {
         Path::new("/Applications/Ghostty.app").exists()
     }
 
-    fn launch(&self, spec: &CommandSpec) -> Result<(), LaunchError> {
+    fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
         let wrapper = write_ghostty_wrapper(spec, &cwd)?;
 
-        // Ghostty 已有窗口 → 在该窗口里开新 tab（AppleScript new tab），
-        // 避免每次点击都开独立窗口。
-        if ghostty_has_window() {
+        // NewTab 且已有窗口 → 在该窗口开新 tab（AppleScript new tab）。
+        // 其余情况（NewWindow，或 NewTab 但无窗口可挂）→ 开新窗口。
+        if mode == LaunchMode::NewTab && ghostty_has_window() {
             return ghostty_new_tab(&wrapper, &cwd);
         }
 
-        // Ghostty 未运行 → `open -na Ghostty.app --args -e <wrapper>` 开首个窗口。
+        // `open -na Ghostty.app --args -e <wrapper>` 开新窗口。
         // `-e` 只传单脚本路径（避免 login 误报），且自动设
         // quit-after-last-window-closed=true，agent 退出后 Ghostty 干净退出。
         let output = Command::new("open")

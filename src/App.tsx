@@ -5,6 +5,8 @@ import {
   CLI_ORDER,
   CliScanError,
   CliType,
+  LAUNCH_MODE_LABELS,
+  LaunchMode,
   ScanResponse,
   SessionData,
   TERMINAL_LABELS,
@@ -59,6 +61,42 @@ function TerminalSelector({
             </option>
           );
         })}
+      </select>
+    </label>
+  );
+}
+
+function LaunchModeSelector({
+  value,
+  onChange,
+}: {
+  value: LaunchMode;
+  onChange: (mode: LaunchMode) => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleChange(next: LaunchMode) {
+    setSaving(true);
+    try {
+      await onChange(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <label className="terminal-selector">
+      <span>打开方式</span>
+      <select
+        value={value}
+        disabled={saving}
+        onChange={(event) => handleChange(event.target.value as LaunchMode)}
+      >
+        {(Object.keys(LAUNCH_MODE_LABELS) as LaunchMode[]).map((mode) => (
+          <option key={mode} value={mode}>
+            {LAUNCH_MODE_LABELS[mode]}
+          </option>
+        ))}
       </select>
     </label>
   );
@@ -153,6 +191,7 @@ function App() {
   ]);
   const [preferredTerminal, setPreferredTerminal] =
     useState<TerminalType>("system");
+  const [launchMode, setLaunchMode] = useState<LaunchMode>("new-tab");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
@@ -160,9 +199,10 @@ function App() {
   const [statusType, setStatusType] = useState<StatusType>("info");
 
   async function loadTerminals() {
-    const [available, preferred] = await Promise.all([
+    const [available, preferred, mode] = await Promise.all([
       invoke<TerminalType[]>("list_available_terminals"),
       invoke<TerminalType>("get_preferred_terminal"),
+      invoke<LaunchMode>("get_launch_mode"),
     ]);
     setAvailableTerminals(available);
     const resolved = available.includes(preferred)
@@ -172,6 +212,7 @@ function App() {
     if (resolved !== preferred) {
       await invoke("set_preferred_terminal", { terminal: resolved });
     }
+    setLaunchMode(mode);
   }
 
   async function applyScanResult(result: ScanResponse) {
@@ -215,6 +256,13 @@ function App() {
     await invoke("set_preferred_terminal", { terminal });
     setPreferredTerminal(terminal);
     setStatusMessage(`已切换终端为 ${TERMINAL_LABELS[terminal]}`);
+    setStatusType("info");
+  }
+
+  async function handleLaunchModeChange(mode: LaunchMode) {
+    await invoke("set_launch_mode", { mode });
+    setLaunchMode(mode);
+    setStatusMessage(`已切换为${LAUNCH_MODE_LABELS[mode]}启动`);
     setStatusType("info");
   }
 
@@ -262,11 +310,18 @@ function App() {
             available={availableTerminals}
             onChange={handleTerminalChange}
           />
+          <LaunchModeSelector value={launchMode} onChange={handleLaunchModeChange} />
           <button type="button" onClick={() => void refreshSessions()} disabled={refreshing}>
             {refreshing ? "刷新中..." : "刷新"}
           </button>
         </div>
       </header>
+
+      {preferredTerminal === "system" && launchMode === "new-tab" && (
+        <p className="status-bar status-info" aria-live="polite">
+          提示：Terminal.app 不支持新标签页，将打开新窗口。
+        </p>
+      )}
 
       <p className={`status-bar status-${statusType}`} aria-live="polite">
         {loading ? "正在扫描 session..." : statusMessage}

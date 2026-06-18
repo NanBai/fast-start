@@ -1,5 +1,5 @@
-use crate::models::{ScanResponse, TerminalType};
-use crate::state::{save_preferred_terminal, AppState};
+use crate::models::{LaunchMode, ScanResponse, TerminalType};
+use crate::state::{save_launch_mode, save_preferred_terminal, AppState};
 use tauri::State;
 
 #[tauri::command]
@@ -35,4 +35,19 @@ pub fn set_preferred_terminal(
 ) -> Result<(), String> {
     state.set_preferred_terminal(terminal)?;
     save_preferred_terminal(&app, terminal)
+}
+
+#[tauri::command]
+pub fn get_launch_mode(state: State<'_, AppState>) -> Result<LaunchMode, String> {
+    state.launch_mode()
+}
+
+#[tauri::command]
+pub fn set_launch_mode(
+    mode: LaunchMode,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.set_launch_mode(mode)?;
+    save_launch_mode(&app, mode)
 }
