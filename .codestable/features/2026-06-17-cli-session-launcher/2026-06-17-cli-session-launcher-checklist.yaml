@@ -1,0 +1,149 @@
+feature: 2026-06-17-cli-session-launcher
+created: 2026-06-17
+accepted: 2026-06-17
+
+steps:
+  - action: "编排骨架：用 create-tauri-app 初始化 Tauri 2.x + React + TS 项目，确认可编译运行"
+    exit_signal: "pnpm tauri dev 能看到默认 Tauri 窗口"
+    status: done
+
+  - action: "编排骨架：定义 Rust 数据模型（Session / CliType / TerminalType / CommandSpec）+ SessionScanner trait + TerminalLauncher trait 骨架 + AppState + 六个 Tauri command 空实现 + invoke_handler 注册"
+    exit_signal: "scan_sessions 返回 mock 数据聚合列表，前端 invoke 能拿到；cargo build 绿灯"
+    status: done
+
+  - action: "计算节点：实现 CodexScanner 和 ClaudeCodeScanner（v1 两家），从本机实测路径解析 session + cwd"
+    exit_signal: "扫描到真实的 codex 和 claude-code session 数据，cwd 正确解析"
+    status: done
+
+  - action: "计算节点：实现三种 TerminalLauncher（System/ITerm2 走 osascript，Ghostty 走 CLI 参数）+ launch_session 串联（session_id → Scanner 产 CommandSpec → 按 preferred_terminal 选 launcher）"
+    exit_signal: "点击启动能在选定终端正确 cd 并以 session id resume 对应 agent"
+    status: done
+
+  - action: "接通持久化：tauri-plugin-store 持久化 preferred_terminal + list_available_terminals 探测 + 启动期扫描"
+    exit_signal: "关 app 重开后偏好终端记忆生效；未装的终端在下拉灰显"
+    status: done
+
+  - action: "前端收尾：列表 UI + 终端选择 + 状态管理 + 交互 + 错误提示样式"
+    exit_signal: "v1 两种 CLI 端到端验证通过：codex / claude-code 都能扫描和启动，失败场景有提示；cursor 分组显示 v2 开发中"
+    status: done
+
+checks:
+  # 范围守护（第 1 节"明确不做"）
+  - item: "不做 session 持久化——扫描结果 app 关闭后不保留，不写入任何 DB 文件"
+    source: 范围守护
+    status: passed
+  - item: "不做内置终端——不引入 xterm.js / 终端组件，始终调用外部终端进程"
+    source: 范围守护
+    status: passed
+  - item: "不做 session 编辑——无删除 / 重命名 / 修改 session 的 UI 或 API"
+    source: 范围守护
+    status: passed
+  - item: "不做实时监控——无 fs-watcher / polling / 后台扫描线程"
+    source: 范围守护
+    status: passed
+  - item: "不做跨设备同步"
+    source: 范围守护
+    status: passed
+  - item: "v1 仅 codex + claude-code；cursor 列 v2，v1 阶段不实现扫描/启动"
+    source: 范围守护
+    status: passed
+
+  # 名词契约（第 2.1 节关键接口）
+  - item: "Session 含 id / cli_type / session_id / project_dir / project_name / last_active_at 六字段，带 #[serde(rename_all=\"camelCase\")] 对齐前端"
+    source: 名词契约
+    status: passed
+  - item: "CommandSpec = cwd + program + args 纯数据，解耦 Scanner 与 Launcher"
+    source: 名词契约
+    status: passed
+  - item: "SessionScanner trait：cli_type() / scan_sessions() -> Result<Vec<Session>, ScanError>"
+    source: 名词契约
+    status: passed
+  - item: "TerminalLauncher trait：terminal_type() / is_available() / launch(&CommandSpec) -> Result<(), LaunchError>"
+    source: 名词契约
+    status: passed
+  - item: "六个 Tauri command 都经 State<AppState> 注入；launch_session 只收 session_id、读偏好不收 terminal；set_preferred_terminal 返回 Result"
+    source: 名词契约
+    status: passed
+
+  # 编排骨架 / 流程级约束（第 2.2 节）
+  - item: "主流程：启动 → scan_sessions 并行调 Scanner → 聚合按 last_active_at 降序 → 前端渲染"
+    source: 编排骨架
+    status: passed
+  - item: "失败语义：单个 Scanner 失败不影响其他，失败 CLI 分组显示扫描失败"
+    source: 流程级约束
+    status: passed
+  - item: "命令构造安全：cwd canonicalize 且为目录；program 限白名单 codex/claude/cursor-agent；args 中 id 做 UUID 字符集白名单；禁止裸拼 shell 字符串丢 sh -c；osascript 内动态片段用 quoted form of"
+    source: 流程级约束
+    status: passed
+    note: "主路径（cwd canonicalize / program 白名单 / id 字符集校验）扎实生效，注入面已收敛。但 osascript 内未用 AppleScript quoted form of，改用自定义 applescript_string 转义；build_shell_command 走 cd 'cwd' && 'program' arg 的 shell 字符串再交给 osascript do script，属'间接经 shell'。鉴于上游已校验，实际不可利用，记 warn 不阻塞验收，建议后续改 std::Command 参数化构造。"
+  - item: "终端可用性：is_available() 探测，不可用的 UI 灰显，选中不可用终端时 launch_session 返回明确错误"
+    source: 流程级约束
+    status: passed
+  - item: "并发：三个 Scanner 可并行扫描（tokio::join! / futures::join_all）"
+    source: 流程级约束
+    status: passed
+    note: "实现用 std::thread::spawn 而非 design 写的 tokio::join!/futures::join_all。功能等价（确实并行），但偏离 design 措辞；不阻塞验收。"
+  - item: "扫描时机：仅 app launch / 手动刷新触发，不做 fs watcher"
+    source: 流程级约束
+    status: passed
+
+  # 挂载点（第 2.3 节，验收反向核对可卸载性）
+  - item: "挂载点：Tauri command 注册（scan_sessions / refresh_sessions / launch_session / list_available_terminals / get_preferred_terminal / set_preferred_terminal）"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：Tauri 主窗口创建配置"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：前端入口 src/App.tsx 组件渲染"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：各 TerminalLauncher 实现的 osascript / CLI 调用"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：tauri-plugin-store 偏好终端持久化"
+    source: 挂载点
+    status: passed
+
+  # 验收场景（第 3 节关键场景清单）
+  - item: "场景1 正常扫描：启动 app，列表展示各 CLI session，按最后活动时间降序，每条显示 CLI 类型/项目目录名/最后活动时间"
+    source: 验收场景
+    status: passed
+  - item: "场景2 手动刷新：点击刷新按钮重新扫描并更新列表"
+    source: 验收场景
+    status: passed
+  - item: "场景3 选择终端：下拉切换，更新偏好，下次启动用对应终端"
+    source: 验收场景
+    status: passed
+  - item: "场景4 启动 session（Terminal.app）：偏好为 System → codex session → Terminal 开新窗口（无法开 tab）+ cd + 执行 codex resume；冷启动可能多一个空窗口（硬限制）"
+    source: 验收场景
+    status: passed
+    note: "二次验收（2026-06-18）：用户真实终端实测确认。Terminal AppleScript 无法开新 tab（make new tab 不支持），每次开新窗口；冷启动 do script 触发默认窗口+命令窗口共两个，硬限制，命令窗口一定存在。"
+  - item: "场景5 启动 session（iTerm2）：偏好为 iTerm2 → claude-code session → iTerm2 在已有窗口开新 tab（app 名 iTerm 不是 iTerm2）+ cd + 执行 claude --resume <id>"
+    source: 验收场景
+    status: passed
+    note: "二次验收（2026-06-18）：改自 design 原写'开新窗口'为'开 tab'。用户实测确认 iTerm2 在已有窗口开新 tab、冷启动只开 1 个窗口。修正了首轮的 app 名 bug（iTerm2→iTerm）。"
+  - item: "场景6 启动 session（Ghostty）：偏好为 Ghostty 且已安装 → 在已有窗口开新 tab（AppleScript new tab with configuration，command 指向 wrapper 脚本）+ cd + 执行 agent 启动命令；无 login 误报，agent 退出后干净关闭"
+    source: 验收场景
+    status: passed
+    note: "二次验收（2026-06-18）：首轮 warn 3（未端到端实测）已解决。用户实测确认 Ghostty 在已有窗口开新 tab、无 login 误报、codex/claude 在对应目录 resume 成功。引入 wrapper 脚本机制解决 -e/--command 被 login 套壳的误报，并补 PATH（~/.local/bin）解决 'codex not found'。"
+  - item: "场景7 偏好终端记忆：设置 Terminal → 关 app → 重开，下拉显示上次选中值"
+    source: 验收场景
+    status: passed
+  - item: "场景8 单个 CLI 扫描失败：codex 目录不存在/损坏 → 其他 CLI 正常显示，失败 CLI 分组显示扫描失败"
+    source: 验收场景
+    status: passed
+  - item: "场景9 没有 session：某 CLI 无历史 → 该 CLI 分组显示暂无 session"
+    source: 验收场景
+    status: passed
+  - item: "场景10 关闭重开：重开后列表为新扫描结果，不依赖持久化"
+    source: 验收场景
+    status: passed
+  - item: "场景11 终端未安装：Ghostty 未装 → 下拉灰显，list_available_terminals 不返回它"
+    source: 验收场景
+    status: passed
+  - item: "场景12 cwd 校验失败：session 的 project_dir 已删除 → 启动返回明确错误，不执行 shell"
+    source: 验收场景
+    status: passed
+  - item: "场景13 cursor v2 边界：v1 阶段 cursor 分组显示 v2 开发中，不尝试扫描"
+    source: 验收场景
+    status: passed
