@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 pub mod claude_code;
 pub mod codex;
+pub mod cursor;
 
 #[derive(Debug)]
 pub enum ScanError {
@@ -36,6 +37,7 @@ pub fn scanners() -> Vec<Box<dyn SessionScanner + Send + Sync>> {
     vec![
         Box::new(codex::CodexScanner::default()),
         Box::new(claude_code::ClaudeCodeScanner::default()),
+        Box::new(cursor::CursorScanner::default()),
     ]
 }
 
@@ -68,10 +70,14 @@ pub fn command_spec_for_session(session: &Session) -> Result<crate::models::Comm
         ),
     };
 
+    // 三家 CLI 都是"cd 到工作目录 && resume <id>"模式：
+    // codex/claude 的 id 虽全局唯一，但 cd 到原目录方便用户继续操作；
+    // cursor 的 chatId 是 workspace 范围的，必须 cd 到正确目录 resume 才生效。
     Ok(CommandSpec {
         cwd: session.project_dir.clone(),
         program: program.to_string(),
         args,
+        cd: true,
     })
 }
 

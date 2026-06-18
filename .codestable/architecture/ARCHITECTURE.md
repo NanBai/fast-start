@@ -85,13 +85,15 @@ flowchart TD
 
 ---
 
-## v1 / v2 边界
+## CLI 覆盖
 
-| 范围 | v1 | v2 |
-|---|---|---|
-| CLI | codex + claude-code（jsonl，cwd 直接可恢复） | cursor（sqlite + workspace hash 反推，`cursor-agent ls` 要 TTY） |
-| 终端 | Terminal.app / iTerm2 / Ghostty（开 tab 策略见下） | — |
-| 安全 | L2：cwd canonicalize + program 白名单 + UUID 字符集校验 + 禁裸拼接 shell | — |
+| CLI | session 存储 | cwd 来源 | resume 命令 |
+|---|---|---|---|
+| codex | `~/.codex/sessions/**/*.jsonl`（payload.cwd） | jsonl 直接读 | `codex resume <id>`（id 全局唯一，可不 cd） |
+| claude-code | `~/.claude/projects/<编码>/<uuid>.jsonl` | jsonl 的 cwd 字段（优先，decode 歧义见 learning） | `claude --resume <id>` |
+| cursor | `~/.cursor/chats/<hash>/<uuid>/{meta.json, store.db}` | store.db 里 cursor 注入的 `Workspace Path:`（system prompt，无歧义） | `cursor-agent --resume <id>`（**id 是 workspace 范围，必须 cd 到对应目录**） |
+
+三家都是 `cd <cwd> && resume <id>` 模式（cursor 的 cd 必须准确，否则 resume 失败）。cursor 不用 `cursor-agent ls`（要 TTY）。
 
 ---
 

@@ -45,13 +45,15 @@ pub fn launcher_for(terminal: TerminalType) -> Option<Box<dyn TerminalLauncher +
         .find(|launcher| launcher.terminal_type() == terminal)
 }
 
-fn build_shell_command(spec: &CommandSpec, cwd: &Path) -> String {
-    let mut parts = vec![
-        "cd".to_string(),
-        shell_escape(&cwd.to_string_lossy()),
-        "&&".to_string(),
-        shell_escape(&spec.program),
-    ];
+/// 拼成 shell 命令字符串。cwd 为 Some 时先 cd，None（如 cursor resume）时直接跑 program。
+fn build_shell_command(spec: &CommandSpec, cwd: Option<&Path>) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(dir) = cwd {
+        parts.push("cd".to_string());
+        parts.push(shell_escape(&dir.to_string_lossy()));
+        parts.push("&&".to_string());
+    }
+    parts.push(shell_escape(&spec.program));
     for arg in &spec.args {
         parts.push(shell_escape(arg));
     }
@@ -161,7 +163,7 @@ fn command_output_result(
 ///
 /// 同时 `-e` 自动设 `quit-after-last-window-closed=true`，agent 退出后
 /// Ghostty 进程干净退出，不留孤儿（也不触发窗口复活）。
-fn write_ghostty_wrapper(spec: &CommandSpec, cwd: &Path) -> Result<PathBuf, LaunchError> {
+fn write_ghostty_wrapper(spec: &CommandSpec, cwd: Option<&Path>) -> Result<PathBuf, LaunchError> {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
@@ -170,7 +172,6 @@ fn write_ghostty_wrapper(spec: &CommandSpec, cwd: &Path) -> Result<PathBuf, Laun
         command.push(' ');
         command.push_str(&shell_escape(arg));
     }
-    let cwd_escaped = shell_escape(&cwd.to_string_lossy());
 
     // Ghostty 的 `new tab` / `-e` 不走 login shell，PATH 不含用户自定义目录
     // （如 ~/.local/bin，codex/claude/cursor-agent 通常装在这里），会导致
@@ -187,9 +188,13 @@ fn write_ghostty_wrapper(spec: &CommandSpec, cwd: &Path) -> Result<PathBuf, Laun
     }
 
     // 脚本用 exec 替换 shell 进程，让 agent 直接成为 Ghostty 的子进程；
-    // 退出码透传，Ghostty 据此干净退出。
+    // 退出码透传，Ghostty 据此干净退出。cd=false（cursor resume）时省略 cd。
+    let cd_clause = match cwd {
+        Some(dir) => format!("cd {} && ", shell_escape(&dir.to_string_lossy())),
+        None => String::new(),
+    };
     let script = format!(
-        "#!/bin/sh\nexport PATH={path_env}\ncd {cwd_escaped} && exec {command}\n",
+        "#!/bin/sh\nexport PATH={path_env}\n{cd_clause}exec {command}\n",
         path_env = shell_escape(&path),
     );
 
@@ -226,7 +231,7 @@ impl TerminalLauncher for SystemTerminalLauncher {
 
     fn launch(&self, spec: &CommandSpec, _mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
-        let shell_command = build_shell_command(spec, &cwd);
+        let shell_command = build_shell_command(spec, cwd.as_deref());
         run_osascript(&terminal_applescript(&shell_command))
     }
 }
@@ -245,7 +250,7 @@ impl TerminalLauncher for ITerm2Launcher {
 
     fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
-        let shell_command = build_shell_command(spec, &cwd);
+        let shell_command = build_shell_command(spec, cwd.as_deref());
         let script = match mode {
             LaunchMode::NewTab => iterm_open_tab_applescript(&shell_command),
             LaunchMode::NewWindow => iterm_open_window_applescript(&shell_command),
@@ -272,16 +277,25 @@ fn ghostty_has_window() -> bool {
 
 /// 在已运行的 Ghostty 窗口里开新 tab，运行指定 wrapper。
 /// 用 AppleScript `new tab with configuration`（Ghostty sdef 提供），
-/// 配置项 `command` 指向 wrapper 脚本（单路径，避免 login 误报），
-/// `initial working directory` 设工作目录。
-fn ghostty_new_tab(wrapper: &Path, cwd: &Path) -> Result<(), LaunchError> {
+/// 配置项 `command` 指向 wrapper 脚本（单路径，避免 login 误报）。
+/// cwd 为 Some 时设 `initial working directory`；None（cursor resume）时省略。
+fn ghostty_new_tab(wrapper: &Path, cwd: Option<&Path>) -> Result<(), LaunchError> {
+    // Ghostty surface configuration 记录的字段名是 "initial working directory"。
+    let cfg = match cwd {
+        Some(dir) => format!(
+            "{{command:{cmd}, initial working directory:{wd}}}",
+            cmd = applescript_string(&wrapper.to_string_lossy()),
+            wd = applescript_string(&dir.to_string_lossy()),
+        ),
+        None => format!(
+            "{{command:{cmd}}}",
+            cmd = applescript_string(&wrapper.to_string_lossy()),
+        ),
+    };
     let script = format!(
         "tell application \"Ghostty\"\n\
-         \x20\x20set cfg to {{command:{cmd}, initial working directory:{wd}}}\n\
-         \x20\x20new tab with configuration cfg in front window\n\
+         \x20\x20new tab with configuration {cfg} in front window\n\
          end tell",
-        cmd = applescript_string(&wrapper.to_string_lossy()),
-        wd = applescript_string(&cwd.to_string_lossy()),
     );
     run_osascript(&script)
 }
@@ -299,12 +313,12 @@ impl TerminalLauncher for GhosttyLauncher {
 
     fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError> {
         let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
-        let wrapper = write_ghostty_wrapper(spec, &cwd)?;
+        let wrapper = write_ghostty_wrapper(spec, cwd.as_deref())?;
 
         // NewTab 且已有窗口 → 在该窗口开新 tab（AppleScript new tab）。
         // 其余情况（NewWindow，或 NewTab 但无窗口可挂）→ 开新窗口。
         if mode == LaunchMode::NewTab && ghostty_has_window() {
-            return ghostty_new_tab(&wrapper, &cwd);
+            return ghostty_new_tab(&wrapper, cwd.as_deref());
         }
 
         // `open -na Ghostty.app --args -e <wrapper>` 开新窗口。
@@ -336,6 +350,7 @@ mod tests {
             cwd: PathBuf::from("/tmp/project with space"),
             program: "codex".to_string(),
             args: vec!["resume".to_string(), "abc-123".to_string()],
+            cd: true,
         }
     }
 
@@ -344,7 +359,7 @@ mod tests {
         let cwd = PathBuf::from("/tmp/project with space");
 
         assert_eq!(
-            build_shell_command(&codex_spec(), &cwd),
+            build_shell_command(&codex_spec(), Some(&cwd)),
             "cd '/tmp/project with space' && codex resume abc-123"
         );
     }
@@ -352,7 +367,7 @@ mod tests {
     #[test]
     fn ghostty_wrapper_cd_then_execs_command() {
         let cwd = PathBuf::from("/tmp/project with space");
-        let wrapper = write_ghostty_wrapper(&codex_spec(), &cwd).unwrap();
+        let wrapper = write_ghostty_wrapper(&codex_spec(), Some(&cwd)).unwrap();
         let content = std::fs::read_to_string(&wrapper).unwrap();
 
         assert!(

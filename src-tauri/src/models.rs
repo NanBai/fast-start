@@ -43,6 +43,8 @@ pub struct CommandSpec {
     pub cwd: PathBuf,
     pub program: String,
     pub args: Vec<String>,
+    /// launch 时是否 cd 到 cwd。cursor resume 自带上下文，设 false；codex/claude 默认 true。
+    pub cd: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

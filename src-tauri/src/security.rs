@@ -34,8 +34,13 @@ pub fn validate_cwd(path: &Path) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
-pub fn validate_command_spec(spec: &CommandSpec) -> Result<PathBuf, String> {
-    let cwd = validate_cwd(&spec.cwd)?;
+pub fn validate_command_spec(spec: &CommandSpec) -> Result<Option<PathBuf>, String> {
+    // cd=false（如 cursor resume）时不校验 cwd：project_dir 是占位，launch 不用它。
+    let cwd = if spec.cd {
+        Some(validate_cwd(&spec.cwd)?)
+    } else {
+        None
+    };
     validate_program(&spec.program)?;
     if let Some(id_arg) = spec.args.last() {
         if !matches!(id_arg.as_str(), "resume" | "--resume" | "--last") {

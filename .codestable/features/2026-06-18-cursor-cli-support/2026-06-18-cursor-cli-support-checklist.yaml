@@ -1,0 +1,91 @@
+feature: 2026-06-18-cursor-cli-support
+created: 2026-06-18
+
+steps:
+  - action: "计算节点：实现 CursorScanner（新文件 scanner/cursor.rs），遍历 ~/.cursor/chats/*/*/ 读 meta.json，产出 Session（title + uuid + 时间）"
+    exit_signal: "扫描到真实 cursor chat，title/uuid/时间正确解析"
+    status: done
+
+  - action: "编排骨架：scanners() 注册表加 CursorScanner，cursor 分组自动有数据"
+    exit_signal: "前端 cursor 分组显示真实 session（不再是 v2 开发中）"
+    status: done
+
+  - action: "计算节点：cursor 不 cd 的 launch 适配（CommandSpec 加 cd 标记，cursor 设 false；launcher 跳过 cd）"
+    exit_signal: "点 cursor session 启动，终端跑 cursor-agent --resume <uuid>，不 cd、无误报"
+    status: done
+
+  - action: "前端收尾：去掉 cursor 分组的 v2 开发中文案，正常展示"
+    exit_signal: "cursor 分组像 codex/claude 一样正常显示和交互"
+    status: done
+
+  - action: "联调收尾：codex/claude/cursor 三家端到端 + cursor resume 验证 + 失败场景"
+    exit_signal: "三家都能扫到、能启动；~/.cursor/chats 不存在时 cursor 分组显示扫描失败/空，不影响其他 CLI"
+    status: done
+
+checks:
+  # 范围守护（第 1 节"明确不做"）
+  - item: "不恢复 cwd——cursor 启动命令不含 cd，project_dir 为占位不参与 cd"
+    source: 范围守护
+    status: passed
+  - item: "不解析 store.db 对话——只读 meta.json + store.db 的 meta 表，不读 blobs 表"
+    source: 范围守护
+    status: passed
+  - item: "不用 cursor-agent ls——代码无 cursor-agent ls 调用（TTY 限制）"
+    source: 范围守护
+    status: passed
+  - item: "不反推 workspace hash——不读 hash 目录名做哈希运算，靠 agent-transcripts 锚点"
+    source: 范围守护
+    status: passed
+
+  # 名词契约（第 2.1 节）
+  - item: "CursorScanner 实现 SessionScanner trait（cli_type 返回 Cursor，scan_sessions 读 meta.json 产出 Session）"
+    source: 名词契约
+    status: passed
+  - item: "Session.project_name = meta.json 的 name/title；project_dir = home 占位（不用于 cd）"
+    source: 名词契约
+    status: passed
+  - item: "cursor-agent 已在 ALLOWED_PROGRAMS 白名单（首 feature 预留，无需改）；chat-uuid 走 validate_session_id UUID 校验"
+    source: 名词契约
+    status: passed
+
+  # 编排骨架 / 流程级约束（第 2.2 节）
+  - item: "scan 编排：scanners() 注册 CursorScanner 后，cursor 自动并入并行扫描 + 聚合排序"
+    source: 编排骨架
+    status: passed
+  - item: "失败语义：cursor 扫描失败（~/.cursor/chats 不存在）不影响 codex/claude，走 ScanError 机制，分组显示扫描失败"
+    source: 流程级约束
+    status: passed
+  - item: "launch 不 cd：cursor 的 CommandSpec 标记 cd=false，launcher 跳过 cd 直接 cursor-agent --resume <uuid>"
+    source: 流程级约束
+    status: passed
+
+  # 挂载点（第 2.3 节）
+  - item: "挂载点：scanner.rs::scanners() 注册 CursorScanner（移除则 cursor 分组无数据）"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：src/App.tsx cursor 分组文案从'v2 开发中'改为正常展示"
+    source: 挂载点
+    status: passed
+
+  # 验收场景（第 3 节）
+  - item: "场景1 cursor 扫描：启动 app，cursor 分组展示真实 chat 列表（title + 时间），不再是 v2 开发中"
+    source: 验收场景
+    status: passed
+  - item: "场景2 启动 cursor session：选一条 chat → 点启动 → 终端跑 cursor-agent --resume <uuid>，恢复 chat 上下文"
+    source: 验收场景
+    status: passed
+  - item: "场景3 不 cd 验证：启动 cursor session，终端不执行 cd，靠 resume 自带上下文"
+    source: 验收场景
+    status: passed
+  - item: "场景4 无 title 跳过：meta.json 缺 title 的 chat 不出现在列表"
+    source: 验收场景
+    status: passed
+  - item: "场景5 cursor 未安装：无 ~/.cursor/chats 或 cursor-agent 不可用，cursor 分组显示扫描失败/空，不影响 codex/claude"
+    source: 验收场景
+    status: passed
+  - item: "场景6 手动刷新：点刷新，cursor 分组重新扫描更新"
+    source: 验收场景
+    status: passed
+  - item: "场景7 三家共存：codex/claude/cursor 都有 session，三家分组都有数据"
+    source: 验收场景
+    status: passed

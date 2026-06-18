@@ -145,9 +145,7 @@ function CliGroup({
   const [expanded, setExpanded] = useState(true);
 
   let body = null;
-  if (cliType === "cursor") {
-    body = <p className="group-empty">cursor 支持开发中（v2）</p>;
-  } else if (scanError) {
+  if (scanError) {
     body = <p className="group-error">扫描失败：{scanError.message}</p>;
   } else if (sessions.length === 0) {
     body = <p className="group-empty">暂无 session</p>;
@@ -171,11 +169,7 @@ function CliGroup({
       >
         <span>{CLI_LABELS[cliType]}</span>
         <span className="cli-group-meta">
-          {cliType === "cursor"
-            ? "v2"
-            : scanError
-              ? "失败"
-              : `${sessions.length} 条`}
+          {scanError ? "失败" : `${sessions.length} 条`}
         </span>
       </button>
       {expanded ? <div className="cli-group-body">{body}</div> : null}
