@@ -49,6 +49,25 @@ pub fn decode_claude_project_dir(encoded: &str) -> Option<PathBuf> {
     Some(PathBuf::from(format!("/{}", trimmed.replace('-', "/"))))
 }
 
+/// 把一份原始简介文本（claude 的 aiTitle / lastPrompt、codex 的首条用户消息）
+/// 规整成适合列表展示的短串：去首尾空白、折成单行、压连续空白、丢空串。
+/// 拿到 None 时调用方应回退到 project_name。
+pub fn clean_summary(raw: Option<&str>) -> Option<String> {
+    let raw = raw?.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let collapsed: String = raw
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    if collapsed.is_empty() {
+        None
+    } else {
+        Some(collapsed)
+    }
+}
+
 pub fn command_spec_for_session(session: &Session) -> Result<crate::models::CommandSpec, String> {
     use crate::models::{CliType, CommandSpec};
     use crate::security::validate_session_id;

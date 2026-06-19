@@ -1,5 +1,5 @@
 use crate::models::{CliType, Session};
-use crate::scanner::{ScanError, SessionScanner};
+use crate::scanner::{clean_summary, ScanError, SessionScanner};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -15,6 +15,7 @@ struct CodexLine {
     timestamp: Option<String>,
     #[serde(rename = "type")]
     line_type: Option<String>,
+    #[serde(default)]
     payload: Option<serde_json::Value>,
 }
 
@@ -75,8 +76,9 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
     let mut session_id = None;
     let mut cwd = None;
     let mut last_active_at = file_mtime(path)?;
+    let mut summary = None;
 
-    for line in content.lines().take(32) {
+    for line in content.lines().take(64) {
         if line.trim().is_empty() {
             continue;
         }
@@ -92,25 +94,34 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
             }
         }
 
-        if parsed.line_type.as_deref() != Some("session_meta") {
-            continue;
-        }
-
-        let Some(payload) = parsed.payload else {
+        let Some(payload) = &parsed.payload else {
             continue;
         };
 
-        if session_id.is_none() {
-            session_id = payload
-                .get("id")
-                .and_then(|value| value.as_str())
-                .map(str::to_string);
+        // session_meta 行拿 id / cwd（幂等，重复行无妨）。
+        if parsed.line_type.as_deref() == Some("session_meta") {
+            if session_id.is_none() {
+                session_id = payload
+                    .get("id")
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string);
+            }
+            if cwd.is_none() {
+                cwd = payload
+                    .get("cwd")
+                    .and_then(|value| value.as_str())
+                    .map(PathBuf::from);
+            }
+            continue;
         }
-        if cwd.is_none() {
-            cwd = payload
-                .get("cwd")
-                .and_then(|value| value.as_str())
-                .map(PathBuf::from);
+
+        // 简介取第一条「真实」用户消息——codex 没有 AI 标题，且首条 user
+        // message 常常是注入的上下文块（AGENTS.md / <environment_context> 等），
+        // 必须跳过这些，否则简介全是指令而非用户意图。拿到第一条就停。
+        if summary.is_none() && parsed.line_type.as_deref() == Some("response_item") {
+            if let Some(text) = first_real_user_message(payload) {
+                summary = clean_summary(Some(&text));
+            }
         }
     }
 
@@ -126,7 +137,55 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
         project_name: Session::project_name_from_dir(&cwd),
         project_dir: cwd,
         last_active_at,
+        summary,
     }))
+}
+
+/// 从一条 response_item payload 里取第一条「真实」用户消息文本。
+/// codex 的 user message 形如 `{type:"message", role:"user", content:[{type:"input_text", text}]}`，
+/// 但 content 里可能混着指令 / 环境上下文注入，要逐段过滤。返回 None 表示这条没有可用文本。
+fn first_real_user_message(payload: &serde_json::Value) -> Option<String> {
+    let payload = payload.as_object()?;
+    if payload.get("type").and_then(|v| v.as_str()) != Some("message") {
+        return None;
+    }
+    if payload.get("role").and_then(|v| v.as_str()) != Some("user") {
+        return None;
+    }
+    let content = payload.get("content")?.as_array()?;
+    for part in content {
+        let part = part.as_object()?;
+        if part.get("type").and_then(|v| v.as_str()) != Some("input_text") {
+            continue;
+        }
+        if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
+            if is_injected_context(text) {
+                continue;
+            }
+            return Some(text.to_string());
+        }
+    }
+    None
+}
+
+/// codex 把指令 / 环境信息作为「用户」消息注入到对话开头，这些不是用户真正说的话，
+/// 不能当简介。判据基于实测：注入块总是以特定标记开头或包在尖括号标签里。
+fn is_injected_context(text: &str) -> bool {
+    let stripped = text.trim_start();
+    if stripped.starts_with('#') {
+        // # AGENTS.md instructions ... / # Codex ...
+        return true;
+    }
+    if stripped.starts_with('<') {
+        // <environment_context> / <app-context> / <permissions ...> 等
+        return true;
+    }
+    if stripped.starts_with("Caveat") {
+        return true;
+    }
+    text.contains("<environment_context")
+        || text.contains("<app-context")
+        || text.contains("<permissions")
 }
 
 fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
@@ -135,4 +194,43 @@ fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
         .modified()
         .map_err(|err| ScanError::Io(std::io::Error::new(err.kind(), err.to_string())))?;
     Ok(DateTime::<Utc>::from(modified))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{first_real_user_message, is_injected_context};
+    use serde_json::json;
+
+    #[test]
+    fn is_injected_context_flags_codex_context_blocks() {
+        assert!(is_injected_context("# AGENTS.md instructions for /x"));
+        assert!(is_injected_context("<environment_context>\n  <cwd>/x"));
+        assert!(is_injected_context("Caveat: The ..."));
+        assert!(!is_injected_context("帮我看看这个接口为什么 500"));
+        assert!(!is_injected_context("url: jdbc:mysql://1.2.3.4:3306/db"));
+    }
+
+    #[test]
+    fn first_real_user_message_skips_injected_parts() {
+        // content 里前两段是注入，第三段是真实用户输入。
+        let payload = json!({
+            "type": "message",
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": "# AGENTS.md instructions for /x"},
+                {"type": "input_text", "text": "<environment_context>\n  <cwd>/x"},
+                {"type": "input_text", "text": "sa-token设置的token过期时间是多久"}
+            ]
+        });
+        assert_eq!(
+            first_real_user_message(&payload),
+            Some("sa-token设置的token过期时间是多久".to_string())
+        );
+    }
+
+    #[test]
+    fn first_real_user_message_returns_none_for_assistant_or_non_message() {
+        assert_eq!(first_real_user_message(&json!({"type":"message","role":"assistant","content":[]})), None);
+        assert_eq!(first_real_user_message(&json!({"type":"function_call","name":"exec_command"})), None);
+    }
 }

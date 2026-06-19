@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Light Sonoma base: near-white with soft cool tint -->
+    <linearGradient id="base" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e9ebf1"/>
+    </linearGradient>
+    <!-- top inner sheen -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.2" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- bottom inner shade for depth -->
+    <linearGradient id="shade" x1="0" y1="0.55" x2="0" y2="1">
+      <stop offset="0" stop-color="#c2c7d4" stop-opacity="0"/>
+      <stop offset="1" stop-color="#c2c7d4" stop-opacity="0.5"/>
+    </linearGradient>
+
+    <!-- vibrant brand gradient (blue -> indigo -> magenta) -->
+    <linearGradient id="brand" x1="0.05" y1="0.1" x2="0.95" y2="0.9">
+      <stop offset="0" stop-color="#0a84ff"/>
+      <stop offset="0.5" stop-color="#5b4ef0"/>
+      <stop offset="1" stop-color="#c93bd6"/>
+    </linearGradient>
+    <!-- lighter brand for the trailing chevron (motion fade) -->
+    <linearGradient id="brand2" x1="0.05" y1="0.1" x2="0.95" y2="0.9">
+      <stop offset="0" stop-color="#7ac0ff"/>
+      <stop offset="0.5" stop-color="#9a8cf5"/>
+      <stop offset="1" stop-color="#e07be2"/>
+    </linearGradient>
+
+    <!-- soft drop shadow for the chevrons -->
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#2a2150" flood-opacity="0.20"/>
+    </filter>
+
+    <!-- SQUARE rounded square (macOS grid: 824x824, centered, 100px margin) -->
+    <clipPath id="squircle">
+      <path d="
+        M 290 100 L 734 100
+        C 838.94 100 924 185.06 924 290
+        L 924 734
+        C 924 838.94 838.94 924 734 924
+        L 290 924
+        C 185.06 924 100 838.94 100 734
+        L 100 290
+        C 100 185.06 185.06 100 290 100 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- base + lighting -->
+  <g clip-path="url(#squircle)">
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#base)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#sheen)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#shade)"/>
+  </g>
+
+  <!-- two forward chevrons: trailing (lighter) + leading (solid), with motion fade -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#soft)">
+    <path d="M 300 350 L 500 512 L 300 674"
+          stroke="url(#brand2)" stroke-width="86"/>
+    <path d="M 524 350 L 724 512 L 524 674"
+          stroke="url(#brand)" stroke-width="86"/>
+  </g>
+
+  <!-- Apple-style inner keyline -->
+  <path clip-path="url(#squircle)" fill="none"
+        stroke="#000000" stroke-opacity="0.06" stroke-width="2"
+        d="M 290 100 L 734 100 C 838.94 100 924 185.06 924 290
+           L 924 734 C 924 838.94 838.94 924 734 924
+           L 290 924 C 185.06 924 100 838.94 100 734
+           L 100 290 C 100 185.06 185.06 100 290 100 Z"/>
+</svg>

@@ -36,6 +36,10 @@ pub struct Session {
     pub project_dir: PathBuf,
     pub project_name: String,
     pub last_active_at: DateTime<Utc>,
+    /// 一句话简介，各 CLI 来源不同（cursor 的 meta.title / claude 的 aiTitle /
+    /// codex 的首条真实用户消息）。拿不到为 None，前端展示时回退到 project_name。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +47,7 @@ pub struct CommandSpec {
     pub cwd: PathBuf,
     pub program: String,
     pub args: Vec<String>,
-    /// launch 时是否 cd 到 cwd。cursor resume 自带上下文，设 false；codex/claude 默认 true。
+    /// launch 时是否 cd 到 cwd。三家 CLI 当前都需要在原工作目录下恢复上下文。
     pub cd: bool,
 }
 

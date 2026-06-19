@@ -1,5 +1,5 @@
 use crate::models::{CliType, Session};
-use crate::scanner::{decode_claude_project_dir, ScanError, SessionScanner};
+use crate::scanner::{clean_summary, decode_claude_project_dir, ScanError, SessionScanner};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::fs;
@@ -14,6 +14,15 @@ struct TimestampLine {
     timestamp: Option<String>,
     #[serde(default)]
     cwd: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "type")]
+    line_type: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "aiTitle")]
+    ai_title: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "lastPrompt")]
+    last_prompt: Option<String>,
 }
 
 impl SessionScanner for ClaudeCodeScanner {
@@ -66,7 +75,8 @@ impl SessionScanner for ClaudeCodeScanner {
                     continue;
                 }
 
-                let (last_active_at, cwd) = parse_claude_file(&file_path, fallback_cwd.clone())?;
+                let (last_active_at, cwd, summary) =
+                    parse_claude_file(&file_path, fallback_cwd.clone())?;
                 let Some(cwd) = cwd else {
                     continue;
                 };
@@ -78,6 +88,7 @@ impl SessionScanner for ClaudeCodeScanner {
                     project_name: Session::project_name_from_dir(&cwd),
                     project_dir: cwd,
                     last_active_at,
+                    summary,
                 });
             }
         }
@@ -90,13 +101,17 @@ impl SessionScanner for ClaudeCodeScanner {
 fn parse_claude_file(
     path: &Path,
     fallback_cwd: Option<PathBuf>,
-) -> Result<(DateTime<Utc>, Option<PathBuf>), ScanError> {
+) -> Result<(DateTime<Utc>, Option<PathBuf>, Option<String>), ScanError> {
     let content = fs::read_to_string(path)?;
     let mut latest = file_mtime(path)?;
     // 优先用 jsonl 文件里记录的真实 cwd（精确路径）；只有文件里完全没有 cwd
     // 字段时才退回目录名 decode 的 fallback（decode 无法无损还原含 `-` 或 `.`
     // 的路径，只是粗略猜测）。
     let mut cwd: Option<PathBuf> = None;
+    // 简介：优先 AI 生成的 aiTitle（类似 cursor 的 meta.title），其次 lastPrompt。
+    // 文件里同一个 type 可能写多行（标题被改写 / 每轮都记 lastPrompt），
+    // 保留最后见到的一份即可。
+    let mut summary: Option<String> = None;
 
     for line in content.lines() {
         if line.trim().is_empty() {
@@ -117,9 +132,22 @@ fn parse_claude_file(
         if cwd.is_none() {
             cwd = parsed.cwd.map(PathBuf::from);
         }
+        match parsed.line_type.as_deref() {
+            Some("ai-title") => {
+                if let Some(title) = clean_summary(parsed.ai_title.as_deref()) {
+                    summary = Some(title);
+                }
+            }
+            Some("last-prompt") if summary.is_none() => {
+                if let Some(prompt) = clean_summary(parsed.last_prompt.as_deref()) {
+                    summary = Some(prompt);
+                }
+            }
+            _ => {}
+        }
     }
 
-    Ok((latest, cwd.or(fallback_cwd)))
+    Ok((latest, cwd.or(fallback_cwd), summary))
 }
 
 fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
@@ -128,4 +156,22 @@ fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
         .modified()
         .map_err(|err| ScanError::Io(std::io::Error::new(err.kind(), err.to_string())))?;
     Ok(DateTime::<Utc>::from(modified))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TimestampLine;
+
+    #[test]
+    fn timestamp_line_reads_claude_camel_case_summary_fields() {
+        let title: TimestampLine =
+            serde_json::from_str(r#"{"type":"ai-title","aiTitle":"实现会话筛选"}"#)
+                .expect("ai-title line should parse");
+        assert_eq!(title.ai_title.as_deref(), Some("实现会话筛选"));
+
+        let prompt: TimestampLine =
+            serde_json::from_str(r#"{"type":"last-prompt","lastPrompt":"修复列表展示"}"#)
+                .expect("last-prompt line should parse");
+        assert_eq!(prompt.last_prompt.as_deref(), Some("修复列表展示"));
+    }
 }

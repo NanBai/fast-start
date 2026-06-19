@@ -9,6 +9,7 @@ export interface SessionData {
   projectDir: string;
   projectName: string;
   lastActiveAt: string;
+  summary?: string | null;
 }
 
 export interface CliScanError {

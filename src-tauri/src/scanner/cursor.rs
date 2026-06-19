@@ -74,6 +74,8 @@ impl SessionScanner for CursorScanner {
                 };
 
                 let Some(title) = meta.title.filter(|t| !t.trim().is_empty()) else {
+                    // cursor 没有 codex/claude 那样的首条用户消息兜底，
+                    // 无 title 的 chat 既无法 resume 出有意义的现场、也没简介可展示，跳过。
                     continue;
                 };
 
@@ -87,9 +89,12 @@ impl SessionScanner for CursorScanner {
                     id: uuid::Uuid::new_v4().to_string(),
                     cli_type: CliType::Cursor,
                     session_id,
-                    project_name: title,
+                    project_name: Session::project_name_from_dir(&cwd),
                     project_dir: cwd,
                     last_active_at,
+                    // title 即 cursor 自带的会话简介（类似 claude 的 aiTitle），
+                    // 已确认非空，规整后放进 summary。
+                    summary: crate::scanner::clean_summary(Some(&title)),
                 });
             }
         }

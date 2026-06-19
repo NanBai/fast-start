@@ -15,16 +15,188 @@ import {
 import "./App.css";
 
 type StatusType = "info" | "success" | "error";
+type RecentDaysFilter = "1" | "3" | "7" | "14" | "30" | "all";
 
-function formatTime(iso: string) {
+const RECENT_DAY_OPTIONS: { value: RecentDaysFilter; label: string }[] = [
+  { value: "1", label: "最近 1 天" },
+  { value: "3", label: "最近 3 天" },
+  { value: "7", label: "最近 7 天" },
+  { value: "14", label: "最近 14 天" },
+  { value: "30", label: "最近 30 天" },
+  { value: "all", label: "全部" },
+];
+
+/* ------------------------------------------------------------------ icons */
+const Icon = {
+  Terminal: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 8.5l3.2 2.6L5 14.2M11 14.5h5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect
+        x="2.5"
+        y="4"
+        width="19"
+        height="16"
+        rx="3.2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        opacity="0.55"
+      />
+    </svg>
+  ),
+  Refresh: () => (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 11a8 8 0 1 0-.6 3.5M20 5v6h-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Tab: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="11" y="6" width="6" height="4" rx="1" fill="currentColor" />
+    </svg>
+  ),
+  Window: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3 9.5h18" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="6.3" cy="7.3" r="0.9" fill="currentColor" />
+      <circle cx="9" cy="7.3" r="0.9" fill="currentColor" opacity="0.55" />
+    </svg>
+  ),
+  Chevron: () => (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Arrow: () => (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 12h14M13 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Spinner: () => (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3a9 9 0 1 0 9 9"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  Sparkle: () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5l2.1 5.2a4 4 0 002.2 2.2l5.2 2.1-5.2 2.1a4 4 0 00-2.2 2.2L12 22.5l-2.1-5.2a4 4 0 00-2.2-2.2L2.5 13l5.2-2.1a4 4 0 002.2-2.2L12 3.5z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
+  Folder: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3 7.5a2 2 0 012-2h4.2a2 2 0 011.4.6l1.3 1.3a.5.5 0 00.35.15H19a2 2 0 012 2V17a2 2 0 01-2 2H5a2 2 0 01-2-2V7.5z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="currentColor"
+        fillOpacity="0.12"
+      />
+    </svg>
+  ),
+};
+
+function formatRelative(iso: string) {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  return date.toLocaleString();
+  if (Number.isNaN(date.getTime())) return iso;
+  const diff = Date.now() - date.getTime();
+  const min = Math.round(diff / 60000);
+  const hour = Math.round(min / 60);
+  const day = Math.round(hour / 24);
+  if (min < 1) return "刚刚";
+  if (min < 60) return `${min} 分钟前`;
+  if (hour < 24) return `${hour} 小时前`;
+  if (day < 30) return `${day} 天前`;
+  return date.toLocaleDateString();
 }
 
-function TerminalSelector({
+function recentDaysLabel(value: RecentDaysFilter) {
+  return RECENT_DAY_OPTIONS.find((option) => option.value === value)?.label ?? "最近 7 天";
+}
+
+function filterSessionsByRecentDays(
+  sessions: SessionData[],
+  recentDays: RecentDaysFilter,
+) {
+  if (recentDays === "all") return sessions;
+  const days = Number(recentDays);
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return sessions.filter((session) => {
+    const activeAt = new Date(session.lastActiveAt).getTime();
+    return Number.isNaN(activeAt) || activeAt >= cutoff;
+  });
+}
+
+/* ------------------------------------------------------ range menu */
+function RecentDaysMenu({
+  value,
+  onChange,
+  visibleCount,
+  totalCount,
+}: {
+  value: RecentDaysFilter;
+  onChange: (value: RecentDaysFilter) => void;
+  visibleCount: number;
+  totalCount: number;
+}) {
+  return (
+    <label className="menu range-menu">
+      <span className="menu-value">
+        <span className="menu-dot range-dot" />
+        {recentDaysLabel(value)}
+        <span className="menu-count">{visibleCount}/{totalCount}</span>
+        <Icon.Chevron />
+      </span>
+      <select
+        value={value}
+        aria-label="显示最近几天的 session"
+        onChange={(event) => onChange(event.target.value as RecentDaysFilter)}
+      >
+        {RECENT_DAY_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/* ---------------------------------------------------- terminal menu */
+function TerminalMenu({
   value,
   available,
   onChange,
@@ -36,6 +208,7 @@ function TerminalSelector({
   const [saving, setSaving] = useState(false);
 
   async function handleChange(next: TerminalType) {
+    if (next === value || !available.includes(next)) return;
     setSaving(true);
     try {
       await onChange(next);
@@ -45,12 +218,16 @@ function TerminalSelector({
   }
 
   return (
-    <label className="terminal-selector">
-      <span>终端</span>
+    <label className="menu">
+      <span className="menu-value">
+        <span className="menu-dot" />
+        {TERMINAL_LABELS[value]}
+        <Icon.Chevron />
+      </span>
       <select
         value={value}
         disabled={saving}
-        onChange={(event) => handleChange(event.target.value as TerminalType)}
+        onChange={(event) => void handleChange(event.target.value as TerminalType)}
       >
         {(Object.keys(TERMINAL_LABELS) as TerminalType[]).map((terminal) => {
           const enabled = available.includes(terminal);
@@ -66,7 +243,8 @@ function TerminalSelector({
   );
 }
 
-function LaunchModeSelector({
+/* -------------------------------------------------- segmented control */
+function LaunchSegmented({
   value,
   onChange,
 }: {
@@ -76,6 +254,7 @@ function LaunchModeSelector({
   const [saving, setSaving] = useState(false);
 
   async function handleChange(next: LaunchMode) {
+    if (next === value) return;
     setSaving(true);
     try {
       await onChange(next);
@@ -85,23 +264,58 @@ function LaunchModeSelector({
   }
 
   return (
-    <label className="terminal-selector">
-      <span>打开方式</span>
-      <select
-        value={value}
-        disabled={saving}
-        onChange={(event) => handleChange(event.target.value as LaunchMode)}
-      >
-        {(Object.keys(LAUNCH_MODE_LABELS) as LaunchMode[]).map((mode) => (
-          <option key={mode} value={mode}>
-            {LAUNCH_MODE_LABELS[mode]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="segmented" data-mode={value} aria-disabled={saving}>
+      {(["new-tab", "new-window"] as LaunchMode[]).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          className="segment"
+          data-active={value === mode}
+          disabled={saving}
+          onClick={() => void handleChange(mode)}
+        >
+          {mode === "new-tab" ? <Icon.Tab /> : <Icon.Window />}
+          {LAUNCH_MODE_LABELS[mode]}
+        </button>
+      ))}
+    </div>
   );
 }
 
+/* ------------------------------------------- per-CLI brand glyphs */
+const Brand = {
+  codex: (
+    <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" />
+  ),
+  "claude-code": (
+    <path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z" />
+  ),
+  cursor: (
+    <path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23" />
+  ),
+} as const;
+
+function BrandMark({ cliType }: { cliType: CliType }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      {Brand[cliType]}
+    </svg>
+  );
+}
+
+const AGENT_HINTS: Record<CliType, string> = {
+  codex: "Codex CLI 历史会话",
+  "claude-code": "Claude Code 项目会话",
+  cursor: "Cursor Agent 工作区会话",
+};
+
+/* ------------------------------------------------------- session row */
 function SessionRow({
   session,
   launchingId,
@@ -111,72 +325,206 @@ function SessionRow({
   launchingId: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
 }) {
+  const loading = launchingId === session.id;
+  const summary = session.summary?.trim() || null;
   return (
     <div className="session-row">
       <div className="session-main">
-        <strong>{session.projectName}</strong>
-        <span className="session-path">{session.projectDir}</span>
-        <span className="session-time">{formatTime(session.lastActiveAt)}</span>
+        <span className="session-name" title={summary ?? session.projectName}>
+          {summary ?? session.projectName}
+        </span>
+        <span className="session-time">{formatRelative(session.lastActiveAt)}</span>
       </div>
       <button
         type="button"
-        disabled={launchingId === session.id}
-        onClick={() => onLaunch(session.id)}
+        className="launch-btn"
+        data-loading={loading}
+        disabled={loading}
+        onClick={() => void onLaunch(session.id)}
       >
-        {launchingId === session.id ? "启动中..." : "启动"}
+        {loading ? (
+          <>
+            <Icon.Spinner /> 启动中
+          </>
+        ) : (
+          <>
+            启动 <Icon.Arrow />
+          </>
+        )}
       </button>
     </div>
   );
 }
 
-function CliGroup({
-  cliType,
+type ProjectSessionGroup = {
+  projectDir: string;
+  projectName: string;
+  sessions: SessionData[];
+};
+
+function groupByProjectDir(sessions: SessionData[]): ProjectSessionGroup[] {
+  const groups: ProjectSessionGroup[] = [];
+  const groupIndex = new Map<string, number>();
+  for (const session of sessions) {
+    const existing = groupIndex.get(session.projectDir);
+    if (existing === undefined) {
+      groupIndex.set(session.projectDir, groups.length);
+      groups.push({
+        projectDir: session.projectDir,
+        projectName: session.projectName,
+        sessions: [session],
+      });
+    } else {
+      groups[existing].sessions.push(session);
+    }
+  }
+  return groups;
+}
+
+/* ---------------------------------------------------- project bucket */
+function ProjectBucket({
+  projectDir,
+  projectName,
   sessions,
-  scanError,
   launchingId,
   onLaunch,
 }: {
-  cliType: CliType;
+  projectDir: string;
+  projectName: string;
   sessions: SessionData[];
-  scanError?: CliScanError;
   launchingId: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(true);
 
-  let body = null;
-  if (scanError) {
-    body = <p className="group-error">扫描失败：{scanError.message}</p>;
-  } else if (sessions.length === 0) {
-    body = <p className="group-empty">暂无 session</p>;
-  } else {
-    body = sessions.map((session) => (
-      <SessionRow
-        key={session.id}
-        session={session}
-        launchingId={launchingId}
-        onLaunch={onLaunch}
-      />
-    ));
-  }
+  return (
+    <div className="project-bucket" data-open={expanded}>
+      <button
+        type="button"
+        className="project-bucket-header"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+      >
+        <span className="project-folder" aria-hidden="true">
+          <Icon.Folder />
+        </span>
+        <span className="project-title">
+          <span className="project-name" title={projectDir}>{projectName}</span>
+          <span className="project-path" title={projectDir}>{projectDir}</span>
+        </span>
+        <span className="project-session-count">{sessions.length}</span>
+        <span className="project-chev" aria-hidden="true">
+          <Icon.Chevron />
+        </span>
+      </button>
+      {expanded && (
+        <div className="project-bucket-body">
+          {sessions.map((session) => (
+            <SessionRow
+              key={session.id}
+              session={session}
+              launchingId={launchingId}
+              onLaunch={onLaunch}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------ agent group */
+// 先按 agent 分区，再在每个 agent 下按工作目录聚合历史会话。
+function AgentGroup({
+  cliType,
+  sessions,
+  launchingId,
+  onLaunch,
+}: {
+  cliType: CliType;
+  sessions: SessionData[];
+  launchingId: string | null;
+  onLaunch: (sessionId: string) => Promise<void>;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const projectGroups = groupByProjectDir(sessions);
 
   return (
-    <section className="cli-group">
+    <section className="cli-group" data-cli={cliType} data-open={expanded}>
       <button
         type="button"
         className="cli-group-header"
         onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
       >
-        <span>{CLI_LABELS[cliType]}</span>
-        <span className="cli-group-meta">
-          {scanError ? "失败" : `${sessions.length} 条`}
+        <span className="cli-mark" data-cli={cliType} aria-hidden="true">
+          <BrandMark cliType={cliType} />
+        </span>
+        <span className="agent-title">
+          <span className="agent-eyebrow">AGENT</span>
+          <span className="agent-name">{CLI_LABELS[cliType]}</span>
+          <span className="agent-summary">{AGENT_HINTS[cliType]}</span>
+        </span>
+        <span className="agent-stats">
+          <span className="agent-stat">
+            <strong>{projectGroups.length}</strong>
+            <span>目录</span>
+          </span>
+          <span className="agent-stat">
+            <strong>{sessions.length}</strong>
+            <span>会话</span>
+          </span>
+        </span>
+        <span className="chev-group">
+          <Icon.Chevron />
         </span>
       </button>
-      {expanded ? <div className="cli-group-body">{body}</div> : null}
+      {expanded && (
+        <div className="cli-group-card">
+          <div className="cli-group-body">
+            {projectGroups.length === 0 ? (
+              <p className="state-line">暂无 session</p>
+            ) : (
+              projectGroups.map((group) => (
+                <ProjectBucket
+                  key={group.projectDir}
+                  projectDir={group.projectDir}
+                  projectName={group.projectName}
+                  sessions={group.sessions}
+                  launchingId={launchingId}
+                  onLaunch={onLaunch}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
+/* ----------------------------------------------------------- skeleton */
+function Skeleton() {
+  return (
+    <div className="skeleton-list" aria-hidden="true">
+      {[0, 1, 2].map((g) => (
+        <div key={g} className="skeleton-group">
+          {[0, 1].map((r) => (
+            <div key={r} className="skeleton-row">
+              <div style={{ display: "grid", gap: 6, flex: 1, minWidth: 0 }}>
+                <div className="shimmer shimmer-line short" />
+                <div className="shimmer shimmer-line" />
+              </div>
+              <div className="shimmer shimmer-circle" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- App */
 function App() {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [scanErrors, setScanErrors] = useState<CliScanError[]>([]);
@@ -186,6 +534,7 @@ function App() {
   const [preferredTerminal, setPreferredTerminal] =
     useState<TerminalType>("system");
   const [launchMode, setLaunchMode] = useState<LaunchMode>("new-tab");
+  const [recentDays, setRecentDays] = useState<RecentDaysFilter>("7");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
@@ -214,10 +563,10 @@ function App() {
     setScanErrors(result.scanErrors);
     setStatusMessage(
       result.scanErrors.length > 0
-        ? `已加载 ${result.sessions.length} 条 session，${result.scanErrors.length} 个 CLI 扫描失败`
-        : `已加载 ${result.sessions.length} 条 session`,
+        ? `已加载 ${result.sessions.length} 个 session · ${result.scanErrors.length} 个 CLI 扫描失败`
+        : `已加载 ${result.sessions.length} 个 session`,
     );
-    setStatusType(result.scanErrors.length > 0 ? "error" : "info");
+    setStatusType(result.scanErrors.length > 0 ? "error" : "success");
   }
 
   async function loadSessions() {
@@ -249,20 +598,20 @@ function App() {
   async function handleTerminalChange(terminal: TerminalType) {
     await invoke("set_preferred_terminal", { terminal });
     setPreferredTerminal(terminal);
-    setStatusMessage(`已切换终端为 ${TERMINAL_LABELS[terminal]}`);
+    setStatusMessage(`终端已切换为 ${TERMINAL_LABELS[terminal]}`);
     setStatusType("info");
   }
 
   async function handleLaunchModeChange(mode: LaunchMode) {
     await invoke("set_launch_mode", { mode });
     setLaunchMode(mode);
-    setStatusMessage(`已切换为${LAUNCH_MODE_LABELS[mode]}启动`);
+    setStatusMessage(`打开方式已切换为${LAUNCH_MODE_LABELS[mode]}`);
     setStatusType("info");
   }
 
   async function handleLaunch(sessionId: string) {
     setLaunchingId(sessionId);
-    setStatusMessage("正在启动终端...");
+    setStatusMessage("正在启动终端…");
     setStatusType("info");
     try {
       await invoke("launch_session", { sessionId });
@@ -283,56 +632,104 @@ function App() {
     })();
   }, []);
 
-  const grouped = new Map<CliType, SessionData[]>();
+  // 先按 agent 分区；每个 agent 内部再按工作目录聚合。
+  // sessions 已按 last_active_at 倒序，分区后仍保留各 agent 内最近活跃顺序。
+  const visibleSessions = filterSessionsByRecentDays(sessions, recentDays);
+  const sessionsByCli = new Map<CliType, SessionData[]>();
   for (const cliType of CLI_ORDER) {
-    grouped.set(cliType, []);
+    sessionsByCli.set(cliType, []);
   }
-  for (const session of sessions) {
-    grouped.get(session.cliType)?.push(session);
+  for (const session of visibleSessions) {
+    sessionsByCli.get(session.cliType)?.push(session);
   }
+
+  const showHint =
+    preferredTerminal === "system" && launchMode === "new-tab";
 
   return (
     <main className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>Session Launcher</h1>
-          <p className="app-subtitle">聚合 codex / claude-code session，一键恢复工作现场</p>
+        <div className="brand">
+          <span className="app-icon">
+            <Icon.Sparkle />
+          </span>
+          <div className="app-titles">
+            <h1>Session Launcher</h1>
+            <p className="app-subtitle">
+              聚合 codex · claude-code · cursor，一键恢复工作现场
+            </p>
+          </div>
         </div>
-        <div className="header-actions">
-          <TerminalSelector
-            value={preferredTerminal}
-            available={availableTerminals}
-            onChange={handleTerminalChange}
-          />
-          <LaunchModeSelector value={launchMode} onChange={handleLaunchModeChange} />
-          <button type="button" onClick={() => void refreshSessions()} disabled={refreshing}>
-            {refreshing ? "刷新中..." : "刷新"}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="icon-btn"
+          data-spin={refreshing}
+          disabled={refreshing}
+          onClick={() => void refreshSessions()}
+          aria-label="刷新"
+          title="刷新 session"
+        >
+          <Icon.Refresh />
+        </button>
       </header>
 
-      {preferredTerminal === "system" && launchMode === "new-tab" && (
-        <p className="status-bar status-info" aria-live="polite">
-          提示：Terminal.app 不支持新标签页，将打开新窗口。
-        </p>
+      <div className="control-bar">
+        <RecentDaysMenu
+          value={recentDays}
+          onChange={setRecentDays}
+          visibleCount={visibleSessions.length}
+          totalCount={sessions.length}
+        />
+        <LaunchSegmented value={launchMode} onChange={handleLaunchModeChange} />
+        <TerminalMenu
+          value={preferredTerminal}
+          available={availableTerminals}
+          onChange={handleTerminalChange}
+        />
+      </div>
+
+      <div className="status-line">
+        {statusMessage && (
+          <span className="status-pill" data-type={statusType} data-pulse={loading}>
+            <span className="status-dot" />
+            {loading ? "正在扫描 session…" : statusMessage}
+          </span>
+        )}
+      </div>
+
+      {showHint && (
+        <div className="status-line" style={{ marginTop: 0 }}>
+          <span className="status-pill" data-type="info">
+            Terminal.app 不支持新标签页，将打开新窗口
+          </span>
+        </div>
       )}
 
-      <p className={`status-bar status-${statusType}`} aria-live="polite">
-        {loading ? "正在扫描 session..." : statusMessage}
-      </p>
+      {scanErrors.length > 0 && (
+        <div className="scan-errors" aria-label="扫描失败的 CLI">
+          {scanErrors.map((error) => (
+            <span key={error.cliType} className="scan-error-item">
+              {CLI_LABELS[error.cliType]}：{error.message}
+            </span>
+          ))}
+        </div>
+      )}
 
-      <div className="session-list">
-        {CLI_ORDER.map((cliType) => (
-          <CliGroup
-            key={cliType}
-            cliType={cliType}
-            sessions={grouped.get(cliType) ?? []}
-            scanError={scanErrors.find((item) => item.cliType === cliType)}
-            launchingId={launchingId}
-            onLaunch={handleLaunch}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <Skeleton />
+      ) : (
+        <div className="session-list">
+          {CLI_ORDER.map((cliType) => (
+            <AgentGroup
+              key={cliType}
+              cliType={cliType}
+              sessions={sessionsByCli.get(cliType) ?? []}
+              launchingId={launchingId}
+              onLaunch={handleLaunch}
+            />
+          ))}
+        </div>
+      )}
     </main>
   );
 }

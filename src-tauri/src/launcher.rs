@@ -173,19 +173,17 @@ fn write_ghostty_wrapper(spec: &CommandSpec, cwd: Option<&Path>) -> Result<PathB
         command.push_str(&shell_escape(arg));
     }
 
-    // Ghostty 的 `new tab` / `-e` 不走 login shell，PATH 不含用户自定义目录
-    // （如 ~/.local/bin，codex/claude/cursor-agent 通常装在这里），会导致
-    // "codex: not found"。脚本开头显式补 PATH：取当前进程 PATH + ~/.local/bin 兜底。
-    let mut path = std::env::var("PATH").unwrap_or_default();
-    if let Some(home) = std::env::var_os("HOME") {
-        let local_bin = PathBuf::from(&home).join(".local/bin");
-        if !path.split(':').any(|p| Path::new(p) == local_bin) {
-            if !path.is_empty() {
-                path.push(':');
-            }
-            path.push_str(&local_bin.to_string_lossy());
-        }
-    }
+    // Ghostty 的 `new tab` / `-e` 不走 login shell，PATH 不含用户自定义目录。
+    // 更关键：打包成 .app 后由 launchd 启动，进程 PATH 是极简版
+    // （`/usr/bin:/bin:/usr/sbin:/sbin`），既没有 node 所在目录
+    // （/opt/homebrew/bin、/usr/local/bin、nvm/volta/asdf 等），也没有
+    // ~/.local/bin。而 codex/claude/cursor-agent 都是 `#!/usr/bin/env node`
+    // 脚本，`env node` 找不到 node 就会报 "env: node: No such file or directory"。
+    //
+    // 解法：不直接用进程继承的 PATH，而是在 wrapper 里调用用户的登录 shell
+    // 解析出真实 PATH（跟随用户实际环境，node 装哪都能找到）。解析失败则兜底
+    // 到进程 PATH + 常见目录，绝不让 PATH 为空。
+    let fallback_path = fallback_path_string();
 
     // 脚本用 exec 替换 shell 进程，让 agent 直接成为 Ghostty 的子进程；
     // 退出码透传，Ghostty 据此干净退出。cd=false（cursor resume）时省略 cd。
@@ -194,8 +192,18 @@ fn write_ghostty_wrapper(spec: &CommandSpec, cwd: Option<&Path>) -> Result<PathB
         None => String::new(),
     };
     let script = format!(
-        "#!/bin/sh\nexport PATH={path_env}\n{cd_clause}exec {command}\n",
-        path_env = shell_escape(&path),
+        "#!/bin/sh\n\
+         resolve_login_path() {{\n\
+         \x20\x20for sh in zsh bash; do\n\
+         \x20\x20\x20\x20command -v \"$sh\" >/dev/null 2>&1 || continue\n\
+         \x20\x20\x20\x20p=$($sh -lc 'printf %s \"$PATH\"' 2>/dev/null) && [ -n \"$p\" ] && printf %s \"$p\" && return\n\
+         \x20\x20done\n\
+         \x20\x20printf %s {fallback}\n\
+         }}\n\
+         PATH=$(resolve_login_path)\n\
+         export PATH\n\
+         {cd_clause}exec {command}\n",
+        fallback = shell_escape(&fallback_path),
     );
 
     let dir = std::env::temp_dir().join("fast-start-ghostty");
@@ -211,6 +219,45 @@ fn write_ghostty_wrapper(spec: &CommandSpec, cwd: Option<&Path>) -> Result<PathB
     fs::set_permissions(&wrapper, perms).map_err(|err| LaunchError::Spawn(err.to_string()))?;
 
     Ok(wrapper)
+}
+
+/// 当登录 shell 解析失败时的兜底 PATH。
+///
+/// 取进程继承的 PATH（打包 .app 下是极简版，但 dev 模式下是完整的），
+/// 再补上 node / CLI 常见安装目录。宁可多不能少——任何一项缺失都可能让
+/// 某个用户的 codex/claude/cursor-agent 启动失败。
+fn fallback_path_string() -> String {
+    let mut entries: Vec<String> = std::env::var("PATH")
+        .unwrap_or_default()
+        .split(':')
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    let candidates = [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+    ];
+    for c in candidates {
+        if !entries.iter().any(|e| e == c) {
+            entries.push(c.to_string());
+        }
+    }
+
+    if let Some(home) = std::env::var_os("HOME") {
+        let home = home.to_string_lossy().into_owned();
+        for sub in [".local/bin", ".cargo/bin", ".nvm/versions/node", ".volta/bin", ".asdf/shims"]
+        {
+            let p = format!("{home}/{sub}");
+            if !entries.iter().any(|e| e == &p) {
+                entries.push(p);
+            }
+        }
+    }
+
+    entries.join(":")
 }
 
 pub struct SystemTerminalLauncher;
