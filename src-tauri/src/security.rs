@@ -35,7 +35,7 @@ pub fn validate_cwd(path: &Path) -> Result<PathBuf, String> {
 }
 
 pub fn validate_command_spec(spec: &CommandSpec) -> Result<Option<PathBuf>, String> {
-    // cd=false（如 cursor resume）时不校验 cwd：project_dir 是占位，launch 不用它。
+    // 当前三家 CLI 都 cd=true；cd=false 仅保留给未来不依赖工作目录的命令。
     let cwd = if spec.cd {
         Some(validate_cwd(&spec.cwd)?)
     } else {

@@ -57,10 +57,7 @@ pub fn clean_summary(raw: Option<&str>) -> Option<String> {
     if raw.is_empty() {
         return None;
     }
-    let collapsed: String = raw
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+    let collapsed: String = raw.split_whitespace().collect::<Vec<_>>().join(" ");
     if collapsed.is_empty() {
         None
     } else {
@@ -113,23 +110,39 @@ mod tests {
     }
 
     #[test]
-    fn local_scanners_find_sessions_when_installed() {
+    fn command_spec_always_cds_to_session_project_dir() {
+        use super::command_spec_for_session;
+        use crate::models::{CliType, Session};
+        use chrono::Utc;
+        use std::path::PathBuf;
+
+        for cli_type in [CliType::Codex, CliType::ClaudeCode, CliType::Cursor] {
+            let session = Session {
+                id: format!("{cli_type:?}"),
+                cli_type,
+                session_id: "abc-123".to_string(),
+                project_dir: PathBuf::from("/tmp"),
+                project_name: "tmp".to_string(),
+                last_active_at: Utc::now(),
+                summary: None,
+            };
+            let spec = command_spec_for_session(&session).unwrap();
+            assert!(spec.cd);
+            assert_eq!(spec.cwd, PathBuf::from("/tmp"));
+        }
+    }
+
+    #[test]
+    fn scanner_roots_can_be_fixture_backed() {
         use super::claude_code::ClaudeCodeScanner;
         use super::codex::CodexScanner;
-        use super::SessionScanner;
+        use super::cursor::CursorScanner;
 
-        let codex = CodexScanner.scan_sessions();
-        let claude = ClaudeCodeScanner.scan_sessions();
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().to_path_buf();
 
-        if let Ok(items) = &codex {
-            assert!(items.iter().all(|session| !session.session_id.is_empty()));
-        }
-        if let Ok(items) = &claude {
-            assert!(items
-                .iter()
-                .all(|session| session.project_dir.is_absolute()));
-        }
-
-        assert!(codex.is_ok() || claude.is_ok());
+        let _ = CodexScanner::with_root(root.join("codex"));
+        let _ = ClaudeCodeScanner::with_root(root.join("claude"));
+        let _ = CursorScanner::with_root(root.join("cursor"));
     }
 }

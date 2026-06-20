@@ -1,5 +1,7 @@
 use crate::launcher::{launcher_for, launchers, LaunchError};
-use crate::models::{CliScanError, CliType, LaunchMode, ScanResponse, Session, TerminalType};
+use crate::models::{
+    CliScanError, CliType, LaunchMode, ScanResponse, Session, TerminalType, ThemeMode,
+};
 use crate::scanner::{command_spec_for_session, scanners};
 use serde_json::json;
 use std::collections::HashMap;
@@ -9,6 +11,7 @@ use tauri_plugin_store::StoreExt;
 
 const PREFERRED_TERMINAL_KEY: &str = "preferred_terminal";
 const LAUNCH_MODE_KEY: &str = "launch_mode";
+const THEME_MODE_KEY: &str = "theme_mode";
 
 pub struct AppState {
     inner: Mutex<AppStateInner>,
@@ -19,17 +22,23 @@ struct AppStateInner {
     scan_errors: HashMap<CliType, String>,
     preferred_terminal: TerminalType,
     launch_mode: LaunchMode,
+    theme_mode: ThemeMode,
     scanned: bool,
 }
 
 impl AppState {
-    pub fn new(preferred_terminal: TerminalType, launch_mode: LaunchMode) -> Self {
+    pub fn new(
+        preferred_terminal: TerminalType,
+        launch_mode: LaunchMode,
+        theme_mode: ThemeMode,
+    ) -> Self {
         Self {
             inner: Mutex::new(AppStateInner {
                 sessions: Vec::new(),
                 scan_errors: HashMap::new(),
                 preferred_terminal,
                 launch_mode,
+                theme_mode,
                 scanned: false,
             }),
         }
@@ -152,6 +161,23 @@ impl AppState {
         Ok(())
     }
 
+    pub fn theme_mode(&self) -> Result<ThemeMode, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.theme_mode)
+    }
+
+    pub fn set_theme_mode(&self, mode: ThemeMode) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.theme_mode = mode;
+        Ok(())
+    }
+
     pub fn launch_session(&self, session_id: &str) -> Result<(), String> {
         let session = self.find_session(session_id)?;
         let preferred = self.preferred_terminal()?;
@@ -221,5 +247,25 @@ pub fn save_launch_mode(app: &AppHandle, mode: LaunchMode) -> Result<(), String>
         .store("preferences.json")
         .map_err(|err| err.to_string())?;
     store.set(LAUNCH_MODE_KEY, json!(mode));
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_theme_mode(app: &AppHandle) -> Result<ThemeMode, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(THEME_MODE_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw).map_err(|err| err.to_string())
+    } else {
+        Ok(ThemeMode::System)
+    }
+}
+
+pub fn save_theme_mode(app: &AppHandle, mode: ThemeMode) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(THEME_MODE_KEY, json!(mode));
     store.save().map_err(|err| err.to_string())
 }

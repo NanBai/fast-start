@@ -6,10 +6,13 @@ mod security;
 mod state;
 
 use commands::{
-    get_launch_mode, get_preferred_terminal, launch_session, list_available_terminals,
-    refresh_sessions, scan_sessions, set_launch_mode, set_preferred_terminal,
+    get_launch_mode, get_preferred_terminal, get_theme_mode, launch_session,
+    list_available_terminals, refresh_sessions, scan_sessions, set_launch_mode,
+    set_preferred_terminal, set_theme_mode,
 };
-use state::{load_launch_mode, load_preferred_terminal, save_preferred_terminal, AppState};
+use state::{
+    load_launch_mode, load_preferred_terminal, load_theme_mode, save_preferred_terminal, AppState,
+};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -21,7 +24,8 @@ pub fn run() {
             let mut preferred =
                 load_preferred_terminal(app.handle()).unwrap_or(models::TerminalType::System);
             let launch_mode = load_launch_mode(app.handle()).unwrap_or(models::LaunchMode::NewTab);
-            let state = AppState::new(preferred, launch_mode);
+            let theme_mode = load_theme_mode(app.handle()).unwrap_or(models::ThemeMode::System);
+            let state = AppState::new(preferred, launch_mode, theme_mode);
             let available = state.list_available_terminals();
             if !available.contains(&preferred) {
                 preferred = available
@@ -31,7 +35,6 @@ pub fn run() {
                 state.set_preferred_terminal(preferred)?;
                 save_preferred_terminal(app.handle(), preferred)?;
             }
-            state.scan_all()?;
             app.manage(state);
             Ok(())
         })
@@ -44,6 +47,8 @@ pub fn run() {
             set_preferred_terminal,
             get_launch_mode,
             set_launch_mode,
+            get_theme_mode,
+            set_theme_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

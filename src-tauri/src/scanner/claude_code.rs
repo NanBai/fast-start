@@ -6,7 +6,25 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
-pub struct ClaudeCodeScanner;
+pub struct ClaudeCodeScanner {
+    root: Option<PathBuf>,
+}
+
+impl ClaudeCodeScanner {
+    #[cfg(test)]
+    pub fn with_root(root: PathBuf) -> Self {
+        Self { root: Some(root) }
+    }
+
+    fn root(&self) -> Result<PathBuf, ScanError> {
+        if let Some(root) = &self.root {
+            return Ok(root.clone());
+        }
+        dirs::home_dir()
+            .map(|home| home.join(".claude/projects"))
+            .ok_or_else(|| ScanError::NotFound("无法定位用户主目录".to_string()))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct TimestampLine {
@@ -31,9 +49,7 @@ impl SessionScanner for ClaudeCodeScanner {
     }
 
     fn scan_sessions(&self) -> Result<Vec<Session>, ScanError> {
-        let root = dirs::home_dir()
-            .map(|home| home.join(".claude/projects"))
-            .ok_or_else(|| ScanError::NotFound("无法定位用户主目录".to_string()))?;
+        let root = self.root()?;
 
         if !root.exists() {
             return Err(ScanError::NotFound(
@@ -160,7 +176,9 @@ fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
 
 #[cfg(test)]
 mod tests {
-    use super::TimestampLine;
+    use super::{ClaudeCodeScanner, TimestampLine};
+    use crate::scanner::SessionScanner;
+    use std::fs;
 
     #[test]
     fn timestamp_line_reads_claude_camel_case_summary_fields() {
@@ -173,5 +191,30 @@ mod tests {
             serde_json::from_str(r#"{"type":"last-prompt","lastPrompt":"修复列表展示"}"#)
                 .expect("last-prompt line should parse");
         assert_eq!(prompt.last_prompt.as_deref(), Some("修复列表展示"));
+    }
+
+    #[test]
+    fn scanner_reads_fixture_sessions_without_home_data() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("-tmp-fast-start");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(
+            project.join("claude-fixture.jsonl"),
+            [
+                r#"{"timestamp":"2026-06-19T01:00:00Z","cwd":"/tmp","type":"last-prompt","lastPrompt":"修复列表展示"}"#,
+                r#"{"timestamp":"2026-06-19T01:01:00Z","cwd":"/tmp","type":"ai-title","aiTitle":"优化扫描器"}"#,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+
+        let sessions = ClaudeCodeScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].session_id, "claude-fixture");
+        assert_eq!(sessions[0].project_dir, std::path::PathBuf::from("/tmp"));
+        assert_eq!(sessions[0].summary.as_deref(), Some("优化扫描器"));
     }
 }

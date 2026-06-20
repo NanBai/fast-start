@@ -1,5 +1,5 @@
-use crate::models::{LaunchMode, ScanResponse, TerminalType};
-use crate::state::{save_launch_mode, save_preferred_terminal, AppState};
+use crate::models::{LaunchMode, ScanResponse, TerminalType, ThemeMode};
+use crate::state::{save_launch_mode, save_preferred_terminal, save_theme_mode, AppState};
 use tauri::State;
 
 #[tauri::command]
@@ -50,4 +50,19 @@ pub fn set_launch_mode(
 ) -> Result<(), String> {
     state.set_launch_mode(mode)?;
     save_launch_mode(&app, mode)
+}
+
+#[tauri::command]
+pub fn get_theme_mode(state: State<'_, AppState>) -> Result<ThemeMode, String> {
+    state.theme_mode()
+}
+
+#[tauri::command]
+pub fn set_theme_mode(
+    mode: ThemeMode,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.set_theme_mode(mode)?;
+    save_theme_mode(&app, mode)
 }

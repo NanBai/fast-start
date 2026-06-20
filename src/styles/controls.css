@@ -1,0 +1,254 @@
+/* =======================================================================
+   CONTROL BAR (segmented control + menu)
+   ======================================================================= */
+.control-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  animation: fade-rise var(--dur-slow) var(--ease-emphasized) 0.05s both;
+}
+
+/* --- Segmented control ---------------------------------------------- */
+.segmented {
+  position: relative;
+  flex: 1;
+  display: flex;
+  padding: 2px;
+  background: var(--control-bg);
+  border-radius: var(--radius-md);
+  gap: 2px;
+}
+
+.segment {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: calc(var(--radius-md) - 4px);
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  transition: color var(--dur-base) var(--ease-standard);
+}
+
+.segment[data-active="true"] {
+  color: var(--text-primary);
+}
+
+.segment:not([data-active="true"]):hover {
+  color: var(--text-primary);
+}
+
+.segment svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* sliding "pill" thumb */
+.segmented::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
+  border-radius: calc(var(--radius-md) - 4px);
+  background: var(--group-bg);
+  box-shadow:
+    0 0 0 0.5px var(--group-stroke),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+  transform: translateX(0);
+  transition: transform var(--dur-base) var(--ease-spring);
+  z-index: 0;
+}
+
+.segmented[data-mode="new-window"]::before {
+  transform: translateX(100%);
+}
+
+/* --- Menu button (terminal select) --------------------------------- */
+.menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 10px 7px 12px;
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  box-shadow: 0 0 0 0.5px var(--control-stroke);
+  transition: background var(--dur-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.menu:hover {
+  background: var(--control-bg-hover);
+}
+
+.menu:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.menu select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.menu-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.range-menu {
+  flex: 0 0 auto;
+  min-width: 154px;
+}
+
+.theme-menu {
+  min-width: 104px;
+}
+
+.menu-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.range-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.16);
+}
+
+.theme-dot[data-theme-mode="dark"] {
+  background: #1c1c1e;
+  box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.14);
+}
+
+.theme-dot[data-theme-mode="light"] {
+  background: #ffffff;
+  box-shadow:
+    0 0 0 0.5px rgba(60, 60, 67, 0.28),
+    0 0 0 3px rgba(120, 120, 128, 0.12);
+}
+
+.theme-dot[data-theme-mode="system"] {
+  background: linear-gradient(90deg, #ffffff 0 50%, #1c1c1e 50% 100%);
+  box-shadow:
+    0 0 0 0.5px var(--divider),
+    0 0 0 3px rgba(120, 120, 128, 0.12);
+}
+
+.menu-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--group-bg);
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 0.5px var(--divider);
+}
+
+.chevron {
+  transition: transform var(--dur-base) var(--ease-standard);
+  color: var(--text-tertiary);
+}
+
+/* =======================================================================
+   STATUS PILL
+   ======================================================================= */
+.status-line {
+  min-height: 20px;
+  margin: var(--space-2) 0 var(--space-3);
+  animation: fade-rise var(--dur-slow) var(--ease-emphasized) 0.1s both;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 4px 12px 4px 9px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  box-shadow: 0 0 0 0.5px var(--control-stroke);
+  transition: background var(--dur-base) var(--ease-standard),
+    color var(--dur-base) var(--ease-standard);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.status-pill[data-type="success"] {
+  color: var(--green);
+}
+
+.status-pill[data-type="success"] .status-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18);
+}
+
+.status-pill[data-type="error"] {
+  color: var(--red);
+}
+
+.status-pill[data-type="error"] .status-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.18);
+}
+
+.status-pill[data-type="info"] .status-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.status-pill[data-type="info"][data-pulse="true"] .status-dot {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.scan-errors {
+  display: grid;
+  gap: var(--space-2);
+  margin: calc(var(--space-2) * -1) 0 var(--space-4);
+}
+
+.scan-error-item {
+  display: block;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 59, 48, 0.08);
+  color: var(--red);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: 0 0 0 0.5px rgba(255, 59, 48, 0.18);
+}
+
+/* =======================================================================
+   INSET GROUPED LIST
+   ======================================================================= */

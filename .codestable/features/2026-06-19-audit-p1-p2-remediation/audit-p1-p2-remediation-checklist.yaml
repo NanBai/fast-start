@@ -1,0 +1,114 @@
+feature: 2026-06-19-audit-p1-p2-remediation
+created: 2026-06-19
+
+steps:
+  - action: "微重构骨架：前端只搬不改行为地拆组件 / 样式"
+    exit_signal: "pnpm build 通过；主界面仍能展示 toolbar、分组、项目折叠、会话行和状态提示"
+    status: done
+  - action: "启动编排：移除 Tauri setup 同步扫描"
+    exit_signal: "AppState 初始化不调用全量 scanner；首次 scan_sessions 仍返回与原来等价的 ScanResponse"
+    status: done
+  - action: "scanner 数据源与 fixture：让测试脱离真实 HOME"
+    exit_signal: "Codex / Claude / Cursor scanner 单测全部使用临时 fixture，删除路径不存在就 return 的假跳过"
+    status: done
+  - action: "Cursor 读取节点：替换每 chat 一个 sqlite3 子进程"
+    exit_signal: "Cursor workspace path fixture 测试通过，代码中不再出现循环内 Command::new(\"sqlite3\")"
+    status: done
+  - action: "摘要与注释收敛：修 Codex 64 行边界和 cd=false 旧语义"
+    exit_signal: "Codex 真实用户消息位于 64 行后仍能提取；源码当前注释不再表达 cursor 不 cd"
+    status: done
+  - action: "Launcher 安全收敛：Terminal/iTerm 使用 wrapper 启动"
+    exit_signal: "Terminal/iTerm/Ghostty 三条 launcher 单测覆盖 wrapper 内容和 AppleScript 注入形态；cargo test --lib 通过"
+    status: done
+  - action: "CSP 与全链路验证"
+    exit_signal: "pnpm build、cargo test --lib 通过；Tauri dev 或等效 smoke 能正常加载页面、扫描、启动 session"
+    status: done
+
+checks:
+  - item: "范围守护：不新增新的 CLI agent 类型，不改变 Session 对外 JSON 字段"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不做 Windows / Linux 终端启动支持"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不重做视觉风格，不把整改扩展成新的 UI 改版"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不引入远程服务、网络同步或 session 持久化"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不修改历史 audit / learning 的事实记录"
+    source: 范围守护
+    status: passed
+  - item: "名词契约：SessionScanner 对外 trait 契约保持不变，scanner 支持测试可注入数据源"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：安全 wrapper 成为 launcher 内部可复用能力，Terminal/iTerm/Ghostty 均可复用受控命令构造"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：前端拆出 Toolbar / AgentGroup / ProjectBucket / SessionRow / Skeleton / icons 等组件，数据契约保持不变"
+    source: 名词契约
+    status: passed
+  - item: "编排骨架：Tauri setup 只加载偏好、校正终端、注册 state，不执行全量扫描"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：首次 session 加载仍由 scan_sessions 触发，refresh_sessions 仍强制重新扫描"
+    source: 编排骨架
+    status: passed
+  - item: "流程级约束：单个 CLI 扫描失败仍以 CliScanError 返回，不阻断其他 CLI 展示"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：Cursor chat 缺少可验证 cwd 时继续跳过，不能用猜测路径 fallback"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：Terminal/iTerm wrapper 必须复用 validate_command_spec / validate_session_id / shell_escape 防护"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：前端拆分期间文案、按钮行为、ARIA、折叠默认展开、最近天数默认值保持不变"
+    source: 流程级约束
+    status: passed
+  - item: "挂载点：Tauri setup 初始化移除预扫描后，App 启动阻塞整改可被完整核对"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：scanner 支持 fixture 数据源并替换 Cursor 读取节点后，扫描性能与测试可靠性整改可被完整核对"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：Launcher 实现中 Terminal/iTerm 复用安全 wrapper 后，shell 字符串安全收敛可被完整核对"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：前端入口 App.tsx 只保留顶层编排，组件挂到 src/components 后，前端单体化整改可被完整核对"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：tauri.conf.json 设置最小 CSP 后，CSP 安全整改可被完整核对"
+    source: 挂载点
+    status: passed
+  - item: "验收场景：启动应用时 Tauri setup 不执行全量 scanner；前端首次调用 scan_sessions 后仍能展示 session"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：用户点击刷新时 refresh_sessions 触发重新扫描，返回最新 session 和 scan_errors"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：Cursor fixture 包含多个 chat 时，workspace path 提取不通过每 chat 一个 sqlite3 子进程，且能提取有效 cwd"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：没有真实 HOME CLI 数据时，scanner 解析测试仍覆盖 codex、claude、cursor 三类 fixture"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：Codex jsonl 第 65 行后出现真实用户消息时，summary 取真实用户消息而非回退项目名"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：Codex / Claude / Cursor 生成的 CommandSpec 中 cd 均为 true，源码当前注释不再暗示 cursor 不 cd"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：选择 Terminal 或 iTerm 启动 session 时，wrapper 负责 cd && exec program args，AppleScript 不直接注入完整业务命令字符串"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：最近天数筛选、agent 折叠、工作目录折叠、启动按钮 loading、扫描错误展示在拆分后行为一致"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：tauri.conf.json 不再是 csp null；pnpm build 通过，页面资源正常加载"
+    source: 验收场景
+    status: passed
+  - item: "禁用词 grep：源码和当前架构文档不再命中 cursor 不 cd / cursor resume 不校验 cwd / project_dir 是占位"
+    source: 验收场景
+    status: passed

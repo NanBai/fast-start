@@ -7,7 +7,25 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
-pub struct CodexScanner;
+pub struct CodexScanner {
+    root: Option<PathBuf>,
+}
+
+impl CodexScanner {
+    #[cfg(test)]
+    pub fn with_root(root: PathBuf) -> Self {
+        Self { root: Some(root) }
+    }
+
+    fn root(&self) -> Result<PathBuf, ScanError> {
+        if let Some(root) = &self.root {
+            return Ok(root.clone());
+        }
+        dirs::home_dir()
+            .map(|home| home.join(".codex/sessions"))
+            .ok_or_else(|| ScanError::NotFound("无法定位用户主目录".to_string()))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct CodexLine {
@@ -25,9 +43,7 @@ impl SessionScanner for CodexScanner {
     }
 
     fn scan_sessions(&self) -> Result<Vec<Session>, ScanError> {
-        let root = dirs::home_dir()
-            .map(|home| home.join(".codex/sessions"))
-            .ok_or_else(|| ScanError::NotFound("无法定位用户主目录".to_string()))?;
+        let root = self.root()?;
 
         if !root.exists() {
             return Err(ScanError::NotFound("codex session 目录不存在".to_string()));
@@ -78,7 +94,7 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
     let mut last_active_at = file_mtime(path)?;
     let mut summary = None;
 
-    for line in content.lines().take(64) {
+    for line in content.lines() {
         if line.trim().is_empty() {
             continue;
         }
@@ -122,6 +138,10 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
             if let Some(text) = first_real_user_message(payload) {
                 summary = clean_summary(Some(&text));
             }
+        }
+
+        if session_id.is_some() && cwd.is_some() && summary.is_some() {
+            break;
         }
     }
 
@@ -198,8 +218,10 @@ fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{first_real_user_message, is_injected_context};
+    use super::{first_real_user_message, is_injected_context, CodexScanner};
+    use crate::scanner::SessionScanner;
     use serde_json::json;
+    use std::fs;
 
     #[test]
     fn is_injected_context_flags_codex_context_blocks() {
@@ -230,7 +252,59 @@ mod tests {
 
     #[test]
     fn first_real_user_message_returns_none_for_assistant_or_non_message() {
-        assert_eq!(first_real_user_message(&json!({"type":"message","role":"assistant","content":[]})), None);
-        assert_eq!(first_real_user_message(&json!({"type":"function_call","name":"exec_command"})), None);
+        assert_eq!(
+            first_real_user_message(&json!({"type":"message","role":"assistant","content":[]})),
+            None
+        );
+        assert_eq!(
+            first_real_user_message(&json!({"type":"function_call","name":"exec_command"})),
+            None
+        );
+    }
+
+    #[test]
+    fn scanner_reads_fixture_sessions_without_home_data() {
+        let temp = tempfile::tempdir().unwrap();
+        let session_file = temp.path().join("session.jsonl");
+        fs::write(
+            &session_file,
+            [
+                r#"{"timestamp":"2026-06-19T01:00:00Z","type":"session_meta","payload":{"id":"codex-fixture","cwd":"/tmp"}}"#,
+                r##"{"timestamp":"2026-06-19T01:01:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions"},{"type":"input_text","text":"修复扫描性能"}]}}"##,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+
+        let sessions = CodexScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].session_id, "codex-fixture");
+        assert_eq!(sessions[0].summary.as_deref(), Some("修复扫描性能"));
+    }
+
+    #[test]
+    fn scanner_reads_real_user_message_after_sixty_four_lines() {
+        let temp = tempfile::tempdir().unwrap();
+        let session_file = temp.path().join("late-summary.jsonl");
+        let mut lines = vec![r#"{"timestamp":"2026-06-19T01:00:00Z","type":"session_meta","payload":{"id":"codex-late","cwd":"/tmp"}}"#.to_string()];
+        for _ in 0..64 {
+            lines.push(r##"{"timestamp":"2026-06-19T01:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions"}]}}"##.to_string());
+        }
+        lines.push(r#"{"timestamp":"2026-06-19T01:01:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"第 65 行之后的真实需求"}]}}"#.to_string());
+        fs::write(&session_file, lines.join("\n")).unwrap();
+
+        let sessions = CodexScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].session_id, "codex-late");
+        assert_eq!(
+            sessions[0].summary.as_deref(),
+            Some("第 65 行之后的真实需求")
+        );
     }
 }

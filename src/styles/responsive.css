@@ -1,0 +1,61 @@
+@media (max-width: 560px) {
+  .app-shell {
+    padding: var(--space-6) var(--space-4) var(--space-5);
+  }
+
+  .control-bar {
+    flex-wrap: wrap;
+  }
+
+  .menu {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .app-header h1 {
+    font-size: 1.18rem;
+  }
+
+  .cli-group-header {
+    flex-wrap: wrap;
+  }
+
+  .agent-title {
+    flex-basis: calc(100% - 56px);
+  }
+
+  .agent-stats {
+    order: 3;
+    width: 100%;
+    padding-left: 54px;
+  }
+
+  .agent-stat {
+    min-width: 68px;
+    justify-items: start;
+  }
+
+  .chev-group {
+    margin-left: auto;
+  }
+
+  .session-main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .session-time {
+    justify-self: start;
+  }
+}
+
+/* honor reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,113 @@
+.skeleton-list {
+  display: grid;
+  gap: var(--space-4);
+  animation: fade-rise var(--dur-base) var(--ease-emphasized) both;
+}
+
+.skeleton-group {
+  border-radius: var(--radius-lg);
+  background: var(--group-bg);
+  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  outline: 0.5px solid var(--group-stroke);
+  overflow: hidden;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+}
+
+.skeleton-row + .skeleton-row::before {
+  content: "";
+  position: absolute;
+}
+
+.skeleton-row + .skeleton-row {
+  border-top: 0.5px solid var(--divider-soft);
+}
+
+.shimmer {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--control-bg) 0%,
+    var(--hover-overlay) 50%,
+    var(--control-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.shimmer-line {
+  height: 12px;
+  width: 100%;
+}
+
+.shimmer-line.short {
+  width: 45%;
+}
+
+.shimmer-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* =======================================================================
+   KEYFRAMES
+   ======================================================================= */
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* =======================================================================
+   FOCUS
+   ======================================================================= */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* =======================================================================
+   RESPONSIVE
+   ======================================================================= */
