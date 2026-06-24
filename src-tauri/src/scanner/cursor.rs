@@ -1,4 +1,4 @@
-use crate::models::{CliType, Session};
+use crate::models::{CliType, Session, SessionDeleteKind, SessionDeleteTarget};
 use crate::scanner::{ScanError, SessionScanner};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -117,6 +117,11 @@ impl SessionScanner for CursorScanner {
                     project_dir: store_info.cwd,
                     last_active_at,
                     summary: Some(summary),
+                    delete_target: Some(SessionDeleteTarget {
+                        root: root.clone(),
+                        path: chat_dir,
+                        kind: SessionDeleteKind::Directory,
+                    }),
                 });
             }
         }
@@ -246,6 +251,13 @@ mod tests {
 
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].summary.as_deref(), Some("修复 Cursor 简介显示"));
+        let delete_target = sessions[0].delete_target.as_ref().unwrap();
+        assert_eq!(delete_target.root, temp.path());
+        assert_eq!(delete_target.path, chat_dir);
+        assert_eq!(
+            delete_target.kind,
+            crate::models::SessionDeleteKind::Directory
+        );
     }
 
     #[test]
@@ -280,6 +292,13 @@ mod tests {
         );
         assert_eq!(sessions[0].summary.as_deref(), Some("优化 Cursor 扫描"));
         assert_eq!(sessions[0].last_active_at.timestamp_millis(), 1781830860000);
+        let delete_target = sessions[0].delete_target.as_ref().unwrap();
+        assert_eq!(delete_target.root, temp.path());
+        assert_eq!(delete_target.path, chat_dir);
+        assert_eq!(
+            delete_target.kind,
+            crate::models::SessionDeleteKind::Directory
+        );
     }
 
     fn create_cursor_store_db(path: &std::path::Path, rows: &[String]) {

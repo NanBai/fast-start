@@ -1,35 +1,39 @@
-import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { AgentGroup } from "./components/AgentGroup";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import {
   LaunchSegmented,
   RecentDaysMenu,
+  SearchBox,
   TerminalMenu,
   ThemeMenu,
 } from "./components/Controls";
 import { Icon } from "./components/icons/Icon";
+import { SessionContextMenu } from "./components/SessionContextMenu";
 import { Skeleton } from "./components/Skeleton";
+import { usePreferences } from "./hooks/usePreferences";
+import { useSessions } from "./hooks/useSessions";
 import {
-  filterSessionsByRecentDays,
+  filterSessionsForQuickAccess,
   RecentDaysFilter,
+  sanitizeFavoriteProjectDirs,
 } from "./lib/sessionUtils";
 import {
   CLI_LABELS,
   CLI_ORDER,
-  CliScanError,
   CliType,
-  LAUNCH_MODE_LABELS,
-  LaunchMode,
-  ScanResponse,
   SessionData,
-  TERMINAL_LABELS,
-  TerminalType,
-  THEME_MODE_LABELS,
+  StatusType,
   ThemeMode,
 } from "./types";
 import "./App.css";
 
-type StatusType = "info" | "success" | "error";
+type SessionMenuState = {
+  session: SessionData;
+  x: number;
+  y: number;
+};
 
 function applyThemeMode(mode: ThemeMode) {
   const root = document.documentElement;
@@ -41,113 +45,92 @@ function applyThemeMode(mode: ThemeMode) {
 }
 
 function App() {
-  const [sessions, setSessions] = useState<SessionData[]>([]);
-  const [scanErrors, setScanErrors] = useState<CliScanError[]>([]);
-  const [availableTerminals, setAvailableTerminals] = useState<TerminalType[]>([
-    "system",
-  ]);
-  const [preferredTerminal, setPreferredTerminal] =
-    useState<TerminalType>("system");
-  const [launchMode, setLaunchMode] = useState<LaunchMode>("new-tab");
-  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [recentDays, setRecentDays] = useState<RecentDaysFilter>("7");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [launchingId, setLaunchingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [sessionMenu, setSessionMenu] = useState<SessionMenuState | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [statusType, setStatusType] = useState<StatusType>("info");
 
-  async function loadPreferences() {
-    const [available, preferred, mode, theme] = await Promise.all([
-      invoke<TerminalType[]>("list_available_terminals"),
-      invoke<TerminalType>("get_preferred_terminal"),
-      invoke<LaunchMode>("get_launch_mode"),
-      invoke<ThemeMode>("get_theme_mode"),
-    ]);
-    setAvailableTerminals(available);
-    const resolved = available.includes(preferred)
-      ? preferred
-      : (available[0] ?? "system");
-    setPreferredTerminal(resolved);
-    if (resolved !== preferred) {
-      await invoke("set_preferred_terminal", { terminal: resolved });
-    }
-    setLaunchMode(mode);
-    setThemeMode(theme);
+  function notifyStatus(message: string, type: StatusType) {
+    setStatusMessage(message);
+    setStatusType(type);
   }
 
-  async function applyScanResult(result: ScanResponse) {
-    setSessions(result.sessions);
-    setScanErrors(result.scanErrors);
-    setStatusMessage(
-      result.scanErrors.length > 0
-        ? `已加载 ${result.sessions.length} 个 session · ${result.scanErrors.length} 个 CLI 扫描失败`
-        : `已加载 ${result.sessions.length} 个 session`,
-    );
-    setStatusType(result.scanErrors.length > 0 ? "error" : "success");
-  }
+  const {
+    availableTerminals,
+    preferredTerminal,
+    launchMode,
+    themeMode,
+    favoriteProjectDirs,
+    loadPreferences,
+    handleTerminalChange,
+    handleLaunchModeChange,
+    handleThemeModeChange,
+    handleFavoriteProjectDirsChange,
+  } = usePreferences(notifyStatus);
 
-  async function loadSessions() {
-    setLoading(true);
-    try {
-      const result = await invoke<ScanResponse>("scan_sessions");
-      await applyScanResult(result);
-    } catch (error) {
-      setStatusMessage(String(error));
-      setStatusType("error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function refreshSessions() {
-    setRefreshing(true);
-    try {
-      const result = await invoke<ScanResponse>("refresh_sessions");
-      await applyScanResult(result);
-    } catch (error) {
-      setStatusMessage(String(error));
-      setStatusType("error");
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  async function handleTerminalChange(terminal: TerminalType) {
-    await invoke("set_preferred_terminal", { terminal });
-    setPreferredTerminal(terminal);
-    setStatusMessage(`终端已切换为 ${TERMINAL_LABELS[terminal]}`);
-    setStatusType("info");
-  }
-
-  async function handleLaunchModeChange(mode: LaunchMode) {
-    await invoke("set_launch_mode", { mode });
-    setLaunchMode(mode);
-    setStatusMessage(`打开方式已切换为${LAUNCH_MODE_LABELS[mode]}`);
-    setStatusType("info");
-  }
-
-  async function handleThemeModeChange(mode: ThemeMode) {
-    await invoke("set_theme_mode", { mode });
-    setThemeMode(mode);
-    setStatusMessage(`主题已切换为${THEME_MODE_LABELS[mode]}`);
-    setStatusType("info");
-  }
+  const {
+    sessions,
+    scanErrors,
+    loading,
+    refreshing,
+    launchingId,
+    deletingId,
+    pendingDelete,
+    loadSessions,
+    refreshSessions,
+    launchSession,
+    requestDeleteSession: requestDelete,
+    cancelDeleteSession,
+    confirmDeleteSession,
+  } = useSessions(notifyStatus);
 
   async function handleLaunch(sessionId: string) {
-    setLaunchingId(sessionId);
-    setStatusMessage("正在启动终端…");
-    setStatusType("info");
-    try {
-      await invoke("launch_session", { sessionId });
-      setStatusMessage("终端启动成功");
-      setStatusType("success");
-    } catch (error) {
-      setStatusMessage(`启动失败：${String(error)}`);
-      setStatusType("error");
-    } finally {
-      setLaunchingId(null);
+    setSessionMenu(null);
+    await launchSession(sessionId);
+  }
+
+  function handleSessionContextMenu(
+    session: SessionData,
+    event: MouseEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault();
+    if (launchingId === session.id || deletingId === session.id) {
+      return;
     }
+    setSessionMenu({
+      session,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }
+
+  function requestDeleteSession(session: SessionData) {
+    setSessionMenu(null);
+    requestDelete(session);
+  }
+
+  function handleSearchQueryChange(value: string) {
+    setSearchQuery(value);
+    setActiveSessionId(null);
+  }
+
+  function handleRecentDaysChange(value: RecentDaysFilter) {
+    setRecentDays(value);
+    setActiveSessionId(null);
+  }
+
+  function toggleFavoriteProject(projectDir: string) {
+    const current = new Set(sanitizeFavoriteProjectDirs(favoriteProjectDirs, sessions));
+    if (current.has(projectDir)) {
+      current.delete(projectDir);
+    } else {
+      current.add(projectDir);
+    }
+    const next = sanitizeFavoriteProjectDirs(Array.from(current), sessions);
+    void handleFavoriteProjectDirsChange(next);
   }
 
   useEffect(() => {
@@ -161,9 +144,52 @@ function App() {
     applyThemeMode(themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    function focusSearch(event: globalThis.KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionMenu) {
+      return;
+    }
+    function closeMenu() {
+      setSessionMenu(null);
+    }
+    function closeMenuOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSessionMenu(null);
+      }
+    }
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeMenuOnEscape);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [sessionMenu]);
+
   // 先按 agent 分区；每个 agent 内部再按工作目录聚合。
   // sessions 已按 last_active_at 倒序，分区后仍保留各 agent 内最近活跃顺序。
-  const visibleSessions = filterSessionsByRecentDays(sessions, recentDays);
+  const favoriteProjectDirSet = new Set(
+    sanitizeFavoriteProjectDirs(favoriteProjectDirs, sessions),
+  );
+  const quickAccess = filterSessionsForQuickAccess(sessions, {
+    recentDays,
+    query: searchQuery,
+    favoriteProjectDirs: favoriteProjectDirSet,
+    activeSessionId,
+  });
+  const visibleSessions = quickAccess.sessions;
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const activeQuickSessionId = hasSearchQuery ? quickAccess.activeSessionId : null;
   const sessionsByCli = new Map<CliType, SessionData[]>();
   for (const cliType of CLI_ORDER) {
     sessionsByCli.set(cliType, []);
@@ -174,6 +200,58 @@ function App() {
 
   const showHint =
     preferredTerminal === "system" && launchMode === "new-tab";
+
+  function moveActiveSession(delta: 1 | -1) {
+    if (quickAccess.sessions.length === 0) {
+      setActiveSessionId(null);
+      return;
+    }
+    const currentIndex = quickAccess.sessions.findIndex(
+      (session) => session.id === quickAccess.activeSessionId,
+    );
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex =
+      (safeIndex + delta + quickAccess.sessions.length) %
+      quickAccess.sessions.length;
+    setActiveSessionId(quickAccess.sessions[nextIndex].id);
+  }
+
+  function handleSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (searchQuery) {
+        handleSearchQueryChange("");
+      } else {
+        searchInputRef.current?.blur();
+      }
+      return;
+    }
+
+    if (!hasSearchQuery) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveActiveSession(1);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveActiveSession(-1);
+      return;
+    }
+
+    if (event.key === "Enter" && activeQuickSessionId) {
+      event.preventDefault();
+      if (launchingId === activeQuickSessionId || deletingId === activeQuickSessionId) {
+        notifyStatus("当前 session 正在处理中", "info");
+        return;
+      }
+      void handleLaunch(activeQuickSessionId);
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -203,9 +281,15 @@ function App() {
       </header>
 
       <div className="control-bar">
+        <SearchBox
+          value={searchQuery}
+          onChange={handleSearchQueryChange}
+          inputRef={searchInputRef}
+          onKeyDown={handleSearchKeyDown}
+        />
         <RecentDaysMenu
           value={recentDays}
-          onChange={setRecentDays}
+          onChange={handleRecentDaysChange}
           visibleCount={visibleSessions.length}
           totalCount={sessions.length}
         />
@@ -247,6 +331,8 @@ function App() {
 
       {loading ? (
         <Skeleton />
+      ) : hasSearchQuery && quickAccess.matchCount === 0 ? (
+        <p className="state-line">没有匹配的 session</p>
       ) : (
         <div className="session-list">
           {CLI_ORDER.map((cliType) => (
@@ -254,11 +340,36 @@ function App() {
               key={cliType}
               cliType={cliType}
               sessions={sessionsByCli.get(cliType) ?? []}
+              favoriteProjectDirs={favoriteProjectDirSet}
+              forceOpen={hasSearchQuery}
+              activeSessionId={activeQuickSessionId}
               launchingId={launchingId}
+              deletingId={deletingId}
               onLaunch={handleLaunch}
+              onToggleFavoriteProject={toggleFavoriteProject}
+              onSessionContextMenu={handleSessionContextMenu}
             />
           ))}
         </div>
+      )}
+
+      {sessionMenu && (
+        <SessionContextMenu
+          session={sessionMenu.session}
+          x={sessionMenu.x}
+          y={sessionMenu.y}
+          disabled={deletingId === sessionMenu.session.id}
+          onDelete={requestDeleteSession}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          session={pendingDelete}
+          deleting={deletingId === pendingDelete.id}
+          onCancel={cancelDeleteSession}
+          onConfirm={() => void confirmDeleteSession()}
+        />
       )}
     </main>
   );

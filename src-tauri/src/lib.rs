@@ -3,15 +3,17 @@ mod launcher;
 mod models;
 mod scanner;
 mod security;
+mod session_delete;
 mod state;
 
 use commands::{
-    get_launch_mode, get_preferred_terminal, get_theme_mode, launch_session,
-    list_available_terminals, refresh_sessions, scan_sessions, set_launch_mode,
-    set_preferred_terminal, set_theme_mode,
+    delete_session, get_favorite_project_dirs, get_launch_mode, get_preferred_terminal,
+    get_theme_mode, launch_session, list_available_terminals, refresh_sessions, scan_sessions,
+    set_favorite_project_dirs, set_launch_mode, set_preferred_terminal, set_theme_mode,
 };
 use state::{
-    load_launch_mode, load_preferred_terminal, load_theme_mode, save_preferred_terminal, AppState,
+    load_favorite_project_dirs, load_launch_mode, load_preferred_terminal, load_theme_mode,
+    save_preferred_terminal, AppState,
 };
 use tauri::Manager;
 
@@ -25,7 +27,9 @@ pub fn run() {
                 load_preferred_terminal(app.handle()).unwrap_or(models::TerminalType::System);
             let launch_mode = load_launch_mode(app.handle()).unwrap_or(models::LaunchMode::NewTab);
             let theme_mode = load_theme_mode(app.handle()).unwrap_or(models::ThemeMode::System);
-            let state = AppState::new(preferred, launch_mode, theme_mode);
+            let favorite_project_dirs =
+                load_favorite_project_dirs(app.handle()).unwrap_or_default();
+            let state = AppState::new(preferred, launch_mode, theme_mode, favorite_project_dirs);
             let available = state.list_available_terminals();
             if !available.contains(&preferred) {
                 preferred = available
@@ -42,6 +46,7 @@ pub fn run() {
             scan_sessions,
             refresh_sessions,
             launch_session,
+            delete_session,
             list_available_terminals,
             get_preferred_terminal,
             set_preferred_terminal,
@@ -49,6 +54,8 @@ pub fn run() {
             set_launch_mode,
             get_theme_mode,
             set_theme_mode,
+            get_favorite_project_dirs,
+            set_favorite_project_dirs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

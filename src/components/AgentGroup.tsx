@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { useState } from "react";
 import { BrandMark } from "./icons/BrandMark";
 import { Icon } from "./icons/Icon";
@@ -39,24 +40,40 @@ function groupByProjectDir(sessions: SessionData[]): ProjectSessionGroup[] {
 export function AgentGroup({
   cliType,
   sessions,
+  favoriteProjectDirs,
+  forceOpen = false,
+  activeSessionId,
   launchingId,
+  deletingId,
   onLaunch,
+  onToggleFavoriteProject,
+  onSessionContextMenu,
 }: {
   cliType: CliType;
   sessions: SessionData[];
+  favoriteProjectDirs: Set<string>;
+  forceOpen?: boolean;
+  activeSessionId: string | null;
   launchingId: string | null;
+  deletingId: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
+  onToggleFavoriteProject: (projectDir: string) => void;
+  onSessionContextMenu: (
+    session: SessionData,
+    event: MouseEvent<HTMLDivElement>,
+  ) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const projectGroups = groupByProjectDir(sessions);
+  const open = forceOpen || expanded;
 
   return (
-    <section className="cli-group" data-cli={cliType} data-open={expanded}>
+    <section className="cli-group" data-cli={cliType} data-open={open}>
       <button
         type="button"
         className="cli-group-header"
         onClick={() => setExpanded((current) => !current)}
-        aria-expanded={expanded}
+        aria-expanded={open}
       >
         <span className="cli-mark" data-cli={cliType} aria-hidden="true">
           <BrandMark cliType={cliType} />
@@ -80,7 +97,7 @@ export function AgentGroup({
           <Icon.Chevron />
         </span>
       </button>
-      {expanded && (
+      {open && (
         <div className="cli-group-card">
           <div className="cli-group-body">
             {projectGroups.length === 0 ? (
@@ -92,8 +109,14 @@ export function AgentGroup({
                   projectDir={group.projectDir}
                   projectName={group.projectName}
                   sessions={group.sessions}
+                  favorite={favoriteProjectDirs.has(group.projectDir)}
+                  forceOpen={forceOpen}
+                  activeSessionId={activeSessionId}
                   launchingId={launchingId}
+                  deletingId={deletingId}
                   onLaunch={onLaunch}
+                  onToggleFavorite={onToggleFavoriteProject}
+                  onSessionContextMenu={onSessionContextMenu}
                 />
               ))
             )}

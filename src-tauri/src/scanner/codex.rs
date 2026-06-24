@@ -1,4 +1,4 @@
-use crate::models::{CliType, Session};
+use crate::models::{CliType, Session, SessionDeleteKind, SessionDeleteTarget};
 use crate::scanner::{clean_summary, ScanError, SessionScanner};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -51,7 +51,7 @@ impl SessionScanner for CodexScanner {
 
         let mut by_session: HashMap<String, Session> = HashMap::new();
 
-        collect_jsonl_files(&root, &mut by_session)?;
+        collect_jsonl_files(&root, &root, &mut by_session)?;
 
         let mut sessions: Vec<Session> = by_session.into_values().collect();
         sessions.sort_by(|a, b| b.last_active_at.cmp(&a.last_active_at));
@@ -60,6 +60,7 @@ impl SessionScanner for CodexScanner {
 }
 
 fn collect_jsonl_files(
+    root: &Path,
     dir: &Path,
     by_session: &mut HashMap<String, Session>,
 ) -> Result<(), ScanError> {
@@ -67,13 +68,13 @@ fn collect_jsonl_files(
         let entry = entry?;
         let path = entry.path();
         if path.is_dir() {
-            collect_jsonl_files(&path, by_session)?;
+            collect_jsonl_files(root, &path, by_session)?;
             continue;
         }
         if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
             continue;
         }
-        if let Some(session) = parse_codex_file(&path)? {
+        if let Some(session) = parse_codex_file(root, &path)? {
             by_session
                 .entry(session.session_id.clone())
                 .and_modify(|existing| {
@@ -87,7 +88,7 @@ fn collect_jsonl_files(
     Ok(())
 }
 
-fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
+fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanError> {
     let content = fs::read_to_string(path)?;
     let mut session_id = None;
     let mut cwd = None;
@@ -158,6 +159,11 @@ fn parse_codex_file(path: &Path) -> Result<Option<Session>, ScanError> {
         project_dir: cwd,
         last_active_at,
         summary,
+        delete_target: Some(SessionDeleteTarget {
+            root: root.to_path_buf(),
+            path: path.to_path_buf(),
+            kind: SessionDeleteKind::File,
+        }),
     }))
 }
 
@@ -283,6 +289,10 @@ mod tests {
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].session_id, "codex-fixture");
         assert_eq!(sessions[0].summary.as_deref(), Some("修复扫描性能"));
+        let delete_target = sessions[0].delete_target.as_ref().unwrap();
+        assert_eq!(delete_target.root, temp.path());
+        assert_eq!(delete_target.path, session_file);
+        assert_eq!(delete_target.kind, crate::models::SessionDeleteKind::File);
     }
 
     #[test]
@@ -306,5 +316,9 @@ mod tests {
             sessions[0].summary.as_deref(),
             Some("第 65 行之后的真实需求")
         );
+        let delete_target = sessions[0].delete_target.as_ref().unwrap();
+        assert_eq!(delete_target.root, temp.path());
+        assert_eq!(delete_target.path, session_file);
+        assert_eq!(delete_target.kind, crate::models::SessionDeleteKind::File);
     }
 }

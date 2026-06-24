@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { KeyboardEvent, RefObject } from "react";
 import { Icon } from "./icons/Icon";
 import { recentDaysLabel, RECENT_DAY_OPTIONS, RecentDaysFilter } from "../lib/sessionUtils";
 import {
@@ -10,6 +11,43 @@ import {
   THEME_MODE_OPTIONS,
   ThemeMode,
 } from "../types";
+
+export function SearchBox({
+  value,
+  onChange,
+  inputRef,
+  onKeyDown,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label className="search-box">
+      <Icon.Search />
+      <input
+        ref={inputRef}
+        type="search"
+        value={value}
+        aria-label="搜索 session"
+        placeholder="搜索 session、项目或路径"
+        onKeyDown={onKeyDown}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {value && (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label="清空搜索"
+          onClick={() => onChange("")}
+        >
+          <Icon.Close />
+        </button>
+      )}
+    </label>
+  );
+}
 
 export function RecentDaysMenu({
   value,

@@ -2,6 +2,7 @@ export type CliType = "codex" | "claude-code" | "cursor";
 export type TerminalType = "system" | "iterm2" | "ghostty";
 export type LaunchMode = "new-tab" | "new-window";
 export type ThemeMode = "dark" | "light" | "system";
+export type StatusType = "info" | "success" | "error";
 
 export interface SessionData {
   id: string;

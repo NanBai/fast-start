@@ -1,0 +1,111 @@
+feature: 2026-06-20-responsive-window-ui
+created: 2026-06-20
+
+steps:
+  - action: "窗口契约：声明 Tauri 主窗口最小宽高"
+    exit_signal: "默认 800x600 保持不变；窗口不能缩到约 360x420 以下"
+    status: done
+  - action: "布局边界：调整 app shell 宽度、边距和可视安全区"
+    exit_signal: "360px 宽度无横向滚动；1100px 宽度不再长期锁死 720px"
+    status: done
+  - action: "控制栏响应式：补齐筛选、打开方式、终端、主题控件的换行和点击区"
+    exit_signal: "compact 下四类控件可点击且不重叠；regular 下顺序和视觉密度基本不变"
+    status: done
+  - action: "列表响应式：调整 agent header、project header、session row 的窄屏与宽屏布局"
+    exit_signal: "compact 下文本不覆盖按钮；wide 下长路径和 session 简介可用宽度增加"
+    status: done
+  - action: "验证与微调：完成构建和多窗口 smoke"
+    exit_signal: "pnpm build 通过；360x520、560x600、800x600、1100x720 无横向滚动、无控件重叠"
+    status: done
+
+checks:
+  - item: "范围守护：不改扫描、启动、偏好持久化和 Rust 后端业务逻辑"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不做移动端网页适配，不引入浏览器路由或独立 mobile 页面"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不改变主题选择的控件形态，不重新做视觉风格"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不新增新 agent、不改变 session 展示字段含义"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不把宽屏改成复杂 dashboard；agent 仍纵向排列"
+    source: 范围守护
+    status: passed
+  - item: "名词契约：Tauri window 配置声明 minWidth/minHeight，默认 width/height 仍为 800x600"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：compact 约 360-559px，regular 承载默认布局，wide 约 900px 起"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：app shell 在 compact 不贴边，在 wide 可扩展到约 1040px"
+    source: 名词契约
+    status: passed
+  - item: "编排骨架：React 仍渲染同一组件树，不新增 resize state 或 window listener"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：窗口宽度事实源只由 CSS media query 表达"
+    source: 编排骨架
+    status: passed
+  - item: "流程级约束：菜单、按钮、折叠 header 的最小点击高度不低于当前水平"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：文本溢出必须省略或换行，不能覆盖按钮"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：宽屏规则不能改变 agent 排序和默认折叠状态"
+    source: 流程级约束
+    status: passed
+  - item: "挂载点：tauri.conf.json window 配置可完整移除最小窗口尺寸契约"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：base.css app shell 规则可完整移除 shell 宽度与边距适配"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：controls.css 控制栏规则可完整移除控件响应式适配"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：session-list.css 列表规则可完整移除 agent/project/session 响应式适配"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：responsive.css 断点汇总可完整移除 compact / wide 规则组织"
+    source: 挂载点
+    status: passed
+  - item: "验收场景：启动 app 后尝试缩小窗口，宽度不能小于约 360px，高度不能小于约 420px"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：窗口约 360x520 时无横向滚动，控制栏自动换行，agent header 统计块不压住标题，session 行文字不覆盖启动按钮"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：窗口约 560x600 时 compact 边界不出现跳变重叠"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：窗口 800x600 时当前视觉层级、默认折叠状态、控制栏顺序保持"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：窗口约 1100x720 时 shell 利用更多宽度，长路径和 session 简介比默认窗口更少截断"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：黑、白、跟随系统三种主题下 resize 不出现透明层、文字颜色或边框对比异常"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：最近天数筛选、刷新、agent 展开、project 展开、启动按钮仍可操作"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：src-tauri/src/scanner* 与 src-tauri/src/launcher.rs 不应出现本 feature 改动"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：src/types.ts 不新增响应式相关业务类型"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：src/App.tsx 不新增 resize state / window listener"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：src/components/Controls.tsx 不把主题下拉改成三段式按钮"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不新增外部 CSS/JS 依赖"
+    source: 验收场景
+    status: passed

@@ -1,7 +1,7 @@
 ---
 type: attention
 version: 1.1
-last_updated: 2026-06-18
+last_updated: 2026-06-24
 ---
 
 # CodeStable 启动注意事项
@@ -18,7 +18,7 @@ last_updated: 2026-06-18
 
 - Tauri 2.x + React + TypeScript 桌面应用（快开CLI / Session Launcher）
 - Rust 后端代码在 `src-tauri/`，前端在 `src/`；**跑测试要在 `src-tauri/` 目录下** `cargo test --lib`
-- 非 git 仓库（目前）；`git status` 报错属正常，不等于"无改动"
+- 当前根目录是 git 仓库；`git status --short` 可用于检查真实工作树状态。历史文档里“非 git 仓库”的说法已过期。
 
 ### 编译与运行
 

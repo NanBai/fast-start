@@ -1,0 +1,141 @@
+feature: 2026-06-20-delete-session-context-menu
+created: 2026-06-20
+
+steps:
+  - action: "微重构骨架：新增后端 session_delete 模块承载删除校验和执行"
+    exit_signal: "现有扫描和启动行为不变；删除目标校验/执行逻辑不塞进 state.rs 或 scanner"
+    status: done
+  - action: "删除目标名词接入：Session 携带不序列化的 delete_target"
+    exit_signal: "前端 SessionData 字段不变；后端 Session 能记录 root/path/kind"
+    status: done
+  - action: "扫描器填充删除目标：Codex / Claude / Cursor 分别记录源文件或 chat 目录"
+    exit_signal: "三类 scanner fixture 单测能断言删除目标分别指向文件或目录"
+    status: done
+  - action: "后端删除 command：delete_session 完成查找、校验、删除、缓存移除并返回 ScanResponse"
+    exit_signal: "文件删除、目录删除、路径越界、目标不存在四类单测覆盖"
+    status: done
+  - action: "前端右键菜单和确认流：SessionRow 暴露删除入口，App 接入确认与结果更新"
+    exit_signal: "右键单条 session 出现菜单；取消不调用后端；确认调用 delete_session 并按返回结果更新列表"
+    status: done
+  - action: "联调与回归验证：完成构建、Rust 测试和本地删除 smoke"
+    exit_signal: "pnpm build、cd src-tauri && cargo test --lib 通过；可丢弃 session 删除后刷新不再出现"
+    status: done
+
+checks:
+  - item: "范围守护：不删除 project_dir 指向的工作目录"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不删除 CLI 全局目录、账号配置、缓存目录或其他 session"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不做批量删除、按项目删除、按 agent 删除"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不做撤销、回收站或归档；删除前必须有确认"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不把源文件路径序列化给前端展示或调试输出"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不在删除失败时静默刷新或假装成功"
+    source: 范围守护
+    status: passed
+  - item: "名词契约：SessionDeleteTarget 记录 root/path/kind，且 delete_target 不进入前端 JSON"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：delete_session 参数使用前端 SessionData.id，不使用 CLI 原始 session_id"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：Codex 删除目标是扫描命中的 jsonl 文件"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：Claude Code 删除目标是扫描命中的 jsonl 文件"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：Cursor 删除目标是扫描命中的 chat 目录"
+    source: 名词契约
+    status: passed
+  - item: "编排骨架：右键 SessionRow 打开行级上下文菜单，删除入口只作用于该 session"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：确认取消时不调用 delete_session，列表不变化"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：确认删除时前端 invoke delete_session(session.id)，并用返回 ScanResponse 更新列表"
+    source: 编排骨架
+    status: passed
+  - item: "流程级约束：删除命令先校验目标存在、仍在对应 CLI root 下、文件或目录类型匹配"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：删除失败不得从前端列表移除该 session"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：删除成功后只移除当前 session.id，不按 session_id 模糊删除其他缓存项"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：删除 command 不输出真实路径到用户可见错误消息"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：正在启动中的 session 不允许同时删除"
+    source: 流程级约束
+    status: passed
+  - item: "挂载点：Session.delete_target 内部字段可完整移除删除目标能力"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：三个 scanner 的删除目标填充点可完整移除对应 CLI 删除能力"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：delete_session Tauri command 可完整移除安全删除入口"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：SessionRow 右键菜单可完整移除列表触发入口"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：App 删除确认与结果接入可完整移除二次确认和状态反馈"
+    source: 挂载点
+    status: passed
+  - item: "验收场景：右键某条 session 行，只在该行附近出现删除此 session，左键其他区域或 Esc 关闭"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：右键删除后点击取消，不调用 delete_session，列表不变"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：选择 Codex session 确认删除后，对应源 jsonl 文件被删除，当前列表少一条"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：选择 Claude Code session 确认删除后，对应源 jsonl 文件被删除，当前列表少一条"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：选择 Cursor session 确认删除后，对应 chat 目录被删除，当前列表少一条"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：删除目标不在对应 CLI root 下时，后端返回错误，不执行删除，不移除列表项"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：缓存里有 session 但源文件或目录已被外部删除时，后端返回明确错误并提示刷新"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：某 session 正在启动时，该行删除入口不可用或确认按钮禁用"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：删除成功后点击刷新，被删除 session 不再出现；其他 session 排序和分组保持"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：project_dir 指向的工作目录不能被删除"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不能按 session_id 删除多个同 ID 文件；只删扫描命中的源载体"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不能把 delete_target.path 加到前端 SessionData"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不能在 launcher.rs 里加入删除逻辑"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不能把删除失败处理成成功状态提示"
+    source: 验收场景
+    status: passed
+  - item: "反向核对：不新增网络、云同步、回收站或撤销能力"
+    source: 验收场景
+    status: passed

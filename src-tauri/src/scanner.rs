@@ -125,6 +125,7 @@ mod tests {
                 project_name: "tmp".to_string(),
                 last_active_at: Utc::now(),
                 summary: None,
+                delete_target: None,
             };
             let spec = command_spec_for_session(&session).unwrap();
             assert!(spec.cd);

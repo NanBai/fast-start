@@ -1,0 +1,138 @@
+feature: 2026-06-24-quick-session-access
+created: 2026-06-24
+
+steps:
+  - action: "实现前状态收尾 gate：确认工作树状态并修正会误导后续任务的 attention git 说明"
+    exit_signal: "工作树状态已记录清楚，.codestable/attention.md 的 git 说明不再误导后续任务"
+    status: done
+  - action: "微重构：拆出 App 编排 hook，只搬不改行为"
+    exit_signal: "偏好加载、session 加载、启动、删除行为不变，pnpm build 通过"
+    status: done
+  - action: "快速访问纯计算层：实现最近天数、查询和收藏排序的统一派生结果"
+    exit_signal: "搜索过滤、空查询、大小写不敏感匹配、收藏排序都有可验证结果"
+    status: done
+  - action: "静态 UI 接入：增加搜索入口和项目收藏按钮"
+    exit_signal: "控制栏出现搜索入口，项目 header 出现收藏按钮；无搜索时现有列表视觉和折叠默认行为不变"
+    status: done
+  - action: "交互与键盘编排：接入搜索焦点、活跃匹配项和回车启动"
+    exit_signal: "Cmd/Ctrl+K、上下键、回车、Escape 在搜索输入聚焦时按预期工作，不影响其他控件"
+    status: done
+  - action: "收藏持久化接入：复用 Tauri Store 偏好链路保存项目收藏"
+    exit_signal: "收藏项目保存到 Tauri Store，刷新或重启后仍生效；保存失败有回滚和错误提示"
+    status: done
+  - action: "联调与回归验证：覆盖快速访问主路径和既有 session 主路径"
+    exit_signal: "pnpm build、cd src-tauri && cargo test --lib 通过；搜索、收藏、刷新、删除、启动主路径均有 smoke 证据"
+    status: done
+
+checks:
+  - item: "名词契约：搜索查询是前端临时状态，不持久化，也不影响真实扫描缓存"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：收藏项目使用 projectDir 精确字符串作为 key，粒度是项目而不是单条 session"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：favoriteProjectDirs 是本机偏好，不进入 SessionData 或 ScanResponse"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：快速访问计算结果由 sessions、recentDays、query、favoriteProjectDirs 派生"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：后端暴露 get_favorite_project_dirs / set_favorite_project_dirs 偏好 command"
+    source: 名词契约
+    status: passed
+  - item: "名词契约：ProjectBucket 支持 favorite、forceOpen、onToggleFavorite 语义"
+    source: 名词契约
+    status: passed
+  - item: "编排骨架：App 启动阶段加载收藏项目偏好，并和现有终端、打开方式、主题偏好并存"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：列表派生顺序是最近天数范围、搜索查询、收藏排序、agent/project 分组"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：搜索不触发重新扫描，只影响当前渲染结果"
+    source: 流程级约束
+    status: passed
+  - item: "编排骨架：查询非空时命中的 agent 和 project 必须 forceOpen，清空查询后恢复原折叠状态"
+    source: 编排骨架
+    status: passed
+  - item: "编排骨架：Cmd/Ctrl+K 聚焦搜索，Escape 清空查询或失焦，上下键切换活跃匹配项，Enter 启动活跃 session"
+    source: 编排骨架
+    status: passed
+  - item: "流程级约束：搜索匹配字段限制为 cliType、projectName、projectDir、summary"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：不得读取或索引 CLI 原始对话全文"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：收藏项目只能来自当前已扫描 session 的 projectDir，保存列表需去重并保持稳定"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：收藏保存失败时必须明确提示，并恢复保存前 UI 状态"
+    source: 流程级约束
+    status: passed
+  - item: "流程级约束：正在启动或删除中的 session 不响应 Enter 快速启动"
+    source: 流程级约束
+    status: passed
+  - item: "挂载点：搜索入口 UI 已接入控制栏，并可被删除后让关键词快速定位能力消失"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：快速访问计算层统一组合最近天数、查询和收藏排序"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：项目 header 暴露收藏切换入口"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：收藏偏好 command 支持收藏重启保留"
+    source: 挂载点
+    status: passed
+  - item: "挂载点：键盘启动编排包含 active session 与 Enter 启动"
+    source: 挂载点
+    status: passed
+  - item: "范围守护：不修改 src-tauri/src/scanner* 和 src-tauri/src/launcher.rs"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：SessionData 不新增收藏字段"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不新增 favoriteSessionIds 等单条 session 收藏类型"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不新增网络请求、云同步、账号或导入导出入口"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不新增全局系统快捷键权限或 Tauri global shortcut 插件"
+    source: 范围守护
+    status: passed
+  - item: "范围守护：不引入全文搜索或模糊搜索第三方依赖"
+    source: 范围守护
+    status: passed
+  - item: "验收场景：输入项目名、路径片段、summary 片段或 agent 名，只显示当前最近天数范围内的匹配 session"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：输入无匹配关键词时显示空结果提示，控制栏仍可清空搜索或调整最近天数"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：搜索命中折叠分组时自动展开，清空搜索后恢复原折叠状态"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：Cmd/Ctrl+K 让搜索输入获得焦点，输入内容不触发重新扫描"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：搜索有结果时上下键切换活跃匹配项，Enter 复用 launch_session(session.id) 启动"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：目标 session 正在启动或删除时按 Enter 不重复触发启动"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：点击项目 header 收藏按钮后，当前 projectDir 被标记为收藏并排在非收藏项目之前"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：收藏项目后刷新或重启 app，收藏状态和排序仍保留"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：保存收藏偏好失败时 UI 回到保存前状态，并显示错误"
+    source: 验收场景
+    status: passed
+  - item: "验收场景：刷新、最近天数筛选、主题、终端选择、打开方式、右键删除、鼠标点击启动仍按原行为工作"
+    source: 验收场景
+    status: passed

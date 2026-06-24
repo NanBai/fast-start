@@ -1,6 +1,19 @@
-import { SessionData } from "../types";
+import { CLI_LABELS, SessionData } from "../types";
 
 export type RecentDaysFilter = "1" | "3" | "7" | "14" | "30" | "all";
+
+export type QuickAccessOptions = {
+  recentDays: RecentDaysFilter;
+  query: string;
+  favoriteProjectDirs: Set<string>;
+  activeSessionId?: string | null;
+};
+
+export type QuickAccessResult = {
+  sessions: SessionData[];
+  activeSessionId: string | null;
+  matchCount: number;
+};
 
 export const RECENT_DAY_OPTIONS: { value: RecentDaysFilter; label: string }[] = [
   { value: "1", label: "最近 1 天" },
@@ -42,3 +55,76 @@ export function filterSessionsByRecentDays(
   });
 }
 
+export function filterSessionsForQuickAccess(
+  sessions: SessionData[],
+  options: QuickAccessOptions,
+): QuickAccessResult {
+  const recentSessions = filterSessionsByRecentDays(sessions, options.recentDays);
+  const query = normalizeQuery(options.query);
+  const matchedSessions = query
+    ? recentSessions.filter((session) => sessionMatchesQuery(session, query))
+    : recentSessions;
+  const sortedSessions = sortSessionsByFavoriteProject(
+    matchedSessions,
+    options.favoriteProjectDirs,
+  );
+  const activeSessionId =
+    sortedSessions.find((session) => session.id === options.activeSessionId)?.id ??
+    sortedSessions[0]?.id ??
+    null;
+
+  return {
+    sessions: sortedSessions,
+    activeSessionId,
+    matchCount: sortedSessions.length,
+  };
+}
+
+export function sanitizeFavoriteProjectDirs(
+  projectDirs: string[],
+  sessions: SessionData[],
+) {
+  const allowed = new Set(sessions.map((session) => session.projectDir));
+  const seen = new Set<string>();
+  return projectDirs.filter((projectDir) => {
+    if (!allowed.has(projectDir) || seen.has(projectDir)) {
+      return false;
+    }
+    seen.add(projectDir);
+    return true;
+  });
+}
+
+function sortSessionsByFavoriteProject(
+  sessions: SessionData[],
+  favoriteProjectDirs: Set<string>,
+) {
+  return sessions
+    .map((session, index) => ({ session, index }))
+    .sort((left, right) => {
+      const leftFavorite = favoriteProjectDirs.has(left.session.projectDir);
+      const rightFavorite = favoriteProjectDirs.has(right.session.projectDir);
+      if (leftFavorite !== rightFavorite) {
+        return leftFavorite ? -1 : 1;
+      }
+      return left.index - right.index;
+    })
+    .map((item) => item.session);
+}
+
+function sessionMatchesQuery(session: SessionData, normalizedQuery: string) {
+  return [
+    session.cliType,
+    CLI_LABELS[session.cliType],
+    session.projectName,
+    session.projectDir,
+    session.summary ?? "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
+function normalizeQuery(query: string) {
+  return query.trim().toLowerCase();
+}

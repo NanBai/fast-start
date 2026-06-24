@@ -1,4 +1,4 @@
-use crate::models::{CliType, Session};
+use crate::models::{CliType, Session, SessionDeleteKind, SessionDeleteTarget};
 use crate::scanner::{clean_summary, decode_claude_project_dir, ScanError, SessionScanner};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -105,6 +105,11 @@ impl SessionScanner for ClaudeCodeScanner {
                     project_dir: cwd,
                     last_active_at,
                     summary,
+                    delete_target: Some(SessionDeleteTarget {
+                        root: root.clone(),
+                        path: file_path,
+                        kind: SessionDeleteKind::File,
+                    }),
                 });
             }
         }
@@ -216,5 +221,9 @@ mod tests {
         assert_eq!(sessions[0].session_id, "claude-fixture");
         assert_eq!(sessions[0].project_dir, std::path::PathBuf::from("/tmp"));
         assert_eq!(sessions[0].summary.as_deref(), Some("优化扫描器"));
+        let delete_target = sessions[0].delete_target.as_ref().unwrap();
+        assert_eq!(delete_target.root, temp.path());
+        assert_eq!(delete_target.path, project.join("claude-fixture.jsonl"));
+        assert_eq!(delete_target.kind, crate::models::SessionDeleteKind::File);
     }
 }

@@ -35,6 +35,19 @@ pub enum LaunchMode {
     NewWindow,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionDeleteKind {
+    File,
+    Directory,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionDeleteTarget {
+    pub root: PathBuf,
+    pub path: PathBuf,
+    pub kind: SessionDeleteKind,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
@@ -48,6 +61,8 @@ pub struct Session {
     /// codex 的首条真实用户消息）。拿不到为 None，前端展示时回退到 project_name。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    #[serde(skip)]
+    pub delete_target: Option<SessionDeleteTarget>,
 }
 
 #[derive(Debug, Clone)]

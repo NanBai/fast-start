@@ -1,15 +1,46 @@
+@media (max-width: 860px) {
+  .search-box {
+    flex-basis: 100%;
+  }
+
+  .range-menu {
+    flex: 0 0 154px;
+  }
+}
+
 @media (max-width: 560px) {
   .app-shell {
+    width: calc(100% - 24px);
     padding: var(--space-6) var(--space-4) var(--space-5);
   }
 
   .control-bar {
+    align-items: stretch;
     flex-wrap: wrap;
   }
 
+  .segmented {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .search-box {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
   .menu {
-    flex: 1;
+    flex: 1 1 calc(50% - var(--space-2));
     justify-content: center;
+    min-width: 0;
+  }
+
+  .range-menu {
+    flex-basis: 100%;
+  }
+
+  .theme-menu {
+    min-width: 0;
   }
 
   .app-header h1 {
@@ -18,6 +49,8 @@
 
   .cli-group-header {
     flex-wrap: wrap;
+    min-height: 76px;
+    padding: 12px var(--space-3);
   }
 
   .agent-title {
@@ -31,8 +64,25 @@
   }
 
   .agent-stat {
+    flex: 1 1 0;
     min-width: 68px;
     justify-items: start;
+  }
+
+  .project-bucket {
+    margin: var(--space-2);
+    border-radius: var(--radius-md);
+  }
+
+  .project-bucket-header {
+    min-height: 48px;
+    padding: 9px 10px;
+  }
+
+  .session-row {
+    align-items: flex-end;
+    gap: var(--space-2);
+    padding: 10px;
   }
 
   .chev-group {
@@ -46,6 +96,30 @@
 
   .session-time {
     justify-self: start;
+  }
+
+  .launch-btn {
+    min-height: 34px;
+    padding: 6px 11px;
+  }
+}
+
+@media (min-width: 900px) {
+  .session-list {
+    gap: 28px;
+  }
+
+  .project-bucket {
+    margin: var(--space-4);
+  }
+
+  .session-row {
+    padding-right: var(--space-4);
+    padding-left: var(--space-5);
+  }
+
+  .session-main {
+    gap: var(--space-5);
   }
 }
 

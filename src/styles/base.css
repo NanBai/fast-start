@@ -197,9 +197,10 @@ button {
    LAYOUT
    ======================================================================= */
 .app-shell {
-  max-width: 720px;
+  width: min(calc(100% - clamp(32px, 10vw, 80px)), 1040px);
   margin: 0 auto;
-  padding: var(--space-7) var(--space-5) var(--space-6);
+  padding: var(--space-7) clamp(var(--space-4), 4vw, var(--space-6))
+    var(--space-6);
 }
 
 /* =======================================================================
