@@ -4,6 +4,8 @@
 
 **在 macOS 上统一浏览、搜索并恢复 Codex、Claude Code、Cursor 的本地 CLI session。**
 
+![Session Launcher 主界面：按 Agent 与项目浏览 session，支持搜索、收藏与一键启动](docs/images/session-launcher-main.png)
+
 Session Launcher 是一个基于 [Tauri 2](https://tauri.app/) 的桌面应用。你在不同项目里用多种 AI 编程 CLI 时，历史对话散落在各自的数据目录里，很难快速回到「上次做到一半」的那条 session。本应用扫描本机已有的 session 元数据，按 **Agent → 项目目录 → Session** 分组展示，选中后在你习惯的终端里执行对应的 resume 命令，把目录和工作现场一并恢复。
 
 > 仅读取本机数据，不上传、无账号、无云同步。与 OpenAI、Anthropic、Cursor 等公司无隶属关系。
