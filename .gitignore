@@ -29,3 +29,6 @@ src-tauri/gen
 
 # 本地偏好（Tauri store 运行时生成，不入库）
 src-tauri/.tauri
+
+# Playwright MCP 本地抓取产物
+.playwright-mcp/
