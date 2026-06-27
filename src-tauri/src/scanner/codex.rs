@@ -152,7 +152,7 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
     };
 
     Ok(Some(Session {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: Session::stable_id(CliType::Codex, &session_id, &cwd),
         cli_type: CliType::Codex,
         session_id,
         project_name: Session::project_name_from_dir(&cwd),

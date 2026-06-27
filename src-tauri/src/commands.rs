@@ -44,8 +44,8 @@ pub fn set_preferred_terminal(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state.set_preferred_terminal(terminal)?;
-    save_preferred_terminal(&app, terminal)
+    save_preferred_terminal(&app, terminal)?;
+    state.set_preferred_terminal(terminal)
 }
 
 #[tauri::command]
@@ -59,8 +59,8 @@ pub fn set_launch_mode(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state.set_launch_mode(mode)?;
-    save_launch_mode(&app, mode)
+    save_launch_mode(&app, mode)?;
+    state.set_launch_mode(mode)
 }
 
 #[tauri::command]
@@ -74,8 +74,8 @@ pub fn set_theme_mode(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state.set_theme_mode(mode)?;
-    save_theme_mode(&app, mode)
+    save_theme_mode(&app, mode)?;
+    state.set_theme_mode(mode)
 }
 
 #[tauri::command]

@@ -135,7 +135,11 @@ function App() {
 
   useEffect(() => {
     void (async () => {
-      await loadPreferences();
+      try {
+        await loadPreferences();
+      } catch (error) {
+        notifyStatus(`偏好加载失败：${String(error)}`, "error");
+      }
       await loadSessions();
     })();
   }, []);

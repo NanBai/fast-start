@@ -51,7 +51,10 @@ export function filterSessionsByRecentDays(
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   return sessions.filter((session) => {
     const activeAt = new Date(session.lastActiveAt).getTime();
-    return Number.isNaN(activeAt) || activeAt >= cutoff;
+    if (Number.isNaN(activeAt)) {
+      return false;
+    }
+    return activeAt >= cutoff;
   });
 }
 

@@ -95,4 +95,51 @@ impl Session {
             .unwrap_or("unknown")
             .to_string()
     }
+
+    /// 列表行 id：由 cli + 源 session id + 工作目录确定性生成，刷新扫描后保持不变。
+    pub fn stable_id(
+        cli_type: CliType,
+        session_id: &str,
+        project_dir: &std::path::Path,
+    ) -> String {
+        let key = format!(
+            "{}:{}:{}",
+            cli_type_stable_key(cli_type),
+            session_id,
+            project_dir.to_string_lossy()
+        );
+        uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_URL, key.as_bytes()).to_string()
+    }
+}
+
+fn cli_type_stable_key(cli_type: CliType) -> &'static str {
+    match cli_type {
+        CliType::Codex => "codex",
+        CliType::ClaudeCode => "claude-code",
+        CliType::Cursor => "cursor",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CliType, Session};
+    use std::path::PathBuf;
+
+    #[test]
+    fn stable_id_is_deterministic_for_same_session() {
+        let first = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let second = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn stable_id_differs_across_cli_or_project() {
+        let codex = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let claude =
+            Session::stable_id(CliType::ClaudeCode, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let other_dir =
+            Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/b").as_path());
+        assert_ne!(codex, claude);
+        assert_ne!(codex, other_dir);
+    }
 }

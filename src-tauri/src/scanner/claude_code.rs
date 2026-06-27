@@ -98,7 +98,7 @@ impl SessionScanner for ClaudeCodeScanner {
                 };
 
                 sessions.push(Session {
-                    id: uuid::Uuid::new_v4().to_string(),
+                    id: Session::stable_id(CliType::ClaudeCode, &session_id, &cwd),
                     cli_type: CliType::ClaudeCode,
                     session_id,
                     project_name: Session::project_name_from_dir(&cwd),

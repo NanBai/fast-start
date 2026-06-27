@@ -110,7 +110,7 @@ impl SessionScanner for CursorScanner {
                     .unwrap_or_else(|| DateTime::<Utc>::from(SystemTime::now()));
 
                 sessions.push(Session {
-                    id: uuid::Uuid::new_v4().to_string(),
+                    id: Session::stable_id(CliType::Cursor, &session_id, &store_info.cwd),
                     cli_type: CliType::Cursor,
                     session_id,
                     project_name: Session::project_name_from_dir(&store_info.cwd),

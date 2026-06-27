@@ -36,8 +36,8 @@ pub fn run() {
                     .first()
                     .copied()
                     .unwrap_or(models::TerminalType::System);
-                state.set_preferred_terminal(preferred)?;
                 save_preferred_terminal(app.handle(), preferred)?;
+                state.set_preferred_terminal(preferred)?;
             }
             app.manage(state);
             Ok(())

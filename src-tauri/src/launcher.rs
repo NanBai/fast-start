@@ -80,9 +80,11 @@ fn iterm_open_tab_applescript(shell_command: &str) -> String {
         "tell application \"iTerm\"\n\
          \x20\x20activate\n\
          \x20\x20if (count of windows) is 0 then\n\
-         \x20\x20\x20\x20repeat until (count of windows) > 0\n\
+         \x20\x20\x20\x20repeat with i from 1 to 300\n\
+         \x20\x20\x20\x20\x20\x20if (count of windows) > 0 then exit repeat\n\
          \x20\x20\x20\x20\x20\x20delay 0.1\n\
          \x20\x20\x20\x20end repeat\n\
+         \x20\x20\x20\x20if (count of windows) is 0 then error \"iTerm 启动超时\"\n\
          \x20\x20else\n\
          \x20\x20\x20\x20tell current window\n\
          \x20\x20\x20\x20\x20\x20create tab with default profile\n\
@@ -103,9 +105,11 @@ fn iterm_open_window_applescript(shell_command: &str) -> String {
         "tell application \"iTerm\"\n\
          \x20\x20activate\n\
          \x20\x20if (count of windows) is 0 then\n\
-         \x20\x20\x20\x20repeat until (count of windows) > 0\n\
+         \x20\x20\x20\x20repeat with i from 1 to 300\n\
+         \x20\x20\x20\x20\x20\x20if (count of windows) > 0 then exit repeat\n\
          \x20\x20\x20\x20\x20\x20delay 0.1\n\
          \x20\x20\x20\x20end repeat\n\
+         \x20\x20\x20\x20if (count of windows) is 0 then error \"iTerm 启动超时\"\n\
          \x20\x20else\n\
          \x20\x20\x20\x20create window with default profile\n\
          \x20\x20end if\n\
@@ -199,7 +203,8 @@ fn write_command_wrapper(spec: &CommandSpec, cwd: Option<&Path>) -> Result<PathB
     let dir = std::env::temp_dir().join("fast-start-ghostty");
     fs::create_dir_all(&dir).map_err(|err| LaunchError::Spawn(err.to_string()))?;
 
-    let wrapper = dir.join(format!("run-{}.sh", std::process::id()));
+    // 每次 launch 用独立文件名，避免同一进程并发启动互相覆盖 wrapper。
+    let wrapper = dir.join(format!("run-{}.sh", uuid::Uuid::new_v4()));
     fs::write(&wrapper, script).map_err(|err| LaunchError::Spawn(err.to_string()))?;
 
     let mut perms = fs::metadata(&wrapper)
@@ -428,5 +433,16 @@ mod tests {
             "wrapper should exec the command with its arguments"
         );
         let _ = std::fs::remove_file(&wrapper);
+    }
+
+    #[test]
+    fn command_wrapper_uses_unique_paths_for_concurrent_launches() {
+        let cwd = PathBuf::from("/tmp/project with space");
+        let first = write_command_wrapper(&codex_spec(), Some(&cwd)).unwrap();
+        let second = write_command_wrapper(&codex_spec(), Some(&cwd)).unwrap();
+
+        assert_ne!(first, second);
+        let _ = std::fs::remove_file(&first);
+        let _ = std::fs::remove_file(&second);
     }
 }
