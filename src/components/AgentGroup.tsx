@@ -10,6 +10,7 @@ const AGENT_HINTS: Record<CliType, string> = {
   "claude-code": "Claude Code 项目会话",
   cursor: "Cursor Agent 工作区会话",
   "grok-build": "Grok Build 历史会话",
+  opencode: "OpenCode 历史会话",
 };
 
 type ProjectSessionGroup = {

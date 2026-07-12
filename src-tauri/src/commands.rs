@@ -1,3 +1,6 @@
+use crate::grok_provider::{
+    GrokBackupInfo, GrokProfile, GrokProviderState, GrokProviderStatus,
+};
 use crate::models::{LaunchMode, PortScanResponse, ScanResponse, TerminalType, ThemeMode};
 use crate::state::{
     save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh, save_preferred_terminal,
@@ -130,4 +133,72 @@ pub fn set_port_auto_refresh(
 ) -> Result<(), String> {
     save_port_auto_refresh(&app, enabled)?;
     state.set_port_auto_refresh(enabled)
+}
+
+// --- Grok provider (suppliers) ---
+
+#[tauri::command]
+pub fn grok_provider_status(
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokProviderStatus, String> {
+    state.status()
+}
+
+#[tauri::command]
+pub fn grok_list_profiles(state: State<'_, GrokProviderState>) -> Result<Vec<GrokProfile>, String> {
+    state.list_profiles()
+}
+
+#[tauri::command]
+pub fn grok_create_profile(
+    profile: GrokProfile,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokProfile, String> {
+    state.create_profile(profile)
+}
+
+#[tauri::command]
+pub fn grok_update_profile(
+    id: String,
+    profile: GrokProfile,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokProfile, String> {
+    state.update_profile(&id, profile)
+}
+
+#[tauri::command]
+pub fn grok_delete_profile(id: String, state: State<'_, GrokProviderState>) -> Result<(), String> {
+    state.delete_profile(&id)
+}
+
+#[tauri::command]
+pub fn grok_activate_profile(
+    id: String,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokProfile, String> {
+    state.activate_profile(&id)
+}
+
+#[tauri::command]
+pub fn grok_import_current(
+    name: Option<String>,
+    active: Option<bool>,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokProfile, String> {
+    state.import_current(name.unwrap_or_else(|| "Default".into()), active.unwrap_or(true))
+}
+
+#[tauri::command]
+pub fn grok_list_backups(
+    state: State<'_, GrokProviderState>,
+) -> Result<Vec<GrokBackupInfo>, String> {
+    state.list_backups()
+}
+
+#[tauri::command]
+pub fn grok_restore_backup(
+    file: String,
+    state: State<'_, GrokProviderState>,
+) -> Result<(), String> {
+    state.restore_backup(&file)
 }

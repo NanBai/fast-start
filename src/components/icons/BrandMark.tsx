@@ -13,6 +13,9 @@ const Brand = {
   "grok-build": (
     <path d="M12 2.5 14.4 8.2l6.1.5-4.6 4 1.5 5.9L12 15.7 6.6 18.6l1.5-5.9-4.6-4 6.1-.5L12 2.5Zm0 4.2-1.2 2.9-3.1.3 2.3 2-0.8 3 2.8-1.7 2.8 1.7-.8-3 2.3-2-3.1-.3L12 6.7Z" />
   ),
+  opencode: (
+    <path d="M4 7.5h16v9H4v-9Zm2 2v5h12v-5H6Zm3.5 1.2h1.6v2.6H9.5v-2.6Zm3.4 0h1.6v2.6h-1.6v-2.6Z" />
+  ),
 } as const;
 
 export function BrandMark({ cliType }: { cliType: CliType }) {

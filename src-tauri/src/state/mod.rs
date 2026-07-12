@@ -250,7 +250,16 @@ impl AppState {
     /// `session_list_id` = `Session.id`（列表稳定 id）。
     pub fn delete_session(&self, session_list_id: &str) -> Result<ScanResponse, String> {
         let session = self.find_session(session_list_id)?;
-        delete_session_target(session.delete_target.as_ref()).map_err(|err| err.message())?;
+        // OpenCode 会话在 SQLite 行里，不删 db 文件；其余 CLI 走文件/目录删除。
+        match session.cli_type {
+            crate::models::CliType::OpenCode => {
+                crate::scanner::opencode::delete_session_by_id(&session.session_id)?;
+            }
+            _ => {
+                delete_session_target(session.delete_target.as_ref())
+                    .map_err(|err| err.message())?;
+            }
+        }
 
         let mut guard = self
             .inner

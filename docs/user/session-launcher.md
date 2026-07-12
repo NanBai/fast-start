@@ -12,12 +12,12 @@ last_reviewed: 2026-07-07
 
 ## 功能简介
 
-Session Launcher 会扫描本机 Codex、Claude Code、Cursor 和 Grok Build 的历史 session，按 agent 和项目目录整理成列表。你可以搜索目标 session、收藏高频项目、选择外部终端，并从当前列表直接恢复工作现场。应用还提供 Port 工具页，用于查看本机开发服务端口并关闭当前用户的残留进程。
+Session Launcher 会扫描本机 Codex、Claude Code、Cursor、Grok Build 和 OpenCode 的历史 session，按 agent 和项目目录整理成列表。你可以搜索目标 session、收藏高频项目、选择外部终端，并从当前列表直接恢复工作现场。应用还提供 Port 工具页，用于查看本机开发服务端口并关闭当前用户的残留进程。
 
 ## 前置条件
 
 - 当前版本面向 macOS。
-- 本机需要安装并使用过 Codex、Claude Code、Cursor Agent 或 Grok Build 中至少一种 CLI。
+- 本机需要安装并使用过 Codex、Claude Code、Cursor Agent、Grok Build 或 OpenCode 中至少一种 CLI。
 - 启动 session 前，需要安装至少一个可用终端：Terminal.app、iTerm2 或 Ghostty。
 - 恢复 session 时，目标 CLI 命令需要能在终端里正常执行。
 - Port 工具页依赖 macOS 自带的 `/usr/sbin/lsof`、`/bin/ps` 和 `/bin/kill`。
@@ -34,7 +34,7 @@ pnpm tauri dev
 
 应用打开后会自动扫描本机 session。扫描失败的 CLI 会在页面上显示错误，其他 CLI 的结果仍会展示。
 
-顶部的 `Session` / `Port` 切换用于在历史 session 和端口监控之间切换。`Cmd+K` 会聚焦当前工具页的搜索框。
+顶部的 `Session` / `Port` / `Grok` 切换用于在历史 session、端口监控和 Grok 上游供应商之间切换。`Cmd+K` 会聚焦当前工具页的搜索框（Grok 页除外）。
 
 ### 查找 session
 
@@ -77,7 +77,7 @@ pnpm tauri dev
 2. 点击“删除此 session”。
 3. 在确认弹窗中点击“删除”。
 
-删除只作用于当前行对应的 CLI 本地 session 源文件、Cursor chat 目录或 Grok Build session 目录，不会删除项目工作目录。删除失败时，列表不会假装移除该 session。
+删除只作用于当前行对应的 CLI 本地 session 源文件、Cursor/Grok session 目录或 OpenCode 数据库中的 session 行，不会删除项目工作目录。删除失败时，列表不会假装移除该 session。
 
 ### 查看端口
 

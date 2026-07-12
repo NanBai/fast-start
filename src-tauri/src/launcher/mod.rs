@@ -201,6 +201,8 @@ fn fallback_path_string() -> String {
         for sub in [
             ".local/bin",
             ".grok/bin",
+            ".opencode/bin",
+            ".bun/bin",
             ".cargo/bin",
             ".nvm/versions/node",
             ".volta/bin",

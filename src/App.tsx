@@ -15,8 +15,10 @@ import {
 import { Icon } from "./components/icons/Icon";
 import { PortConfirmDialog } from "./components/PortConfirmDialog";
 import { PortWorkspace } from "./components/PortWorkspace";
+import { ProvidersWorkspace } from "./components/ProvidersWorkspace";
 import { SessionContextMenu } from "./components/SessionContextMenu";
 import { Skeleton } from "./components/Skeleton";
+import { useGrokProviders } from "./hooks/useGrokProviders";
 import { usePorts } from "./hooks/usePorts";
 import { usePreferences } from "./hooks/usePreferences";
 import { useSessions } from "./hooks/useSessions";
@@ -119,6 +121,20 @@ function App() {
     confirmTerminatePorts,
   } = usePorts(notifyStatus);
 
+  const {
+    profiles: grokProfiles,
+    status: grokStatus,
+    backups: grokBackups,
+    loading: grokLoading,
+    busyId: grokBusyId,
+    refreshAll: refreshGrokProviders,
+    activate: activateGrokProfile,
+    importCurrent: importGrokCurrent,
+    saveProfile: saveGrokProfile,
+    removeProfile: removeGrokProfile,
+    restoreBackup: restoreGrokBackup,
+  } = useGrokProviders(notifyStatus);
+
   async function handleLaunch(sessionId: string) {
     setSessionMenu(null);
     await launchSession(sessionId);
@@ -184,6 +200,9 @@ function App() {
     function handleGlobalShortcuts(event: globalThis.KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        if (activeTool === "providers") {
+          return;
+        }
         const input = activeTool === "ports" ? portSearchInputRef.current : searchInputRef.current;
         input?.focus();
         input?.select();
@@ -208,6 +227,13 @@ function App() {
     }
     void loadPorts();
   }, [activeTool, lastScan]);
+
+  useEffect(() => {
+    if (activeTool !== "providers") {
+      return;
+    }
+    void refreshGrokProviders(false);
+  }, [activeTool]);
 
   useEffect(() => {
     if (activeTool !== "ports" || !portAutoRefresh) {
@@ -337,12 +363,14 @@ function App() {
             <p className="app-subtitle">
               {activeTool === "ports"
                 ? "监控本机开发端口，一键关闭残留服务"
-                : "聚合 codex · claude-code · cursor · grok-build，一键恢复工作现场"}
+                : activeTool === "providers"
+                  ? "管理 Grok 上游供应商，一键切换 config.toml"
+                  : "聚合 codex · claude-code · cursor · grok-build · opencode，一键恢复工作现场"}
             </p>
           </div>
         </div>
         <div className="tool-switcher" role="tablist" aria-label="工具切换">
-          {(["sessions", "ports"] as AppTool[]).map((tool) => (
+          {(["sessions", "ports", "providers"] as AppTool[]).map((tool) => (
             <button
               key={tool}
               type="button"
@@ -359,11 +387,35 @@ function App() {
         <button
           type="button"
           className="icon-btn"
-          data-spin={activeTool === "ports" ? portRefreshing : refreshing}
-          disabled={activeTool === "ports" ? portRefreshing : refreshing}
-          onClick={() => void (activeTool === "ports" ? refreshPorts() : refreshSessions())}
+          data-spin={
+            activeTool === "ports"
+              ? portRefreshing
+              : activeTool === "providers"
+                ? grokLoading
+                : refreshing
+          }
+          disabled={
+            activeTool === "ports"
+              ? portRefreshing
+              : activeTool === "providers"
+                ? grokLoading
+                : refreshing
+          }
+          onClick={() =>
+            void (activeTool === "ports"
+              ? refreshPorts()
+              : activeTool === "providers"
+                ? refreshGrokProviders()
+                : refreshSessions())
+          }
           aria-label="刷新"
-          title={activeTool === "ports" ? "刷新端口" : "刷新 session"}
+          title={
+            activeTool === "ports"
+              ? "刷新端口"
+              : activeTool === "providers"
+                ? "刷新供应商"
+                : "刷新 session"
+          }
         >
           <Icon.Refresh />
         </button>
@@ -386,6 +438,10 @@ function App() {
               onChange={handlePortAutoRefreshChange}
             />
           </>
+        ) : activeTool === "providers" ? (
+          <p className="providers-control-hint muted">
+            切换后<strong>新开</strong> Grok 会话才会读取新 config；不会结束已运行的会话。
+          </p>
         ) : (
           <>
             <SearchBox
@@ -416,14 +472,22 @@ function App() {
           <span
             className="status-pill"
             data-type={statusType}
-            data-pulse={activeTool === "ports" ? portLoading : loading}
+            data-pulse={
+              activeTool === "ports"
+                ? portLoading
+                : activeTool === "providers"
+                  ? grokLoading
+                  : loading
+            }
           >
             <span className="status-dot" />
             {activeTool === "ports" && portLoading
               ? "正在扫描端口…"
-              : loading
-                ? "正在扫描 session…"
-                : statusMessage}
+              : activeTool === "providers" && grokLoading
+                ? "正在加载供应商…"
+                : loading
+                  ? "正在扫描 session…"
+                  : statusMessage}
           </span>
         )}
       </div>
@@ -462,6 +526,24 @@ function App() {
             onRefresh={() => void refreshPorts()}
             onTerminate={requestTerminatePorts}
             onNotify={notifyStatus}
+          />
+        )
+      ) : activeTool === "providers" ? (
+        grokLoading && grokProfiles.length === 0 ? (
+          <Skeleton />
+        ) : (
+          <ProvidersWorkspace
+            profiles={grokProfiles}
+            status={grokStatus}
+            backups={grokBackups}
+            loading={grokLoading}
+            busyId={grokBusyId}
+            onRefresh={() => void refreshGrokProviders()}
+            onActivate={(id) => void activateGrokProfile(id)}
+            onImport={() => void importGrokCurrent()}
+            onSave={(profile, activateAfter) => saveGrokProfile(profile, activateAfter)}
+            onDelete={(id) => void removeGrokProfile(id)}
+            onRestore={(file) => void restoreGrokBackup(file)}
           />
         )
       ) : loading ? (

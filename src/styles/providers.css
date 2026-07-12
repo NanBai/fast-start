@@ -1,0 +1,253 @@
+.providers-control-hint {
+  margin: 0;
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.providers-workspace {
+  display: grid;
+  gap: 18px;
+  padding: 4px 2px 28px;
+}
+
+.providers-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.providers-banner p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.providers-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.providers-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.providers-desc {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.providers-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.providers-search {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+
+.providers-meta {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.provider-card {
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--group-bg);
+  box-shadow: var(--shadow-card);
+  outline: 0.5px solid var(--group-stroke);
+  display: grid;
+  gap: 12px;
+}
+
+.provider-card[data-active="true"] {
+  outline: 1.5px solid rgba(124, 58, 237, 0.55);
+}
+
+.provider-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.provider-badge {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.16);
+  color: #7c3aed;
+}
+
+.provider-fields {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.provider-fields dt {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.provider-fields dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.providers-backups h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.backup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.backup-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--control-bg);
+}
+
+.backup-list .mono {
+  flex: 1 1 160px;
+}
+
+.providers-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 16px;
+}
+
+.providers-form {
+  width: min(440px, 100%);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  border-radius: 18px;
+  background: var(--bg-elevated, #1c1c1e);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.providers-form h3 {
+  margin: 0;
+}
+
+.providers-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.providers-form input {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+
+.providers-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--control-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn:hover {
+  background: var(--control-bg-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.btn.primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn.sm {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.btn.danger {
+  color: #f87171;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--text-secondary);
+}

@@ -1,9 +1,9 @@
-export type CliType = "codex" | "claude-code" | "cursor" | "grok-build";
+export type CliType = "codex" | "claude-code" | "cursor" | "grok-build" | "opencode";
 export type TerminalType = "system" | "iterm2" | "ghostty";
 export type LaunchMode = "new-tab" | "new-window";
 export type ThemeMode = "dark" | "light" | "system";
 export type StatusType = "info" | "success" | "error";
-export type AppTool = "sessions" | "ports";
+export type AppTool = "sessions" | "ports" | "providers";
 export type PortProtocol = "tcp" | "udp";
 export type PortScope = "project" | "all";
 
@@ -50,13 +50,20 @@ export interface PortScanResponse {
   scannedAt: string;
 }
 
-export const CLI_ORDER: CliType[] = ["codex", "claude-code", "cursor", "grok-build"];
+export const CLI_ORDER: CliType[] = [
+  "codex",
+  "claude-code",
+  "cursor",
+  "grok-build",
+  "opencode",
+];
 
 export const CLI_LABELS: Record<CliType, string> = {
   codex: "Codex",
   "claude-code": "Claude Code",
   cursor: "Cursor",
   "grok-build": "Grok Build",
+  opencode: "OpenCode",
 };
 
 export const TERMINAL_LABELS: Record<TerminalType, string> = {
@@ -81,7 +88,67 @@ export const THEME_MODE_LABELS: Record<ThemeMode, string> = {
 export const APP_TOOL_LABELS: Record<AppTool, string> = {
   sessions: "Session",
   ports: "Port",
+  providers: "Grok",
 };
+
+export interface GrokModelDef {
+  name: string;
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+  apiBackend: string;
+  extraHeaders: Record<string, string>;
+  supportsBackendSearch: boolean;
+  contextWindow: number;
+  maxCompletionTokens: number;
+}
+
+export interface GrokProfile {
+  id: string;
+  name: string;
+  upstreamFormat: string;
+  baseUrl: string;
+  apiKey: string;
+  availableModels: string[];
+  defaultModel: string;
+  webSearchModel: string;
+  subagentsDefaultModel: string;
+  models: GrokModelDef[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  isActive: boolean;
+}
+
+export interface GrokBackupInfo {
+  file: string;
+  path: string;
+  createdAt: string;
+  size: number;
+}
+
+export interface GrokProviderStatus {
+  activeProfile: GrokProfile | null;
+  configPath: string;
+  dataDir: string;
+  configMatchesActive: boolean;
+  configExists: boolean;
+}
+
+export function emptyGrokProfile(): GrokProfile {
+  return {
+    id: "",
+    name: "",
+    upstreamFormat: "openai_chat",
+    baseUrl: "",
+    apiKey: "",
+    availableModels: [],
+    defaultModel: "",
+    webSearchModel: "",
+    subagentsDefaultModel: "",
+    models: [],
+    isActive: false,
+  };
+}
 
 export const PORT_SCOPE_LABELS: Record<PortScope, string> = {
   project: "项目服务",

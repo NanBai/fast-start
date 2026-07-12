@@ -60,7 +60,7 @@ cd src-tauri && cargo test --lib
 
 | 概念 | 当前实现 |
 |---|---|
-| session 来源 | Codex / Claude Code / Cursor / Grok Build 的本机历史数据 |
+| session 来源 | Codex / Claude Code / Cursor / Grok Build / OpenCode 的本机历史数据 |
 | 扫描入口 | `scan_sessions` 复用缓存，`refresh_sessions` 强制重扫 |
 | 启动入口 | `launch_session(sessionListId = session.id)` 反查缓存并生成 `CommandSpec`（参数是列表稳定 id，不是 CLI 原始 sessionId） |
 | 删除入口 | `delete_session(sessionListId = session.id)` 删除当前行对应源载体 |
@@ -93,7 +93,7 @@ pnpm tauri dev
 检查：
 
 - 应用窗口可以打开，默认窗口宽度下控制栏不水平溢出。
-- 列表显示 Codex、Claude Code、Cursor、Grok Build 分组；没有数据时状态提示清晰。
+- 列表显示 Codex、Claude Code、Cursor、Grok Build、OpenCode 分组；没有数据时状态提示清晰。
 - “刷新”按钮可以重新扫描。
 - 最近天数筛选能改变可见数量。
 - 搜索框可输入，`Cmd+K` 能聚焦，`Esc` 能清空。

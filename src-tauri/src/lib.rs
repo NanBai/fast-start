@@ -1,4 +1,5 @@
 mod commands;
+mod grok_provider;
 mod launcher;
 mod models;
 mod port_monitor;
@@ -10,11 +11,14 @@ mod state;
 
 use commands::{
     delete_session, get_favorite_project_dirs, get_launch_mode, get_port_auto_refresh,
-    get_preferred_terminal, get_theme_mode, launch_session, list_available_terminals,
-    refresh_ports, refresh_sessions, scan_ports, scan_sessions, set_favorite_project_dirs,
-    set_launch_mode, set_port_auto_refresh, set_preferred_terminal, set_theme_mode,
-    terminate_port_processes,
+    get_preferred_terminal, get_theme_mode, grok_activate_profile, grok_create_profile,
+    grok_delete_profile, grok_import_current, grok_list_backups, grok_list_profiles,
+    grok_provider_status, grok_restore_backup, grok_update_profile, launch_session,
+    list_available_terminals, refresh_ports, refresh_sessions, scan_ports, scan_sessions,
+    set_favorite_project_dirs, set_launch_mode, set_port_auto_refresh, set_preferred_terminal,
+    set_theme_mode, terminate_port_processes,
 };
+use grok_provider::GrokProviderState;
 use state::{
     load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
     load_theme_mode, save_preferred_terminal, AppState,
@@ -51,6 +55,12 @@ pub fn run() {
                 state.set_preferred_terminal(preferred)?;
             }
             app.manage(state);
+            let grok = GrokProviderState::new().unwrap_or_else(|err| {
+                eprintln!("grok provider init failed: {err}");
+                // Fallback empty state is not available; re-panic with message
+                panic!("failed to init grok provider: {err}");
+            });
+            app.manage(grok);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -72,6 +82,15 @@ pub fn run() {
             set_favorite_project_dirs,
             get_port_auto_refresh,
             set_port_auto_refresh,
+            grok_provider_status,
+            grok_list_profiles,
+            grok_create_profile,
+            grok_update_profile,
+            grok_delete_profile,
+            grok_activate_profile,
+            grok_import_current,
+            grok_list_backups,
+            grok_restore_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,7 +1,7 @@
 use crate::models::CommandSpec;
 use std::path::{Path, PathBuf};
 
-const ALLOWED_PROGRAMS: &[&str] = &["codex", "claude", "cursor-agent", "grok"];
+const ALLOWED_PROGRAMS: &[&str] = &["codex", "claude", "cursor-agent", "grok", "opencode"];
 
 pub fn validate_program(program: &str) -> Result<(), String> {
     if ALLOWED_PROGRAMS.contains(&program) {
@@ -50,6 +50,7 @@ pub fn validate_command_spec(spec: &CommandSpec) -> Result<Option<PathBuf>, Stri
 /// 按已知 CLI 的 resume 形状校验 args，拒绝「只校 last」带来的隐式约定。
 /// - codex: `resume <id>`
 /// - claude / cursor-agent / grok: `--resume <id>`
+/// - opencode: `--session <id>`
 fn validate_resume_args(program: &str, args: &[String]) -> Result<(), String> {
     match program {
         "codex" => match args {
@@ -61,6 +62,10 @@ fn validate_resume_args(program: &str, args: &[String]) -> Result<(), String> {
             _ => Err(format!(
                 "{program} 参数形状无效，期望: --resume <session-id>"
             )),
+        },
+        "opencode" => match args {
+            [flag, id] if flag == "--session" => validate_session_id(id),
+            _ => Err("opencode 参数形状无效，期望: --session <session-id>".to_string()),
         },
         other => Err(format!("不允许的程序: {other}")),
     }
@@ -96,6 +101,7 @@ mod tests {
         validate_resume_args("claude", &["--resume".into(), "abc-123".into()]).unwrap();
         validate_resume_args("cursor-agent", &["--resume".into(), "abc-123".into()]).unwrap();
         validate_resume_args("grok", &["--resume".into(), "abc-123".into()]).unwrap();
+        validate_resume_args("opencode", &["--session".into(), "ses_abc123".into()]).unwrap();
     }
 
     #[test]
