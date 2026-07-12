@@ -57,7 +57,8 @@ export function useSessions(notifyStatus: NotifyStatus) {
     setLaunchingId(sessionId);
     notifyStatus("正在启动终端…", "info");
     try {
-      await invoke("launch_session", { sessionId });
+      // sessionListId = Session.id（列表稳定 id），不是 CLI 原始 sessionId
+      await invoke("launch_session", { sessionListId: sessionId });
       notifyStatus("终端启动成功", "success");
     } catch (error) {
       notifyStatus(`启动失败：${String(error)}`, "error");
@@ -82,7 +83,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
     notifyStatus("正在删除 session…", "info");
     try {
       const result = await invoke<ScanResponse>("delete_session", {
-        sessionId: pendingDelete.id,
+        sessionListId: pendingDelete.id,
       });
       applyScanResult(result);
       notifyStatus("session 已删除", "success");

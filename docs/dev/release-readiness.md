@@ -4,8 +4,8 @@ slug: release-readiness
 component: session-launcher
 status: current
 summary: Session Launcher 本地开发、验证和交付前检查指南
-tags: [development, verification, tauri, release]
-last_reviewed: 2026-06-24
+tags: [development, verification, tauri, release, port-monitor]
+last_reviewed: 2026-07-07
 ---
 
 # Session Launcher 开发与交付前检查
@@ -60,11 +60,12 @@ cd src-tauri && cargo test --lib
 
 | 概念 | 当前实现 |
 |---|---|
-| session 来源 | Codex / Claude Code / Cursor 的本机历史数据 |
+| session 来源 | Codex / Claude Code / Cursor / Grok Build 的本机历史数据 |
 | 扫描入口 | `scan_sessions` 复用缓存，`refresh_sessions` 强制重扫 |
-| 启动入口 | `launch_session(session.id)` 反查缓存并生成 `CommandSpec` |
-| 删除入口 | `delete_session(session.id)` 删除当前行对应源载体 |
-| 偏好存储 | `preferences.json`，包含终端、打开方式、主题和收藏项目 |
+| 启动入口 | `launch_session(sessionListId = session.id)` 反查缓存并生成 `CommandSpec`（参数是列表稳定 id，不是 CLI 原始 sessionId） |
+| 删除入口 | `delete_session(sessionListId = session.id)` 删除当前行对应源载体 |
+| 端口入口 | `scan_ports` 复用缓存，`refresh_ports` 强制重扫，`terminate_port_processes(port_ids)` 关闭前重新扫描校验当前用户端口进程 |
+| 偏好存储 | `preferences.json`，包含终端、打开方式、主题、收藏项目和端口自动刷新 |
 | 快速访问 | 前端派生：最近天数过滤、搜索过滤、收藏排序 |
 
 ## 交付前检查
@@ -92,13 +93,15 @@ pnpm tauri dev
 检查：
 
 - 应用窗口可以打开，默认窗口宽度下控制栏不水平溢出。
-- 列表显示 Codex、Claude Code、Cursor 分组；没有数据时状态提示清晰。
+- 列表显示 Codex、Claude Code、Cursor、Grok Build 分组；没有数据时状态提示清晰。
 - “刷新”按钮可以重新扫描。
 - 最近天数筛选能改变可见数量。
 - 搜索框可输入，`Cmd+K` 能聚焦，`Esc` 能清空。
 - 搜索结果里 `↑` / `↓` 能切换活跃项，`Enter` 能启动当前项。
 - 收藏项目后刷新或重启仍保留。
 - 主题切换后刷新或重启仍保留。
+- 切换到 Port 工具页后可以看到端口列表或清晰空态。
+- Port 搜索、项目服务/全部端口、协议筛选和自动刷新开关可操作。
 
 ### 3. 终端启动 smoke
 
@@ -146,6 +149,18 @@ pnpm tauri dev
 - 搜索、最近天数、打开方式、终端、主题控件都在窗口内。
 - 360px 最小宽度下仍可完成搜索、筛选、启动和删除确认。
 
+### 6. 端口监控 smoke
+
+端口关闭是真实破坏性动作，只在可丢弃开发服务上验证：
+
+1. 启动一个临时本地服务，例如在临时目录运行 `python3 -m http.server 8765`。
+2. 打开 Port 工具页并刷新，确认能搜索到 `8765`。
+3. 在项目服务或全部端口范围内确认该端口显示 PID、地址和工作目录。
+4. 点击“关闭”，先取消一次，确认进程仍在。
+5. 再次点击“关闭”并确认，确认服务进程退出且端口列表重新扫描。
+
+不要对数据库、系统服务或重要开发服务执行关闭 smoke。
+
 ## 已知限制与注意事项
 
 - 当前版本只面向 macOS。
@@ -153,6 +168,7 @@ pnpm tauri dev
 - 不支持云同步、账号体系、导入导出或跨设备收藏。
 - 不支持单条 session 收藏；收藏对象是项目目录。
 - 删除 session 不提供撤销。
+- 关闭端口服务不提供撤销，只对当前用户进程发送 `TERM`。
 - `.playwright-mcp/` 是本地验证产物，不应纳入提交。
 
 ## 相关文档

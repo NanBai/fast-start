@@ -35,6 +35,11 @@
     min-width: 0;
   }
 
+  .toggle-btn {
+    flex: 1 1 calc(50% - var(--space-2));
+    justify-content: center;
+  }
+
   .range-menu {
     flex-basis: 100%;
   }
@@ -45,6 +50,15 @@
 
   .app-header h1 {
     font-size: 1.18rem;
+  }
+
+  .tool-switcher {
+    order: 3;
+    width: 100%;
+  }
+
+  .tool-tab {
+    flex: 1;
   }
 
   .cli-group-header {
@@ -101,6 +115,26 @@
   .launch-btn {
     min-height: 34px;
     padding: 6px 11px;
+  }
+}
+
+@media (max-width: 920px) {
+  .port-table {
+    overflow-x: auto;
+  }
+
+  .port-row {
+    min-width: 860px;
+  }
+}
+
+@media (max-width: 640px) {
+  .port-workspace {
+    padding: var(--space-3);
+  }
+
+  .port-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

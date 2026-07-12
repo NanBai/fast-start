@@ -103,11 +103,15 @@ impl SessionScanner for CursorScanner {
                     continue;
                 };
 
+                // 缺时间戳时用 meta / chat 目录 mtime，禁止 now()——否则每次扫描
+                // 都变成「刚刚」，绕过最近天数过滤并扰乱排序。
                 let last_active_at = meta
                     .updated_at_ms
                     .or(meta.created_at_ms)
                     .and_then(ms_to_datetime)
-                    .unwrap_or_else(|| DateTime::<Utc>::from(SystemTime::now()));
+                    .or_else(|| path_mtime(&meta_path))
+                    .or_else(|| path_mtime(&chat_dir))
+                    .unwrap_or_else(|| DateTime::<Utc>::from(SystemTime::UNIX_EPOCH));
 
                 sessions.push(Session {
                     id: Session::stable_id(CliType::Cursor, &session_id, &store_info.cwd),
@@ -134,53 +138,93 @@ impl SessionScanner for CursorScanner {
 /// 从 chat 的 store.db 提取 cursor 注入的 "Workspace Path: <真实路径>"。
 /// cursor 把 workspace 真实路径写进 system prompt（存在 blobs 表）。
 /// 返回 canonicalize 后的路径（验证目录存在），拿不到返回 None。
+///
+/// 查询收敛：只扫可能含 workspace / user 消息的 blob，并优先较小行，
+/// 避免把整库对话全文无差别拉进内存。
 fn extract_store_info(db_path: &Path) -> Option<CursorStoreInfo> {
     let conn = rusqlite::Connection::open(db_path).ok()?;
-    let mut stmt = conn.prepare("SELECT data FROM blobs;").ok()?;
+    // 过滤 + 小 blob 优先：降低大对话读放大，同时提高 system prompt 先被扫到的概率。
+    let mut stmt = conn
+        .prepare(
+            "SELECT data FROM blobs \
+             WHERE instr(data, 'Workspace Path:') > 0 \
+                OR instr(data, '\"role\":\"user\"') > 0 \
+             ORDER BY length(data) ASC \
+             LIMIT 64",
+        )
+        .ok()?;
     let rows = stmt.query_map([], |row| row.get::<_, Vec<u8>>(0)).ok()?;
-    let mut cwd = None;
+    let mut cwd_candidates: Vec<PathBuf> = Vec::new();
     let mut first_user_query = None;
+    // 扫完过滤后的 blob（已 LIMIT），再选最长 cwd——避免提前 break 漏掉更具体路径。
     for row in rows.flatten() {
         let text = String::from_utf8_lossy(&row);
-        if cwd.is_none() {
-            cwd = extract_workspace_path_from_text(&text);
+        for path in extract_workspace_paths_from_text(&text) {
+            if !cwd_candidates.iter().any(|existing| existing == &path) {
+                cwd_candidates.push(path);
+            }
         }
         if first_user_query.is_none() {
             first_user_query = extract_user_query(&text);
         }
-        if cwd.is_some() && first_user_query.is_some() {
-            break;
-        }
     }
-    cwd.map(|cwd| CursorStoreInfo {
+    // 多命中时选最长路径（更具体）；避免 user 文本里短假路径抢先。
+    let cwd = cwd_candidates
+        .into_iter()
+        .max_by_key(|path| path.as_os_str().len())?;
+    Some(CursorStoreInfo {
         cwd,
         first_user_query,
     })
 }
 
-fn extract_workspace_path_from_text(text: &str) -> Option<PathBuf> {
-    for line in text.lines() {
-        let Some(idx) = line.find("Workspace Path:") else {
-            continue;
-        };
-        let rest = &line[idx + "Workspace Path:".len()..];
-        // 路径取到第一个空白 或 字面 "\n"（cursor 内容是 JSON，换行转义成 \n 两字符，
-        // 不是真空白），否则 candidate 会带上 "\nIf..." 导致 canonicalize 失败。
-        let candidate: String = rest
-            .trim_start()
-            .chars()
-            .take_while(|c| !c.is_whitespace() && !matches!(*c, '\\' | ','))
-            .collect();
+/// 从 blob 文本提取所有可 canonicalize 且为目录的 Workspace Path。
+/// 路径可含空格；边界是 JSON 字面 `\n` / `"` / 真换行，而不是第一个空白。
+fn extract_workspace_paths_from_text(text: &str) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut search_from = 0;
+    let marker = "Workspace Path:";
+    while let Some(rel) = text[search_from..].find(marker) {
+        let abs = search_from + rel;
+        let rest = text[abs + marker.len()..].trim_start();
+        let end = workspace_path_end(rest);
+        let candidate = rest[..end]
+            .trim_end()
+            .trim_end_matches(',')
+            .trim()
+            .to_string();
+        search_from = abs + marker.len();
         if candidate.is_empty() {
             continue;
         }
         if let Ok(cwd) = fs::canonicalize(&candidate) {
-            if cwd.is_dir() {
-                return Some(cwd);
+            if cwd.is_dir() && !paths.iter().any(|p| p == &cwd) {
+                paths.push(cwd);
             }
         }
     }
-    None
+    paths
+}
+
+/// 路径终点：JSON 转义换行 `\n`/`\r`、双引号、真换行；允许路径内空白。
+fn workspace_path_end(rest: &str) -> usize {
+    let bytes = rest.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\n' | b'\r' | b'"' => return i,
+            b'\\' if i + 1 < bytes.len() && matches!(bytes[i + 1], b'n' | b'r' | b'"') => {
+                return i;
+            }
+            _ => i += 1,
+        }
+    }
+    rest.len()
+}
+
+fn path_mtime(path: &Path) -> Option<DateTime<Utc>> {
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    Some(DateTime::<Utc>::from(modified))
 }
 
 fn extract_user_query(text: &str) -> Option<String> {
@@ -220,10 +264,112 @@ fn ms_to_datetime(ms: u64) -> Option<DateTime<Utc>> {
 
 #[cfg(test)]
 mod tests {
-    use super::CursorScanner;
+    use super::{
+        extract_workspace_paths_from_text, workspace_path_end, CursorScanner,
+    };
     use crate::scanner::SessionScanner;
     use rusqlite::Connection;
     use std::fs;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn workspace_path_end_allows_spaces_until_json_escape() {
+        let rest = "/Users/xb/My Project/code\\nIf this path";
+        assert_eq!(&rest[..workspace_path_end(rest)], "/Users/xb/My Project/code");
+        assert_eq!(
+            &"/tmp/plain"[..workspace_path_end("/tmp/plain")],
+            "/tmp/plain"
+        );
+    }
+
+    #[test]
+    fn extract_workspace_paths_keeps_spaces_and_prefers_existing_dirs() {
+        let temp = tempfile::tempdir().unwrap();
+        let spaced = temp.path().join("My Project");
+        fs::create_dir_all(&spaced).unwrap();
+        let text = format!(
+            "Workspace Path: {}\\nIf this path continues",
+            spaced.display()
+        );
+        let paths = extract_workspace_paths_from_text(&text);
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], fs::canonicalize(&spaced).unwrap());
+    }
+
+    #[test]
+    fn scanner_prefers_longest_workspace_path_over_earlier_short_fake() {
+        let temp = tempfile::tempdir().unwrap();
+        let short = temp.path().join("short");
+        let long = temp.path().join("short").join("nested project");
+        fs::create_dir_all(&long).unwrap();
+        let chat_dir = temp.path().join("hash").join("space-cwd");
+        fs::create_dir_all(&chat_dir).unwrap();
+        fs::write(
+            chat_dir.join("meta.json"),
+            r#"{"title":"含空格路径","createdAtMs":1781830800000,"updatedAtMs":1781830860000}"#,
+        )
+        .unwrap();
+        // 先插入短假路径（user 文本），再插入更长真实路径——旧逻辑会抢先用 short。
+        create_cursor_store_db(
+            &chat_dir.join("store.db"),
+            &[
+                format!("Workspace Path: {}\\nnoise", short.display()),
+                format!("Workspace Path: {}\\nIf this path", long.display()),
+                r#"{"role":"user","content":[{"type":"text","text":"<user_query>\n含空格 cwd\n</user_query>"}]}"#.to_string(),
+            ],
+        );
+
+        let sessions = CursorScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(
+            sessions[0].project_dir,
+            fs::canonicalize(&long).unwrap()
+        );
+    }
+
+    #[test]
+    fn scanner_uses_meta_mtime_when_timestamps_missing() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("workspace");
+        fs::create_dir_all(&workspace).unwrap();
+        let chat_dir = temp.path().join("hash").join("no-ts");
+        fs::create_dir_all(&chat_dir).unwrap();
+        let meta_path = chat_dir.join("meta.json");
+        fs::write(&meta_path, r#"{"title":"无时间戳"}"#).unwrap();
+        // 把 mtime 固定到过去，避免与 now() 混淆。
+        let past = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let _ = filetime_set(&meta_path, past);
+        create_cursor_store_db(
+            &chat_dir.join("store.db"),
+            &[format!(
+                "Workspace Path: {}\\nIf this path",
+                workspace.display()
+            )],
+        );
+
+        let sessions = CursorScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        let active = sessions[0].last_active_at;
+        // 不应接近「现在」；允许 mtime 精度误差，只要不是秒级 now。
+        let now = chrono::Utc::now();
+        assert!(
+            (now - active).num_seconds() > 60,
+            "last_active_at should not fall back to now(), got {active}"
+        );
+    }
+
+    /// 尽量设置 mtime；失败时测试仍可依赖「不是 now」的粗判。
+    fn filetime_set(path: &std::path::Path, when: SystemTime) {
+        use std::fs::File;
+        let file = File::options().write(true).open(path).unwrap();
+        let _ = file.set_modified(when);
+    }
 
     #[test]
     fn scanner_prefers_user_query_over_meta_title() {

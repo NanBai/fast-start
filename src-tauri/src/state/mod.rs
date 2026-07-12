@@ -1,31 +1,36 @@
+mod ports;
+
 use crate::launcher::{launcher_for, launchers, LaunchError};
 use crate::models::{
-    CliScanError, CliType, LaunchMode, ScanResponse, Session, TerminalType, ThemeMode,
+    CliScanError, CliType, LaunchMode, PortScanResponse, ScanResponse, Session, TerminalType,
+    ThemeMode,
 };
 use crate::scanner::{command_spec_for_session, scanners};
 use crate::session_delete::delete_session_target;
-use serde_json::json;
+
+pub use crate::preferences::{
+    load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
+    load_theme_mode, save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh,
+    save_preferred_terminal, save_theme_mode,
+};
+
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::AppHandle;
-use tauri_plugin_store::StoreExt;
 
-const PREFERRED_TERMINAL_KEY: &str = "preferred_terminal";
-const LAUNCH_MODE_KEY: &str = "launch_mode";
-const THEME_MODE_KEY: &str = "theme_mode";
-const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
 
 pub struct AppState {
-    inner: Mutex<AppStateInner>,
+    pub(crate) inner: Mutex<AppStateInner>,
 }
 
-struct AppStateInner {
+pub(crate) struct AppStateInner {
     sessions: Vec<Session>,
     scan_errors: HashMap<CliType, String>,
+    port_scan: Option<PortScanResponse>,
     preferred_terminal: TerminalType,
     launch_mode: LaunchMode,
     theme_mode: ThemeMode,
     favorite_project_dirs: Vec<String>,
+    port_auto_refresh: bool,
     scanned: bool,
 }
 
@@ -35,15 +40,18 @@ impl AppState {
         launch_mode: LaunchMode,
         theme_mode: ThemeMode,
         favorite_project_dirs: Vec<String>,
+        port_auto_refresh: bool,
     ) -> Self {
         Self {
             inner: Mutex::new(AppStateInner {
                 sessions: Vec::new(),
                 scan_errors: HashMap::new(),
+                port_scan: None,
                 preferred_terminal,
                 launch_mode,
                 theme_mode,
                 favorite_project_dirs: normalize_project_dirs(favorite_project_dirs),
+                port_auto_refresh,
                 scanned: false,
             }),
         }
@@ -119,7 +127,8 @@ impl AppState {
         })
     }
 
-    pub fn find_session(&self, session_id: &str) -> Result<Session, String> {
+    /// 按列表稳定 id（`Session.id`）查找，**不是** CLI 原始 `session_id`。
+    pub fn find_session(&self, session_list_id: &str) -> Result<Session, String> {
         let guard = self
             .inner
             .lock()
@@ -127,7 +136,7 @@ impl AppState {
         guard
             .sessions
             .iter()
-            .find(|session| session.id == session_id)
+            .find(|session| session.id == session_list_id)
             .cloned()
             .ok_or_else(|| "未找到对应 session".to_string())
     }
@@ -214,8 +223,9 @@ impl AppState {
         Ok(())
     }
 
-    pub fn launch_session(&self, session_id: &str) -> Result<(), String> {
-        let session = self.find_session(session_id)?;
+    /// `session_list_id` = `Session.id`（列表稳定 id）。
+    pub fn launch_session(&self, session_list_id: &str) -> Result<(), String> {
+        let session = self.find_session(session_list_id)?;
         let preferred = self.preferred_terminal()?;
         let mode = self.launch_mode()?;
         let launcher = launcher_for(preferred).ok_or_else(|| "终端类型不受支持".to_string())?;
@@ -237,15 +247,16 @@ impl AppState {
             .map_err(|err: LaunchError| err.message())
     }
 
-    pub fn delete_session(&self, session_id: &str) -> Result<ScanResponse, String> {
-        let session = self.find_session(session_id)?;
+    /// `session_list_id` = `Session.id`（列表稳定 id）。
+    pub fn delete_session(&self, session_list_id: &str) -> Result<ScanResponse, String> {
+        let session = self.find_session(session_list_id)?;
         delete_session_target(session.delete_target.as_ref()).map_err(|err| err.message())?;
 
         let mut guard = self
             .inner
             .lock()
             .map_err(|_| "无法获取应用状态".to_string())?;
-        guard.sessions.retain(|item| item.id != session_id);
+        guard.sessions.retain(|item| item.id != session_list_id);
 
         Ok(ScanResponse {
             sessions: guard.sessions.clone(),
@@ -269,93 +280,6 @@ impl AppState {
     }
 }
 
-pub fn load_preferred_terminal(app: &AppHandle) -> Result<TerminalType, String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    let value = store.get(PREFERRED_TERMINAL_KEY);
-    if let Some(raw) = value {
-        serde_json::from_value(raw).map_err(|err| err.to_string())
-    } else {
-        Ok(TerminalType::System)
-    }
-}
-
-pub fn save_preferred_terminal(app: &AppHandle, terminal: TerminalType) -> Result<(), String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    store.set(PREFERRED_TERMINAL_KEY, json!(terminal));
-    store.save().map_err(|err| err.to_string())
-}
-
-pub fn load_launch_mode(app: &AppHandle) -> Result<LaunchMode, String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    let value = store.get(LAUNCH_MODE_KEY);
-    if let Some(raw) = value {
-        serde_json::from_value(raw).map_err(|err| err.to_string())
-    } else {
-        Ok(LaunchMode::NewTab)
-    }
-}
-
-pub fn save_launch_mode(app: &AppHandle, mode: LaunchMode) -> Result<(), String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    store.set(LAUNCH_MODE_KEY, json!(mode));
-    store.save().map_err(|err| err.to_string())
-}
-
-pub fn load_theme_mode(app: &AppHandle) -> Result<ThemeMode, String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    let value = store.get(THEME_MODE_KEY);
-    if let Some(raw) = value {
-        serde_json::from_value(raw).map_err(|err| err.to_string())
-    } else {
-        Ok(ThemeMode::System)
-    }
-}
-
-pub fn save_theme_mode(app: &AppHandle, mode: ThemeMode) -> Result<(), String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    store.set(THEME_MODE_KEY, json!(mode));
-    store.save().map_err(|err| err.to_string())
-}
-
-pub fn load_favorite_project_dirs(app: &AppHandle) -> Result<Vec<String>, String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    let value = store.get(FAVORITE_PROJECT_DIRS_KEY);
-    if let Some(raw) = value {
-        serde_json::from_value(raw)
-            .map(normalize_project_dirs)
-            .map_err(|err| err.to_string())
-    } else {
-        Ok(Vec::new())
-    }
-}
-
-pub fn save_favorite_project_dirs(
-    app: &AppHandle,
-    project_dirs: Vec<String>,
-) -> Result<(), String> {
-    let store = app
-        .store("preferences.json")
-        .map_err(|err| err.to_string())?;
-    store.set(
-        FAVORITE_PROJECT_DIRS_KEY,
-        json!(normalize_project_dirs(project_dirs)),
-    );
-    store.save().map_err(|err| err.to_string())
-}
 
 fn normalize_project_dirs(project_dirs: Vec<String>) -> Vec<String> {
     let mut normalized = Vec::new();
@@ -401,10 +325,12 @@ mod tests {
             inner: Mutex::new(AppStateInner {
                 sessions,
                 scan_errors: HashMap::new(),
+                port_scan: None,
                 preferred_terminal: TerminalType::System,
                 launch_mode: LaunchMode::NewTab,
                 theme_mode: ThemeMode::System,
                 favorite_project_dirs: Vec::new(),
+                port_auto_refresh: true,
                 scanned: true,
             }),
         }
@@ -443,6 +369,7 @@ mod tests {
             LaunchMode::NewTab,
             ThemeMode::System,
             vec!["/tmp/a".to_string(), "/tmp/a".to_string(), String::new()],
+            true,
         );
 
         assert_eq!(state.favorite_project_dirs().unwrap(), vec!["/tmp/a"]);

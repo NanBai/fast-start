@@ -1,0 +1,214 @@
+.port-workspace {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: 18px;
+  background: var(--group-bg);
+  box-shadow: var(--shadow-card);
+  outline: 0.5px solid var(--group-stroke);
+  animation: fade-rise var(--dur-slow) var(--ease-emphasized) both;
+}
+
+.port-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.port-title-block {
+  min-width: 0;
+}
+
+.port-title-block h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  line-height: 1.15;
+}
+
+.port-title-block p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.port-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.port-metric {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 0.5px var(--divider);
+}
+
+.port-metric span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.port-metric strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.port-diagnostic {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+}
+
+.port-table {
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: rgba(120, 120, 128, 0.07);
+  box-shadow: inset 0 0 0 0.5px var(--divider);
+}
+
+.port-group + .port-group {
+  border-top: 0.5px solid var(--divider);
+}
+
+.port-row {
+  display: grid;
+  grid-template-columns: 28px 62px 58px minmax(96px, 1.1fr) minmax(100px, 1.2fr) 72px minmax(96px, 1fr) 74px 82px;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.port-row-head {
+  min-height: 34px;
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--control-bg);
+  border-bottom: 0.5px solid var(--divider);
+}
+
+.port-row-detail {
+  background: rgba(120, 120, 128, 0.06);
+}
+
+.port-disclosure {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--text-tertiary);
+  background: var(--control-bg);
+}
+
+.port-disclosure:disabled {
+  opacity: 0;
+  cursor: default;
+}
+
+.port-disclosure svg {
+  transform: rotate(-90deg);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.port-disclosure[data-open="true"] svg {
+  transform: rotate(0deg);
+}
+
+.port-number,
+.port-pid {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.port-number {
+  font-weight: 750;
+}
+
+.port-protocol {
+  color: var(--green);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.port-process,
+.port-address,
+.port-state,
+.port-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.port-address {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.port-state,
+.port-pid {
+  color: var(--text-secondary);
+}
+
+.port-path-actions {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.port-path {
+  min-width: 0;
+  color: var(--accent);
+  text-align: left;
+}
+
+.port-path.empty {
+  color: var(--text-tertiary);
+}
+
+.port-path-action {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--text-tertiary);
+  background: var(--control-bg);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.port-path-action:hover {
+  color: var(--text-primary);
+  background: var(--control-bg-hover);
+}
+
+.port-close-btn {
+  justify-self: end;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--red);
+  background: rgba(255, 59, 48, 0.09);
+  font-size: 0.74rem;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 0.5px rgba(255, 59, 48, 0.18);
+}
+
+.port-close-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

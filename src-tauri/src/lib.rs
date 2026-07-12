@@ -1,19 +1,23 @@
 mod commands;
 mod launcher;
 mod models;
+mod port_monitor;
+mod preferences;
 mod scanner;
 mod security;
 mod session_delete;
 mod state;
 
 use commands::{
-    delete_session, get_favorite_project_dirs, get_launch_mode, get_preferred_terminal,
-    get_theme_mode, launch_session, list_available_terminals, refresh_sessions, scan_sessions,
-    set_favorite_project_dirs, set_launch_mode, set_preferred_terminal, set_theme_mode,
+    delete_session, get_favorite_project_dirs, get_launch_mode, get_port_auto_refresh,
+    get_preferred_terminal, get_theme_mode, launch_session, list_available_terminals,
+    refresh_ports, refresh_sessions, scan_ports, scan_sessions, set_favorite_project_dirs,
+    set_launch_mode, set_port_auto_refresh, set_preferred_terminal, set_theme_mode,
+    terminate_port_processes,
 };
 use state::{
-    load_favorite_project_dirs, load_launch_mode, load_preferred_terminal, load_theme_mode,
-    save_preferred_terminal, AppState,
+    load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
+    load_theme_mode, save_preferred_terminal, AppState,
 };
 use tauri::Manager;
 
@@ -29,7 +33,14 @@ pub fn run() {
             let theme_mode = load_theme_mode(app.handle()).unwrap_or(models::ThemeMode::System);
             let favorite_project_dirs =
                 load_favorite_project_dirs(app.handle()).unwrap_or_default();
-            let state = AppState::new(preferred, launch_mode, theme_mode, favorite_project_dirs);
+            let port_auto_refresh = load_port_auto_refresh(app.handle()).unwrap_or(true);
+            let state = AppState::new(
+                preferred,
+                launch_mode,
+                theme_mode,
+                favorite_project_dirs,
+                port_auto_refresh,
+            );
             let available = state.list_available_terminals();
             if !available.contains(&preferred) {
                 preferred = available
@@ -47,6 +58,9 @@ pub fn run() {
             refresh_sessions,
             launch_session,
             delete_session,
+            scan_ports,
+            refresh_ports,
+            terminate_port_processes,
             list_available_terminals,
             get_preferred_terminal,
             set_preferred_terminal,
@@ -56,6 +70,8 @@ pub fn run() {
             set_theme_mode,
             get_favorite_project_dirs,
             set_favorite_project_dirs,
+            get_port_auto_refresh,
+            set_port_auto_refresh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

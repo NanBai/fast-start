@@ -5,6 +5,10 @@ import { recentDaysLabel, RECENT_DAY_OPTIONS, RecentDaysFilter } from "../lib/se
 import {
   LAUNCH_MODE_LABELS,
   LaunchMode,
+  PORT_PROTOCOL_LABELS,
+  PORT_SCOPE_LABELS,
+  PortProtocol,
+  PortScope,
   TERMINAL_LABELS,
   TerminalType,
   THEME_MODE_LABELS,
@@ -17,11 +21,15 @@ export function SearchBox({
   onChange,
   inputRef,
   onKeyDown,
+  placeholder = "搜索 session、项目或路径",
+  ariaLabel = "搜索 session",
 }: {
   value: string;
   onChange: (value: string) => void;
   inputRef?: RefObject<HTMLInputElement | null>;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  ariaLabel?: string;
 }) {
   return (
     <label className="search-box">
@@ -30,8 +38,8 @@ export function SearchBox({
         ref={inputRef}
         type="search"
         value={value}
-        aria-label="搜索 session"
-        placeholder="搜索 session、项目或路径"
+        aria-label={ariaLabel}
+        placeholder={placeholder}
         onKeyDown={onKeyDown}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -46,6 +54,90 @@ export function SearchBox({
         </button>
       )}
     </label>
+  );
+}
+
+export function PortScopeSegmented({
+  value,
+  onChange,
+}: {
+  value: PortScope;
+  onChange: (scope: PortScope) => void;
+}) {
+  return (
+    <div className="segmented port-scope-segmented" data-mode={value}>
+      {(["project", "all"] as PortScope[]).map((scope) => (
+        <button
+          key={scope}
+          type="button"
+          className="segment"
+          data-active={value === scope}
+          onClick={() => onChange(scope)}
+        >
+          {PORT_SCOPE_LABELS[scope]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ProtocolMenu({
+  value,
+  onChange,
+}: {
+  value: PortProtocol | "all";
+  onChange: (protocol: PortProtocol | "all") => void;
+}) {
+  return (
+    <label className="menu protocol-menu">
+      <span className="menu-value">
+        <span className="menu-dot protocol-dot" />
+        {value === "all" ? "全部协议" : PORT_PROTOCOL_LABELS[value]}
+        <Icon.Chevron />
+      </span>
+      <select
+        value={value}
+        aria-label="筛选端口协议"
+        onChange={(event) => onChange(event.target.value as PortProtocol | "all")}
+      >
+        <option value="all">全部协议</option>
+        <option value="tcp">TCP</option>
+        <option value="udp">UDP</option>
+      </select>
+    </label>
+  );
+}
+
+export function AutoRefreshToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleClick() {
+    setSaving(true);
+    try {
+      await onChange(!enabled);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="toggle-btn"
+      data-active={enabled}
+      disabled={saving}
+      onClick={() => void handleClick()}
+      aria-pressed={enabled}
+    >
+      <span className="toggle-track" />
+      自动刷新
+    </button>
   );
 }
 

@@ -34,17 +34,30 @@
   --agent-header: #111827;
 }
 
+.cli-group[data-cli="grok-build"] {
+  --agent-color: #7c3aed;
+  --agent-soft: rgba(124, 58, 237, 0.12);
+  --agent-header: #6d28d9;
+}
+
 @media (prefers-color-scheme: dark) {
   .cli-group[data-cli="cursor"] {
     --agent-color: #d1d5db;
     --agent-soft: rgba(255, 255, 255, 0.07);
     --agent-header: #1f2937;
   }
+
+  .cli-group[data-cli="grok-build"] {
+    --agent-color: #c4b5fd;
+    --agent-soft: rgba(167, 139, 250, 0.14);
+    --agent-header: #5b21b6;
+  }
 }
 
 .cli-group:nth-child(1) { animation-delay: 0.16s; }
 .cli-group:nth-child(2) { animation-delay: 0.22s; }
 .cli-group:nth-child(3) { animation-delay: 0.28s; }
+.cli-group:nth-child(4) { animation-delay: 0.34s; }
 
 .cli-group-header {
   width: 100%;
@@ -330,9 +343,18 @@
   color: #fff;
 }
 
+.cli-mark[data-cli="grok-build"] {
+  background: #7c3aed;
+  color: #fff;
+}
+
 @media (prefers-color-scheme: dark) {
   .cli-mark[data-cli="cursor"] {
     background: #1a1a1a;
+  }
+
+  .cli-mark[data-cli="grok-build"] {
+    background: #6d28d9;
   }
 }
 

@@ -140,6 +140,71 @@
   transform: translateX(100%);
 }
 
+.port-scope-segmented[data-mode="all"]::before {
+  transform: translateX(100%);
+}
+
+.protocol-menu {
+  min-width: 118px;
+}
+
+.protocol-dot {
+  background: var(--orange);
+  box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.16);
+}
+
+.toggle-btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  box-shadow: 0 0 0 0.5px var(--control-stroke);
+  font-size: 0.86rem;
+  font-weight: 500;
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.toggle-btn:hover {
+  background: var(--control-bg-hover);
+  color: var(--text-primary);
+}
+
+.toggle-track {
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--text-tertiary);
+  position: relative;
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+
+.toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.toggle-btn[data-active="true"] .toggle-track {
+  background: var(--green);
+}
+
+.toggle-btn[data-active="true"] .toggle-track::after {
+  transform: translateX(12px);
+}
+
 /* --- Menu button (terminal select) --------------------------------- */
 .menu {
   position: relative;
@@ -238,6 +303,35 @@
 .chevron {
   transition: transform var(--dur-base) var(--ease-standard);
   color: var(--text-tertiary);
+}
+
+.tool-switcher {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  box-shadow: 0 0 0 0.5px var(--control-stroke);
+}
+
+.tool-tab {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: calc(var(--radius-md) - 4px);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.tool-tab:hover {
+  color: var(--text-primary);
+}
+
+.tool-tab[data-active="true"] {
+  color: var(--text-primary);
+  background: var(--group-bg);
+  box-shadow: 0 0 0 0.5px var(--group-stroke);
 }
 
 /* =======================================================================

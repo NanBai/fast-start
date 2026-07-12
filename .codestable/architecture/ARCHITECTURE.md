@@ -1,13 +1,13 @@
 ---
 type: architecture
 project: 快开CLI
-version: 1.2
-last_updated: 2026-06-24
+version: 1.3
+last_updated: 2026-07-12
 ---
 
 # 快开CLI 架构文档
 
-**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor 三个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。
+**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor / grok-build 四个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。另提供本机开发端口监控（Port 工具页，见 `port_monitor`）。
 
 ---
 
@@ -29,10 +29,10 @@ last_updated: 2026-06-24
 | 类型 | 职责 | 定义位置 |
 |---|---|---|
 | `Session` | 一条 session 记录（id / cli_type / session_id / project_dir / project_name / last_active_at），`#[serde(rename_all="camelCase")]` 对齐前端；内部 `delete_target` 用 `#[serde(skip)]` 保留源载体，不进入前端 JSON | `src-tauri/src/models.rs` |
-| `CliType` | 枚举：codex / claude-code / cursor | `src-tauri/src/models.rs` |
+| `CliType` | 枚举：codex / claude-code / cursor / grok-build | `src-tauri/src/models.rs` |
 | `TerminalType` | 枚举：System / ITerm2 / Ghostty | `src-tauri/src/models.rs` |
 | `CommandSpec` | 纯数据：cwd + program + args，Scanner 输出给 Launcher，解耦"知道 resume 命令"与"知道怎么开窗" | `src-tauri/src/models.rs` |
-| `SessionDeleteTarget` | 后端内部删除目标：root / path / kind；Codex 和 Claude Code 指向 jsonl 文件，Cursor 指向 chat 目录 | `src-tauri/src/models.rs` |
+| `SessionDeleteTarget` | 后端内部删除目标：root / path / kind；Codex 和 Claude Code 指向 jsonl 文件，Cursor / Grok Build 指向 session/chat 目录 | `src-tauri/src/models.rs` |
 | `SessionScanner` trait | `cli_type()` / `scan_sessions() -> Result<Vec<Session>, ScanError>`；每 CLI 一实现 | `src-tauri/src/scanner.rs` |
 | `TerminalLauncher` trait | `terminal_type()` / `is_available()` / `launch(&CommandSpec)`；每终端一实现，跨平台预留 | `src-tauri/src/launcher.rs` |
 | `QuickAccessOptions` / `QuickAccessResult` | 前端列表派生契约：用 sessions、recentDays、query、favoriteProjectDirs 算出当前可见 sessions、匹配数量和活跃项 | `src/lib/sessionUtils.ts` |
@@ -46,19 +46,24 @@ last_updated: 2026-06-24
 ```
 src-tauri/src/
 ├── models.rs      Session / CliType / TerminalType / CommandSpec
-├── scanner.rs     SessionScanner trait + CodexScanner / ClaudeCodeScanner / CursorScanner
-├── launcher.rs    TerminalLauncher trait + SystemTerminalLauncher / ITerm2Launcher / GhosttyLauncher
+├── scanner.rs     SessionScanner trait + 分发
+├── scanner/
+│   ├── codex.rs
+│   ├── claude_code.rs
+│   ├── cursor.rs
+│   └── grok_build.rs
+├── launcher.rs    TerminalLauncher trait + System / iTerm2 / Ghostty
 ├── session_delete.rs
 │                  session 源载体删除前的 root/path/kind 校验 + 文件/目录删除执行
 ├── security.rs    validate_command_spec / validate_session_id（注入防护）
-├── state.rs       AppState（tauri-plugin-store 持久化偏好）
-└── commands.rs    Tauri commands（scan_sessions / refresh_sessions / launch_session /
-                   delete_session / list_available_terminals / get/set_preferred_terminal）
+├── port_monitor/  本机端口扫描与进程终止（Port 工具页）
+├── state.rs       AppState（sessions 缓存 + port 缓存 + 偏好）
+└── commands.rs    Tauri commands（session / port / preferences）
 
-src/               React 前端：App 负责顶层渲染与快速访问键盘编排；
-                   hooks/ 承载 usePreferences / useSessions 状态编排；
+src/               React 前端：App 负责 Session/Port 双工具页与键盘编排；
+                   hooks/ 承载 usePreferences / useSessions / usePorts；
                    components/ 承载 AgentGroup / ProjectBucket / SessionRow /
-                   Controls / Skeleton / icons；
+                   Controls / PortWorkspace / Skeleton / icons；
                    lib/ 承载跨组件纯函数；styles/ 按组件边界拆分样式。
 ```
 
@@ -86,9 +91,11 @@ flowchart TD
     S0 --> S1[CodexScanner.scan]
     S0 --> S2[ClaudeCodeScanner.scan]
     S0 --> S3[CursorScanner.scan]
+    S0 --> S4[GrokBuildScanner.scan]
     S1 --> D[聚合 & 按 last_active_at 排序]
     S2 --> D
     S3 --> D
+    S4 --> D
     D --> E0[前端 recentDays 过滤]
     D0 --> E0
     E0 --> E1[搜索查询过滤]
@@ -138,11 +145,12 @@ flowchart TD
 |---|---|---|---|
 | codex | `~/.codex/sessions/**/*.jsonl`（payload.cwd） | jsonl 直接读 | `codex resume <id>`（仍 cd 到原工作目录，方便恢复上下文） |
 | claude-code | `~/.claude/projects/<编码>/<uuid>.jsonl` | jsonl 的 cwd 字段（优先，decode 歧义见 learning） | `claude --resume <id>` |
-| cursor | `~/.cursor/chats/<hash>/<uuid>/{meta.json, store.db}` | store.db 里 cursor 注入的 `Workspace Path:`（system prompt，无歧义；由 rusqlite 进程内读取） | `cursor-agent --resume <id>`（**id 是 workspace 范围，必须 cd 到对应目录**） |
+| cursor | `~/.cursor/chats/<hash>/<uuid>/{meta.json, store.db}` | store.db 里 cursor 注入的 `Workspace Path:`（可含空格；多命中取最长 canonicalize 目录；rusqlite 过滤相关 blob） | `cursor-agent --resume <id>`（**id 是 workspace 范围，必须 cd 到对应目录**） |
+| grok-build | `~/.grok/sessions/<url-encoded-cwd>/<session-id>/summary.json`（`GROK_HOME` 可覆盖根目录） | 优先 `summary.info.cwd`，其次 group `.cwd`，再对含 `%` 的目录名 percent-decode | `grok --resume <id>` |
 
-三家都是 `cd <cwd> && resume <id>` 模式（cursor 的 cd 必须准确，否则 resume 失败）。cursor 不用 `cursor-agent ls`（要 TTY）。
+四家都是 `cd <cwd> && resume <id>` 模式（cursor 的 cd 必须准确，否则 resume 失败）。cursor 不用 `cursor-agent ls`（要 TTY）。
 
-删除目标和扫描来源一致：codex 删除扫描命中的 `.jsonl` 文件；claude-code 删除扫描命中的 `.jsonl` 文件；cursor 删除扫描命中的 chat 目录。删除动作不按 CLI 原始 `session_id` 批量匹配，只处理 UI 当前行对应的 `Session.id`。
+删除目标和扫描来源一致：codex / claude-code 删除扫描命中的 `.jsonl` 文件；cursor 删除 chat 目录；grok-build 删除 session 目录。删除动作不按 CLI 原始 `session_id` 批量匹配，只处理 UI 当前行对应的 `Session.id`。
 
 ---
 
@@ -156,7 +164,7 @@ flowchart TD
 | **Ghostty** | 开新 tab（AppleScript `new tab with configuration`） | `open -na ... -e <wrapper>` 开首个窗口 | AppleScript 字典 + 临时 wrapper 脚本规避 login 误报；`-e` 自动 `quit-after-last-window-closed=true` |
 | **Terminal.app** | 开新窗口（无法开 tab） | 开新窗口（冷启动会多一个空默认窗口，硬限制） | osascript `do script` 只注入临时 wrapper 路径；`make new tab` 不支持，模拟 ⌘T 需辅助功能权限 |
 
-**统一 wrapper 脚本**：三种终端启动前都会生成临时脚本 `$TMPDIR/fast-start-ghostty/run-<pid>.sh`（权限 `0700`），脚本负责解析登录 shell PATH、`cd <cwd>`、`exec <program> <args>`。Terminal.app / iTerm2 的 AppleScript 只注入 wrapper 路径，不再直接写入完整业务命令；Ghostty 也继续通过 wrapper 规避 `/usr/bin/login` 对多词命令的误报。
+**统一 wrapper 脚本**：三种终端启动前都会生成临时脚本 `$TMPDIR/fast-start-ghostty/run-<uuid>.sh`（权限 `0700`），脚本负责：解析登录 shell PATH（取最后一行并校验形态，失败回退 fallback）、prepend `~/.grok/bin`、`cd <cwd>`、`exec <program> <args>`。Terminal.app / iTerm2 的 AppleScript 只注入 wrapper 路径，不再直接写入完整业务命令；Ghostty 也继续通过 wrapper 规避 `/usr/bin/login` 对多词命令的误报。
 
 ---
 
@@ -171,23 +179,30 @@ flowchart TD
 launch 会生成本地 wrapper 并执行 CLI resume，`project_dir` / `session_id` 来源于扫描外部 CLI 存储（不可信数据）：
 
 - `CommandSpec.cwd` 必须 `canonicalize` 且为目录
-- `program` 限白名单：`codex` / `claude` / `cursor-agent`
+- `program` 限白名单：`codex` / `claude` / `cursor-agent` / `grok`
 - `args` 中来自 session 数据的 id 字段做 UUID 字符集白名单校验
 - Terminal.app / iTerm2 / Ghostty 都必须通过 `validate_command_spec` 后再写 wrapper
 - Terminal.app / iTerm2 AppleScript 只允许注入 wrapper 路径，不允许重新引入完整业务命令字符串
 - **禁止**裸拼成 shell 字符串丢给 `sh -c`；wrapper 内容使用 `shell_escape` 拼接，AppleScript 动态片段用 `quoted form of` 转义
 
-> 当前边界：三家 CLI 都是 `cd <cwd> && resume <id>` 语义；安全校验在 `CommandSpec` 层统一完成，终端实现只负责选择窗口 / tab 并启动 wrapper。
+> 当前边界：四家 CLI 都是 `cd <cwd> && resume <id>` 语义；安全校验在 `CommandSpec` 层统一完成，终端实现只负责选择窗口 / tab 并启动 wrapper。
 
 session 删除是本地 destructive action，`delete_target.root/path/kind` 同样来源于扫描外部 CLI 存储（不可信数据）：
 
 - 前端只传 `Session.id`，不接收、不展示、不调试输出真实源文件路径
 - 删除前必须 `canonicalize` root 和 path，并确认 path 在 root 内，且 path 不能等于 root
-- Codex / Claude Code 只允许删除文件；Cursor 只允许删除目录
+- Codex / Claude Code 只允许删除文件；Cursor / Grok Build 只允许删除目录
 - 删除失败必须显式报错，不能从列表假移除；删除成功只移除当前缓存 id，不按 `session_id` 清理其他项
 - 删除能力不得删除 `project_dir` 指向的工作目录、CLI 全局目录、账号配置、缓存目录或其他 session
 
 ## 变更日志
+
+### 2026-07-12 - 四 CLI + 扫描/启动硬化
+
+- CLI 覆盖与安全白名单补齐 Grok Build（`grok` / `summary.json` / Directory 删除 / `~/.grok/bin` PATH）。
+- Cursor cwd：支持路径空格；多候选取最长合法路径；缺时间戳回退 mtime。
+- Codex/Claude：流式读 jsonl；Codex 坏行 skip 不拖垮整 CLI。
+- wrapper PATH：login shell 输出取末行并做形态校验，失败回退 fallback。
 
 ### 2026-06-24 - 快速访问归并
 

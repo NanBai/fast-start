@@ -9,6 +9,7 @@ const AGENT_HINTS: Record<CliType, string> = {
   codex: "Codex CLI 历史会话",
   "claude-code": "Claude Code 项目会话",
   cursor: "Cursor Agent 工作区会话",
+  "grok-build": "Grok Build 历史会话",
 };
 
 type ProjectSessionGroup = {

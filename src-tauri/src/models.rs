@@ -8,6 +8,7 @@ pub enum CliType {
     Codex,
     ClaudeCode,
     Cursor,
+    GrokBuild,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -33,6 +34,13 @@ pub enum ThemeMode {
 pub enum LaunchMode {
     NewTab,
     NewWindow,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PortProtocol {
+    Tcp,
+    Udp,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,7 +78,7 @@ pub struct CommandSpec {
     pub cwd: PathBuf,
     pub program: String,
     pub args: Vec<String>,
-    /// launch 时是否 cd 到 cwd。三家 CLI 当前都需要在原工作目录下恢复上下文。
+    /// launch 时是否 cd 到 cwd。当前各 CLI 都需要在原工作目录下恢复上下文。
     pub cd: bool,
 }
 
@@ -79,6 +87,33 @@ pub struct CommandSpec {
 pub struct ScanResponse {
     pub sessions: Vec<Session>,
     pub scan_errors: Vec<CliScanError>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PortUsage {
+    pub id: String,
+    pub command: String,
+    pub pid: i32,
+    pub user: String,
+    pub protocol: PortProtocol,
+    pub address: String,
+    pub port: u16,
+    pub state: String,
+    pub executable_path: String,
+    pub working_directory: String,
+    pub parent_command: String,
+    pub is_project_service: bool,
+    pub user_owned: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PortScanResponse {
+    pub ports: Vec<PortUsage>,
+    pub raw_line_count: usize,
+    pub command_description: String,
+    pub scanned_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,11 +132,7 @@ impl Session {
     }
 
     /// 列表行 id：由 cli + 源 session id + 工作目录确定性生成，刷新扫描后保持不变。
-    pub fn stable_id(
-        cli_type: CliType,
-        session_id: &str,
-        project_dir: &std::path::Path,
-    ) -> String {
+    pub fn stable_id(cli_type: CliType, session_id: &str, project_dir: &std::path::Path) -> String {
         let key = format!(
             "{}:{}:{}",
             cli_type_stable_key(cli_type),
@@ -117,6 +148,7 @@ fn cli_type_stable_key(cli_type: CliType) -> &'static str {
         CliType::Codex => "codex",
         CliType::ClaudeCode => "claude-code",
         CliType::Cursor => "cursor",
+        CliType::GrokBuild => "grok-build",
     }
 }
 
@@ -127,16 +159,22 @@ mod tests {
 
     #[test]
     fn stable_id_is_deterministic_for_same_session() {
-        let first = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
-        let second = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let first =
+            Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let second =
+            Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
         assert_eq!(first, second);
     }
 
     #[test]
     fn stable_id_differs_across_cli_or_project() {
-        let codex = Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
-        let claude =
-            Session::stable_id(CliType::ClaudeCode, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let codex =
+            Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/a").as_path());
+        let claude = Session::stable_id(
+            CliType::ClaudeCode,
+            "abc-123",
+            PathBuf::from("/tmp/a").as_path(),
+        );
         let other_dir =
             Session::stable_id(CliType::Codex, "abc-123", PathBuf::from("/tmp/b").as_path());
         assert_ne!(codex, claude);

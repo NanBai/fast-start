@@ -4,6 +4,7 @@ use std::path::PathBuf;
 pub mod claude_code;
 pub mod codex;
 pub mod cursor;
+pub mod grok_build;
 
 #[derive(Debug)]
 pub enum ScanError {
@@ -38,6 +39,7 @@ pub fn scanners() -> Vec<Box<dyn SessionScanner + Send + Sync>> {
         Box::new(codex::CodexScanner::default()),
         Box::new(claude_code::ClaudeCodeScanner::default()),
         Box::new(cursor::CursorScanner::default()),
+        Box::new(grok_build::GrokBuildScanner::default()),
     ]
 }
 
@@ -84,10 +86,14 @@ pub fn command_spec_for_session(session: &Session) -> Result<crate::models::Comm
             "cursor-agent",
             vec!["--resume".to_string(), session.session_id.clone()],
         ),
+        CliType::GrokBuild => (
+            "grok",
+            vec!["--resume".to_string(), session.session_id.clone()],
+        ),
     };
 
-    // 三家 CLI 都是"cd 到工作目录 && resume <id>"模式：
-    // codex/claude 的 id 虽全局唯一，但 cd 到原目录方便用户继续操作；
+    // 各 CLI 都是"cd 到工作目录 && resume <id>"模式：
+    // codex/claude/grok 的 id 虽全局唯一，但 cd 到原目录方便用户继续操作；
     // cursor 的 chatId 是 workspace 范围的，必须 cd 到正确目录 resume 才生效。
     Ok(CommandSpec {
         cwd: session.project_dir.clone(),
@@ -116,7 +122,12 @@ mod tests {
         use chrono::Utc;
         use std::path::PathBuf;
 
-        for cli_type in [CliType::Codex, CliType::ClaudeCode, CliType::Cursor] {
+        for cli_type in [
+            CliType::Codex,
+            CliType::ClaudeCode,
+            CliType::Cursor,
+            CliType::GrokBuild,
+        ] {
             let session = Session {
                 id: format!("{cli_type:?}"),
                 cli_type,
@@ -134,10 +145,40 @@ mod tests {
     }
 
     #[test]
+    fn command_spec_for_grok_build_uses_grok_resume() {
+        use super::command_spec_for_session;
+        use crate::models::{CliType, Session};
+        use chrono::Utc;
+        use std::path::PathBuf;
+
+        let session = Session {
+            id: "grok".to_string(),
+            cli_type: CliType::GrokBuild,
+            session_id: "019f559d-97a5-7ac0-9e2b-3c340dd33d6b".to_string(),
+            project_dir: PathBuf::from("/tmp/project"),
+            project_name: "project".to_string(),
+            last_active_at: Utc::now(),
+            summary: None,
+            delete_target: None,
+        };
+        let spec = command_spec_for_session(&session).unwrap();
+        assert_eq!(spec.program, "grok");
+        assert_eq!(
+            spec.args,
+            vec![
+                "--resume".to_string(),
+                "019f559d-97a5-7ac0-9e2b-3c340dd33d6b".to_string()
+            ]
+        );
+        assert!(spec.cd);
+    }
+
+    #[test]
     fn scanner_roots_can_be_fixture_backed() {
         use super::claude_code::ClaudeCodeScanner;
         use super::codex::CodexScanner;
         use super::cursor::CursorScanner;
+        use super::grok_build::GrokBuildScanner;
 
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().to_path_buf();
@@ -145,5 +186,6 @@ mod tests {
         let _ = CodexScanner::with_root(root.join("codex"));
         let _ = ClaudeCodeScanner::with_root(root.join("claude"));
         let _ = CursorScanner::with_root(root.join("cursor"));
+        let _ = GrokBuildScanner::with_root(root.join("grok"));
     }
 }

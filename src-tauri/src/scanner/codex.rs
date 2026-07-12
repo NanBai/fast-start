@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
@@ -89,18 +90,24 @@ fn collect_jsonl_files(
 }
 
 fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanError> {
-    let content = fs::read_to_string(path)?;
+    // 流式按行读，避免大 jsonl 整文件进内存。
+    let file = fs::File::open(path)?;
+    let reader = BufReader::new(file);
     let mut session_id = None;
     let mut cwd = None;
     let mut last_active_at = file_mtime(path)?;
     let mut summary = None;
 
-    for line in content.lines() {
+    for line in reader.lines() {
+        let line = line?;
         if line.trim().is_empty() {
             continue;
         }
-        let parsed: CodexLine = serde_json::from_str(line)
-            .map_err(|err| ScanError::Parse(format!("解析 codex jsonl 失败: {err}")))?;
+        // 坏行 skip，不拖垮整文件 / 整 CLI（与 claude/grok 策略对齐）。
+        let parsed: CodexLine = match serde_json::from_str(&line) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
 
         if let Some(ts) = parsed.timestamp.as_deref() {
             if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
@@ -320,5 +327,45 @@ mod tests {
         assert_eq!(delete_target.root, temp.path());
         assert_eq!(delete_target.path, session_file);
         assert_eq!(delete_target.kind, crate::models::SessionDeleteKind::File);
+    }
+
+    #[test]
+    fn scanner_skips_bad_json_lines_without_failing_cli() {
+        let temp = tempfile::tempdir().unwrap();
+        let good = temp.path().join("good.jsonl");
+        let bad = temp.path().join("partial.jsonl");
+        fs::write(
+            &good,
+            [
+                r#"{"timestamp":"2026-06-19T01:00:00Z","type":"session_meta","payload":{"id":"codex-good","cwd":"/tmp"}}"#,
+                r#"{"timestamp":"2026-06-19T01:01:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"正常会话"}]}}"#,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        fs::write(
+            &bad,
+            [
+                r#"{"timestamp":"2026-06-19T01:00:00Z","type":"session_meta","payload":{"id":"codex-partial","cwd":"/tmp"}}"#,
+                r#"{not valid json"#,
+                r#"{"timestamp":"2026-06-19T01:01:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"坏行之后仍可读"}]}}"#,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+
+        let sessions = CodexScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 2);
+        let ids: Vec<_> = sessions.iter().map(|s| s.session_id.as_str()).collect();
+        assert!(ids.contains(&"codex-good"));
+        assert!(ids.contains(&"codex-partial"));
+        let partial = sessions
+            .iter()
+            .find(|s| s.session_id == "codex-partial")
+            .unwrap();
+        assert_eq!(partial.summary.as_deref(), Some("坏行之后仍可读"));
     }
 }

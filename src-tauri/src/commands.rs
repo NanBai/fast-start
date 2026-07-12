@@ -1,7 +1,7 @@
-use crate::models::{LaunchMode, ScanResponse, TerminalType, ThemeMode};
+use crate::models::{LaunchMode, PortScanResponse, ScanResponse, TerminalType, ThemeMode};
 use crate::state::{
-    save_favorite_project_dirs, save_launch_mode, save_preferred_terminal, save_theme_mode,
-    AppState,
+    save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh, save_preferred_terminal,
+    save_theme_mode, AppState,
 };
 use tauri::State;
 
@@ -15,17 +15,40 @@ pub fn refresh_sessions(state: State<'_, AppState>) -> Result<ScanResponse, Stri
     state.scan_all()
 }
 
+/// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
 #[tauri::command]
-pub fn launch_session(session_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    state.launch_session(&session_id)
+pub fn launch_session(
+    session_list_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.launch_session(&session_list_id)
+}
+
+/// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
+#[tauri::command]
+pub fn delete_session(
+    session_list_id: String,
+    state: State<'_, AppState>,
+) -> Result<ScanResponse, String> {
+    state.delete_session(&session_list_id)
 }
 
 #[tauri::command]
-pub fn delete_session(
-    session_id: String,
+pub fn scan_ports(state: State<'_, AppState>) -> Result<PortScanResponse, String> {
+    state.scan_ports()
+}
+
+#[tauri::command]
+pub fn refresh_ports(state: State<'_, AppState>) -> Result<PortScanResponse, String> {
+    state.refresh_ports()
+}
+
+#[tauri::command]
+pub fn terminate_port_processes(
+    port_ids: Vec<String>,
     state: State<'_, AppState>,
-) -> Result<ScanResponse, String> {
-    state.delete_session(&session_id)
+) -> Result<PortScanResponse, String> {
+    state.terminate_port_processes(port_ids)
 }
 
 #[tauri::command]
@@ -92,4 +115,19 @@ pub fn set_favorite_project_dirs(
     let project_dirs = state.sanitize_favorite_project_dirs(project_dirs)?;
     save_favorite_project_dirs(&app, project_dirs.clone())?;
     state.set_favorite_project_dirs(project_dirs)
+}
+
+#[tauri::command]
+pub fn get_port_auto_refresh(state: State<'_, AppState>) -> Result<bool, String> {
+    state.port_auto_refresh()
+}
+
+#[tauri::command]
+pub fn set_port_auto_refresh(
+    enabled: bool,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    save_port_auto_refresh(&app, enabled)?;
+    state.set_port_auto_refresh(enabled)
 }

@@ -3,6 +3,7 @@ use crate::scanner::{clean_summary, decode_claude_project_dir, ScanError, Sessio
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
@@ -123,7 +124,9 @@ fn parse_claude_file(
     path: &Path,
     fallback_cwd: Option<PathBuf>,
 ) -> Result<(DateTime<Utc>, Option<PathBuf>, Option<String>), ScanError> {
-    let content = fs::read_to_string(path)?;
+    // 流式按行读，避免大 jsonl 整文件进内存。
+    let file = fs::File::open(path)?;
+    let reader = BufReader::new(file);
     let mut latest = file_mtime(path)?;
     // 优先用 jsonl 文件里记录的真实 cwd（精确路径）；只有文件里完全没有 cwd
     // 字段时才退回目录名 decode 的 fallback（decode 无法无损还原含 `-` 或 `.`
@@ -134,11 +137,12 @@ fn parse_claude_file(
     // 保留最后见到的一份即可。
     let mut summary: Option<String> = None;
 
-    for line in content.lines() {
+    for line in reader.lines() {
+        let line = line?;
         if line.trim().is_empty() {
             continue;
         }
-        let parsed: TimestampLine = match serde_json::from_str(line) {
+        let parsed: TimestampLine = match serde_json::from_str(&line) {
             Ok(value) => value,
             Err(_) => continue,
         };
