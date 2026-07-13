@@ -1,0 +1,28 @@
+feature: 2026-07-13-state-module-split
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "抽出 session_ops（或等价）并 re-export"
+    exit_signal: "mod.rs 变薄；compile"
+    status: pending
+  - action: "cargo test --lib 全绿"
+    exit_signal: "无失败"
+    status: pending
+
+checks:
+  - item: "行为等价 / 测试全绿"
+    source: 验收场景
+    status: pending
+  - item: "不改 Tauri command 契约"
+    source: 范围守护
+    status: pending

@@ -1,0 +1,31 @@
+feature: 2026-07-13-health-inspect-on-demand
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "移除 full scan 自动 inspect；保留 fromCache 跳过"
+    exit_signal: "applyScanResult 不再无条件 invoke"
+    status: pending
+  - action: "healthFilter / 磁盘面板 / 可选刷新 触发 inspect"
+    exit_signal: "pnpm build；触发路径有调用"
+    status: pending
+
+checks:
+  - item: "默认 full scan 不自动 inspect"
+    source: 名词契约
+    status: pending
+  - item: "角标仅有缓存时显示"
+    source: 流程级约束
+    status: pending
+  - item: "后端 inspect 契约不变"
+    source: 范围守护
+    status: pending

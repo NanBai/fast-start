@@ -1,0 +1,32 @@
+feature: 2026-07-13-ux-perf-harden-and-docs
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "更新 README / 用户文档 / ARCHITECTURE / next-wave status"
+    exit_signal: "与代码一致"
+    status: pending
+  - action: "全量 cargo test + pnpm build"
+    exit_signal: "全绿"
+    status: pending
+
+checks:
+  - item: "文档与代码一致"
+    source: 验收场景
+    status: pending
+  - item: "无新功能混入"
+    source: 范围守护
+    status: pending

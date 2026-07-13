@@ -1,0 +1,31 @@
+feature: 2026-07-13-session-list-virtualize
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "实现轻量虚拟列表并挂到 Session 行渲染"
+    exit_signal: "窗口外行不挂载或显著减少"
+    status: pending
+  - action: "键盘活跃行 scrollIntoView；多选/收藏/启动"
+    exit_signal: "pnpm build；手工烟雾"
+    status: pending
+
+checks:
+  - item: "无重型新依赖"
+    source: 范围守护
+    status: pending
+  - item: "键盘与多选可用"
+    source: 验收场景
+    status: pending
+  - item: "不暴露源路径"
+    source: 安全
+    status: pending

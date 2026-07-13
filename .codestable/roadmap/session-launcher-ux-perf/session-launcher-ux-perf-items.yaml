@@ -1,0 +1,59 @@
+roadmap: session-launcher-ux-perf
+created: 2026-07-13
+
+items:
+  - slug: app-shell-split
+    description: 将 Session 列表/筛选/批量/磁盘/最近启动从 App.tsx 迁入 SessionWorkspace；App 仅保留 tool 壳与全局 status/快捷键分发
+    depends_on: []
+    status: planned
+    feature: 2026-07-13-app-shell-split
+    minimal_loop: true
+    notes: "最小闭环；行为等价优先；pnpm build 门闩"
+
+  - slug: state-module-split
+    description: 行为等价拆分 state/mod.rs（session launch/delete/preflight/health 或 prefs 边界清晰）；不改 Tauri command 契约
+    depends_on: []
+    status: planned
+    feature: 2026-07-13-state-module-split
+    minimal_loop: false
+    notes: "可与 app-shell-split 并行；cargo test --lib 全绿"
+
+  - slug: health-inspect-on-demand
+    description: full scan 后默认不自动 inspect；仅陈旧筛选/磁盘面板/显式刷新时批量探测 ≤200
+    depends_on:
+      - app-shell-split
+    status: planned
+    feature: 2026-07-13-health-inspect-on-demand
+    minimal_loop: false
+    notes: "相对 power-extend 的 delta；角标仅在有缓存时显示"
+
+  - slug: session-list-virtualize
+    description: Session 行窗口化渲染；保留键盘导航与多选/收藏/启动
+    depends_on:
+      - app-shell-split
+    status: planned
+    feature: 2026-07-13-session-list-virtualize
+    minimal_loop: false
+    notes: "不引入重型 UI 框架；不暴露源路径"
+
+  - slug: launch-feedback-polish
+    description: 统一启动/刷新/预检 status 时序，减少双 preflight 闪烁；不削弱后端 launch 门闩
+    depends_on:
+      - health-inspect-on-demand
+    status: planned
+    feature: 2026-07-13-launch-feedback-polish
+    minimal_loop: false
+    notes: "前端体验；后端 preflight 仍强制"
+
+  - slug: ux-perf-harden-and-docs
+    description: README/用户文档/ARCHITECTURE 对齐；next-wave 主文档 completed；交叉回归
+    depends_on:
+      - app-shell-split
+      - state-module-split
+      - health-inspect-on-demand
+      - session-list-virtualize
+      - launch-feedback-polish
+    status: planned
+    feature: 2026-07-13-ux-perf-harden-and-docs
+    minimal_loop: false
+    notes: "收口；前置可 drop 后调整 depends"

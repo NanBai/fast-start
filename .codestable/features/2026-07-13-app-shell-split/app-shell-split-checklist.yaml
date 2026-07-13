@@ -1,0 +1,31 @@
+feature: 2026-07-13-app-shell-split
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "新增 SessionWorkspace 并迁入 sessions 工具页 JSX/handlers"
+    exit_signal: "App 仅挂载 <SessionWorkspace .../>"
+    status: pending
+  - action: "核对快捷键与 props 边界；pnpm build"
+    exit_signal: "build 绿；无行为契约变更"
+    status: pending
+
+checks:
+  - item: "行为等价：启动/删除/筛选/批量/磁盘"
+    source: 验收场景
+    status: pending
+  - item: "不改 Tauri command 名与 payload"
+    source: 范围守护
+    status: pending
+  - item: "App.tsx 行数显著下降"
+    source: 结构健康度
+    status: pending
