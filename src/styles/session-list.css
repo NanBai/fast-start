@@ -491,6 +491,34 @@
   white-space: nowrap;
 }
 
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.session-favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-tertiary, var(--text-secondary));
+  cursor: pointer;
+}
+
+.session-favorite-btn:hover {
+  background: var(--hover-overlay);
+}
+
+.session-favorite-btn[data-active="true"] {
+  color: var(--warning, #e6a817);
+}
+
 .session-list[data-list-mode="by-project"] {
   display: grid;
   gap: var(--space-2);

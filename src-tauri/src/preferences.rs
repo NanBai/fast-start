@@ -8,6 +8,7 @@ const PREFERRED_TERMINAL_KEY: &str = "preferred_terminal";
 const LAUNCH_MODE_KEY: &str = "launch_mode";
 const THEME_MODE_KEY: &str = "theme_mode";
 const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
+const FAVORITE_SESSION_IDS_KEY: &str = "favorite_session_ids";
 const PORT_AUTO_REFRESH_KEY: &str = "port_auto_refresh";
 const SESSION_LIST_MODE_KEY: &str = "session_list_mode";
 const GROK_PROVIDER_ORDER_KEY: &str = "grok_provider_order";
@@ -148,6 +149,31 @@ pub fn save_favorite_project_dirs(
     store.set(
         FAVORITE_PROJECT_DIRS_KEY,
         json!(normalize_project_dirs(project_dirs)),
+    );
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_favorite_session_ids(app: &AppHandle) -> Result<Vec<String>, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(FAVORITE_SESSION_IDS_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw)
+            .map(normalize_string_list)
+            .map_err(|err| err.to_string())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+pub fn save_favorite_session_ids(app: &AppHandle, session_ids: Vec<String>) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(
+        FAVORITE_SESSION_IDS_KEY,
+        json!(normalize_string_list(session_ids)),
     );
     store.save().map_err(|err| err.to_string())
 }

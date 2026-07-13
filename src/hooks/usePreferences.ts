@@ -23,21 +23,31 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   const [launchMode, setLaunchMode] = useState<LaunchMode>("new-tab");
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [favoriteProjectDirs, setFavoriteProjectDirs] = useState<string[]>([]);
+  const [favoriteSessionIds, setFavoriteSessionIds] = useState<string[]>([]);
   const [portAutoRefresh, setPortAutoRefresh] = useState(true);
   const [sessionListMode, setSessionListMode] =
     useState<SessionListMode>("by-agent");
 
   async function loadPreferences() {
-    const [available, preferred, mode, theme, favorites, autoRefresh, listMode] =
-      await Promise.all([
-        invoke<TerminalType[]>("list_available_terminals"),
-        invoke<TerminalType>("get_preferred_terminal"),
-        invoke<LaunchMode>("get_launch_mode"),
-        invoke<ThemeMode>("get_theme_mode"),
-        invoke<string[]>("get_favorite_project_dirs"),
-        invoke<boolean>("get_port_auto_refresh"),
-        invoke<SessionListMode>("get_session_list_mode"),
-      ]);
+    const [
+      available,
+      preferred,
+      mode,
+      theme,
+      favorites,
+      sessionFavorites,
+      autoRefresh,
+      listMode,
+    ] = await Promise.all([
+      invoke<TerminalType[]>("list_available_terminals"),
+      invoke<TerminalType>("get_preferred_terminal"),
+      invoke<LaunchMode>("get_launch_mode"),
+      invoke<ThemeMode>("get_theme_mode"),
+      invoke<string[]>("get_favorite_project_dirs"),
+      invoke<string[]>("get_favorite_session_ids"),
+      invoke<boolean>("get_port_auto_refresh"),
+      invoke<SessionListMode>("get_session_list_mode"),
+    ]);
     setAvailableTerminals(available);
     const resolved = available.includes(preferred)
       ? preferred
@@ -49,6 +59,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     setLaunchMode(mode);
     setThemeMode(theme);
     setFavoriteProjectDirs(favorites);
+    setFavoriteSessionIds(sessionFavorites);
     setPortAutoRefresh(autoRefresh);
     setSessionListMode(listMode);
   }
@@ -82,6 +93,17 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function handleFavoriteSessionIdsChange(sessionIds: string[]) {
+    const previous = favoriteSessionIds;
+    setFavoriteSessionIds(sessionIds);
+    try {
+      await invoke("set_favorite_session_ids", { sessionIds });
+    } catch (error) {
+      setFavoriteSessionIds(previous);
+      notifyStatus(`session 收藏保存失败：${String(error)}`, "error");
+    }
+  }
+
   async function handlePortAutoRefreshChange(enabled: boolean) {
     const previous = portAutoRefresh;
     setPortAutoRefresh(enabled);
@@ -112,6 +134,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     launchMode,
     themeMode,
     favoriteProjectDirs,
+    favoriteSessionIds,
     portAutoRefresh,
     sessionListMode,
     loadPreferences,
@@ -119,6 +142,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     handleLaunchModeChange,
     handleThemeModeChange,
     handleFavoriteProjectDirsChange,
+    handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
     handleSessionListModeChange,
   };

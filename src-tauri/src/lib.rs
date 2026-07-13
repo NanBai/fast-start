@@ -10,20 +10,20 @@ mod session_delete;
 mod state;
 
 use commands::{
-    delete_session, get_favorite_project_dirs, get_grok_provider_layout, get_launch_mode,
-    get_port_auto_refresh, get_preferred_terminal, get_session_list_mode, get_theme_mode,
-    grok_activate_official, grok_activate_profile, grok_apply_privacy_protection,
+    delete_session, get_favorite_project_dirs, get_favorite_session_ids, get_grok_provider_layout,
+    get_launch_mode, get_port_auto_refresh, get_preferred_terminal, get_session_list_mode,
+    get_theme_mode, grok_activate_official, grok_activate_profile, grok_apply_privacy_protection,
     grok_create_profile, grok_delete_profile, grok_import_current, grok_list_backups,
     grok_list_profiles, grok_provider_status, grok_restore_backup, grok_update_profile,
     launch_session, list_available_terminals, refresh_ports, refresh_sessions, scan_ports,
-    scan_sessions, set_favorite_project_dirs, set_grok_provider_layout, set_launch_mode,
-    set_port_auto_refresh, set_preferred_terminal, set_session_list_mode, set_theme_mode,
-    terminate_port_processes,
+    scan_sessions, set_favorite_project_dirs, set_favorite_session_ids, set_grok_provider_layout,
+    set_launch_mode, set_port_auto_refresh, set_preferred_terminal, set_session_list_mode,
+    set_theme_mode, terminate_port_processes,
 };
 use grok_provider::GrokProviderState;
 use state::{
-    load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
-    load_theme_mode, save_preferred_terminal, AppState,
+    load_favorite_project_dirs, load_favorite_session_ids, load_launch_mode, load_port_auto_refresh,
+    load_preferred_terminal, load_theme_mode, save_preferred_terminal, AppState,
 };
 use tauri::{Manager, path::BaseDirectory};
 
@@ -39,12 +39,15 @@ pub fn run() {
             let theme_mode = load_theme_mode(app.handle()).unwrap_or(models::ThemeMode::System);
             let favorite_project_dirs =
                 load_favorite_project_dirs(app.handle()).unwrap_or_default();
+            let favorite_session_ids =
+                load_favorite_session_ids(app.handle()).unwrap_or_default();
             let port_auto_refresh = load_port_auto_refresh(app.handle()).unwrap_or(true);
             let state = AppState::new(
                 preferred,
                 launch_mode,
                 theme_mode,
                 favorite_project_dirs,
+                favorite_session_ids,
                 port_auto_refresh,
             );
             let available = state.list_available_terminals();
@@ -89,6 +92,8 @@ pub fn run() {
             set_theme_mode,
             get_favorite_project_dirs,
             set_favorite_project_dirs,
+            get_favorite_session_ids,
+            set_favorite_session_ids,
             get_port_auto_refresh,
             set_port_auto_refresh,
             get_session_list_mode,

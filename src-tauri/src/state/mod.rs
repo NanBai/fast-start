@@ -11,9 +11,9 @@ use crate::session_delete::delete_session_target;
 use scan_cache::{load_scan_cache, save_scan_cache, snapshot_from_sessions};
 
 pub use crate::preferences::{
-    load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
-    load_theme_mode, save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh,
-    save_preferred_terminal, save_theme_mode,
+    load_favorite_project_dirs, load_favorite_session_ids, load_launch_mode, load_port_auto_refresh,
+    load_preferred_terminal, load_theme_mode, save_favorite_project_dirs, save_favorite_session_ids,
+    save_launch_mode, save_port_auto_refresh, save_preferred_terminal, save_theme_mode,
 };
 
 use std::collections::HashMap;
@@ -37,6 +37,7 @@ pub(crate) struct AppStateInner {
     launch_mode: LaunchMode,
     theme_mode: ThemeMode,
     favorite_project_dirs: Vec<String>,
+    favorite_session_ids: Vec<String>,
     port_auto_refresh: bool,
     /// 是否已有可展示的 sessions（磁盘缓存或 full scan）。
     scanned: bool,
@@ -52,6 +53,7 @@ impl AppState {
         launch_mode: LaunchMode,
         theme_mode: ThemeMode,
         favorite_project_dirs: Vec<String>,
+        favorite_session_ids: Vec<String>,
         port_auto_refresh: bool,
     ) -> Self {
         Self {
@@ -63,6 +65,7 @@ impl AppState {
                 launch_mode,
                 theme_mode,
                 favorite_project_dirs: normalize_project_dirs(favorite_project_dirs),
+                favorite_session_ids: normalize_id_list(favorite_session_ids),
                 port_auto_refresh,
                 scanned: false,
                 ops_ready: false,
@@ -330,6 +333,37 @@ impl AppState {
         Ok(())
     }
 
+    pub fn favorite_session_ids(&self) -> Result<Vec<String>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.favorite_session_ids.clone())
+    }
+
+    pub fn sanitize_favorite_session_ids(
+        &self,
+        session_ids: Vec<String>,
+    ) -> Result<Vec<String>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(normalize_session_ids_for_sessions(
+            session_ids,
+            &guard.sessions,
+        ))
+    }
+
+    pub fn set_favorite_session_ids(&self, session_ids: Vec<String>) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.favorite_session_ids = normalize_id_list(session_ids);
+        Ok(())
+    }
+
     /// `session_list_id` = `Session.id`（列表稳定 id）。
     pub fn launch_session(&self, session_list_id: &str) -> Result<(), String> {
         let session = self.find_session(session_list_id)?;
@@ -406,12 +440,16 @@ impl AppState {
 
 
 fn normalize_project_dirs(project_dirs: Vec<String>) -> Vec<String> {
+    normalize_id_list(project_dirs)
+}
+
+fn normalize_id_list(ids: Vec<String>) -> Vec<String> {
     let mut normalized = Vec::new();
-    for project_dir in project_dirs {
-        if project_dir.is_empty() || normalized.contains(&project_dir) {
+    for id in ids {
+        if id.is_empty() || normalized.contains(&id) {
             continue;
         }
-        normalized.push(project_dir);
+        normalized.push(id);
     }
     normalized
 }
@@ -427,6 +465,14 @@ fn normalize_project_dirs_for_sessions(
     normalize_project_dirs(project_dirs)
         .into_iter()
         .filter(|project_dir| allowed_project_dirs.contains(project_dir))
+        .collect()
+}
+
+fn normalize_session_ids_for_sessions(session_ids: Vec<String>, sessions: &[Session]) -> Vec<String> {
+    let allowed: Vec<String> = sessions.iter().map(|session| session.id.clone()).collect();
+    normalize_id_list(session_ids)
+        .into_iter()
+        .filter(|id| allowed.contains(id))
         .collect()
 }
 
@@ -455,6 +501,7 @@ mod tests {
                 launch_mode: LaunchMode::NewTab,
                 theme_mode: ThemeMode::System,
                 favorite_project_dirs: Vec::new(),
+                favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
                 scanned: true,
                 ops_ready: true,
@@ -476,6 +523,7 @@ mod tests {
                 launch_mode: LaunchMode::NewTab,
                 theme_mode: ThemeMode::System,
                 favorite_project_dirs: Vec::new(),
+                favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
                 scanned: true,
                 ops_ready: false,
@@ -520,6 +568,7 @@ mod tests {
             LaunchMode::NewTab,
             ThemeMode::System,
             vec!["/tmp/a".to_string(), "/tmp/a".to_string(), String::new()],
+            Vec::new(),
             true,
         );
 
@@ -625,6 +674,7 @@ mod tests {
             LaunchMode::NewTab,
             ThemeMode::System,
             Vec::new(),
+            Vec::new(),
             true,
         );
         state.set_scan_cache_path(cache_path).unwrap();
@@ -653,6 +703,24 @@ mod tests {
             err.contains("刷新"),
             "expected refresh guidance in error, got: {err}"
         );
+    }
+
+    #[test]
+    fn favorite_session_ids_are_sanitized_to_scanned_sessions() {
+        let state = state_with_sessions(vec![
+            test_session_at_project("keep-me", PathBuf::from("/tmp/a"), None),
+            test_session_at_project("also", PathBuf::from("/tmp/b"), None),
+        ]);
+        let sanitized = state
+            .sanitize_favorite_session_ids(vec![
+                "also".to_string(),
+                "gone".to_string(),
+                "also".to_string(),
+                "keep-me".to_string(),
+                String::new(),
+            ])
+            .unwrap();
+        assert_eq!(sanitized, vec!["also", "keep-me"]);
     }
 
     #[test]

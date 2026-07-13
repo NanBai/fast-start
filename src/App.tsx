@@ -30,6 +30,7 @@ import {
   groupSessionsByProject,
   RecentDaysFilter,
   sanitizeFavoriteProjectDirs,
+  sanitizeFavoriteSessionIds,
 } from "./lib/sessionUtils";
 import {
   APP_TOOL_LABELS,
@@ -85,6 +86,7 @@ function App() {
     launchMode,
     themeMode,
     favoriteProjectDirs,
+    favoriteSessionIds,
     portAutoRefresh,
     sessionListMode,
     loadPreferences,
@@ -92,6 +94,7 @@ function App() {
     handleLaunchModeChange,
     handleThemeModeChange,
     handleFavoriteProjectDirsChange,
+    handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
     handleSessionListModeChange,
   } = usePreferences(notifyStatus);
@@ -190,6 +193,17 @@ function App() {
     void handleFavoriteProjectDirsChange(next);
   }
 
+  function toggleFavoriteSession(sessionId: string) {
+    const current = new Set(sanitizeFavoriteSessionIds(favoriteSessionIds, sessions));
+    if (current.has(sessionId)) {
+      current.delete(sessionId);
+    } else {
+      current.add(sessionId);
+    }
+    const next = sanitizeFavoriteSessionIds(Array.from(current), sessions);
+    void handleFavoriteSessionIdsChange(next);
+  }
+
   useEffect(() => {
     // 偏好与 session 扫描互不依赖：并行启动，缩短首屏等待。
     void (async () => {
@@ -277,10 +291,17 @@ function App() {
   const favoriteProjectDirSet = new Set(
     sanitizeFavoriteProjectDirs(favoriteProjectDirs, sessions),
   );
+  const favoriteSessionIdSet = new Set(
+    sanitizeFavoriteSessionIds(favoriteSessionIds, sessions),
+  );
+  const scanErrorByCli = new Map(
+    scanErrors.map((error) => [error.cliType, error.message] as const),
+  );
   const quickAccess = filterSessionsForQuickAccess(sessions, {
     recentDays,
     query: searchQuery,
     favoriteProjectDirs: favoriteProjectDirSet,
+    favoriteSessionIds: favoriteSessionIdSet,
     activeSessionId,
   });
   const visibleSessions = quickAccess.sessions;
@@ -588,11 +609,13 @@ function App() {
                   favorite={favoriteProjectDirSet.has(group.projectDir)}
                   forceOpen={hasSearchQuery}
                   showCliLabel
+                  favoriteSessionIds={favoriteSessionIdSet}
                   activeSessionId={activeQuickSessionId}
                   launchingId={launchingId}
                   deletingId={deletingId}
                   onLaunch={handleLaunch}
                   onToggleFavorite={toggleFavoriteProject}
+                  onToggleSessionFavorite={toggleFavoriteSession}
                   onSessionContextMenu={handleSessionContextMenu}
                 />
               ))
@@ -604,12 +627,15 @@ function App() {
                 cliType={cliType}
                 sessions={sessionsByCli.get(cliType) ?? []}
                 favoriteProjectDirs={favoriteProjectDirSet}
+                favoriteSessionIds={favoriteSessionIdSet}
                 forceOpen={hasSearchQuery}
+                scanError={scanErrorByCli.get(cliType) ?? null}
                 activeSessionId={activeQuickSessionId}
                 launchingId={launchingId}
                 deletingId={deletingId}
                 onLaunch={handleLaunch}
                 onToggleFavoriteProject={toggleFavoriteProject}
+                onToggleSessionFavorite={toggleFavoriteSession}
                 onSessionContextMenu={handleSessionContextMenu}
               />
             ))

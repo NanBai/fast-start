@@ -11,11 +11,13 @@ export function ProjectBucket({
   favorite,
   forceOpen = false,
   showCliLabel = false,
+  favoriteSessionIds,
   activeSessionId,
   launchingId,
   deletingId,
   onLaunch,
   onToggleFavorite,
+  onToggleSessionFavorite,
   onSessionContextMenu,
 }: {
   projectDir: string;
@@ -24,11 +26,13 @@ export function ProjectBucket({
   favorite: boolean;
   forceOpen?: boolean;
   showCliLabel?: boolean;
+  favoriteSessionIds: Set<string>;
   activeSessionId: string | null;
   launchingId: string | null;
   deletingId: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavorite: (projectDir: string) => void;
+  onToggleSessionFavorite: (sessionId: string) => void;
   onSessionContextMenu: (
     session: SessionData,
     event: MouseEvent<HTMLDivElement>,
@@ -79,7 +83,9 @@ export function ProjectBucket({
               launchingId={launchingId}
               deletingId={deletingId}
               showCliLabel={showCliLabel}
+              favorite={favoriteSessionIds.has(session.id)}
               onLaunch={onLaunch}
+              onToggleFavorite={onToggleSessionFavorite}
               onContextMenu={onSessionContextMenu}
             />
           ))}

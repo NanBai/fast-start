@@ -18,24 +18,24 @@ dod:
 steps:
   - action: "preferences favorite_session_ids + sanitize"
     exit_signal: "单测或逻辑核验 sanitize"
-    status: pending
+    status: done
   - action: "列表排序接入收藏"
     exit_signal: "pnpm build；排序规则可核验"
-    status: pending
+    status: done
   - action: "UI 收藏按钮 + 空态/错误引导"
     exit_signal: "手工可见"
-    status: pending
+    status: done
   - action: "文档短补"
     exit_signal: "用户文档含 session 收藏"
-    status: pending
+    status: done
 
 checks:
   - item: "favorite_session_ids 契约"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "排序 session>project>time"
     source: 编排骨架
-    status: pending
+    status: passed
   - item: "空态/错误引导可见"
     source: 验收场景
-    status: pending
+    status: passed

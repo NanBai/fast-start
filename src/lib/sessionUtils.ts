@@ -12,6 +12,7 @@ export type QuickAccessOptions = {
   recentDays: RecentDaysFilter;
   query: string;
   favoriteProjectDirs: Set<string>;
+  favoriteSessionIds?: Set<string>;
   activeSessionId?: string | null;
 };
 
@@ -73,8 +74,9 @@ export function filterSessionsForQuickAccess(
   const matchedSessions = query
     ? recentSessions.filter((session) => sessionMatchesQuery(session, query))
     : recentSessions;
-  const sortedSessions = sortSessionsByFavoriteProject(
+  const sortedSessions = sortSessionsByFavorites(
     matchedSessions,
+    options.favoriteSessionIds ?? new Set(),
     options.favoriteProjectDirs,
   );
   const activeSessionId =
@@ -104,6 +106,21 @@ export function sanitizeFavoriteProjectDirs(
   });
 }
 
+export function sanitizeFavoriteSessionIds(
+  sessionIds: string[],
+  sessions: SessionData[],
+) {
+  const allowed = new Set(sessions.map((session) => session.id));
+  const seen = new Set<string>();
+  return sessionIds.filter((id) => {
+    if (!allowed.has(id) || seen.has(id)) {
+      return false;
+    }
+    seen.add(id);
+    return true;
+  });
+}
+
 /**
  * 跨 CLI 按 projectDir 聚合；保留输入列表中的首次出现顺序
  * （调用方应先完成收藏排序 / 时间过滤）。
@@ -127,17 +144,24 @@ export function groupSessionsByProject(sessions: SessionData[]): ProjectSessionG
   return groups;
 }
 
-function sortSessionsByFavoriteProject(
+/** 排序：session 收藏 > 项目收藏 > 原时间序（稳定 index） */
+function sortSessionsByFavorites(
   sessions: SessionData[],
+  favoriteSessionIds: Set<string>,
   favoriteProjectDirs: Set<string>,
 ) {
   return sessions
     .map((session, index) => ({ session, index }))
     .sort((left, right) => {
-      const leftFavorite = favoriteProjectDirs.has(left.session.projectDir);
-      const rightFavorite = favoriteProjectDirs.has(right.session.projectDir);
-      if (leftFavorite !== rightFavorite) {
-        return leftFavorite ? -1 : 1;
+      const leftSessionFav = favoriteSessionIds.has(left.session.id);
+      const rightSessionFav = favoriteSessionIds.has(right.session.id);
+      if (leftSessionFav !== rightSessionFav) {
+        return leftSessionFav ? -1 : 1;
+      }
+      const leftProjectFav = favoriteProjectDirs.has(left.session.projectDir);
+      const rightProjectFav = favoriteProjectDirs.has(right.session.projectDir);
+      if (leftProjectFav !== rightProjectFav) {
+        return leftProjectFav ? -1 : 1;
       }
       return left.index - right.index;
     })

@@ -43,23 +43,29 @@ export function AgentGroup({
   cliType,
   sessions,
   favoriteProjectDirs,
+  favoriteSessionIds,
   forceOpen = false,
+  scanError = null,
   activeSessionId,
   launchingId,
   deletingId,
   onLaunch,
   onToggleFavoriteProject,
+  onToggleSessionFavorite,
   onSessionContextMenu,
 }: {
   cliType: CliType;
   sessions: SessionData[];
   favoriteProjectDirs: Set<string>;
+  favoriteSessionIds: Set<string>;
   forceOpen?: boolean;
+  scanError?: string | null;
   activeSessionId: string | null;
   launchingId: string | null;
   deletingId: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavoriteProject: (projectDir: string) => void;
+  onToggleSessionFavorite: (sessionId: string) => void;
   onSessionContextMenu: (
     session: SessionData,
     event: MouseEvent<HTMLDivElement>,
@@ -103,7 +109,11 @@ export function AgentGroup({
         <div className="cli-group-card">
           <div className="cli-group-body">
             {projectGroups.length === 0 ? (
-              <p className="state-line">暂无 session</p>
+              <p className="state-line">
+                {scanError
+                  ? `扫描失败：${scanError}。可点右上角刷新重试。`
+                  : `暂无 ${CLI_LABELS[cliType]} session。在本机使用该 CLI 后刷新即可出现。`}
+              </p>
             ) : (
               projectGroups.map((group) => (
                 <ProjectBucket
@@ -113,11 +123,13 @@ export function AgentGroup({
                   sessions={group.sessions}
                   favorite={favoriteProjectDirs.has(group.projectDir)}
                   forceOpen={forceOpen}
+                  favoriteSessionIds={favoriteSessionIds}
                   activeSessionId={activeSessionId}
                   launchingId={launchingId}
                   deletingId={deletingId}
                   onLaunch={onLaunch}
                   onToggleFavorite={onToggleFavoriteProject}
+                  onToggleSessionFavorite={onToggleSessionFavorite}
                   onSessionContextMenu={onSessionContextMenu}
                 />
               ))

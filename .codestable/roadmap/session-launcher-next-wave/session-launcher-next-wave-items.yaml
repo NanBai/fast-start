@@ -21,7 +21,7 @@ items:
   - slug: session-favorites-and-empty-states
     description: 支持 session 级收藏置顶，并完善 CLI 空数据与扫描失败的空态/错误引导
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-favorites-and-empty-states
     minimal_loop: false
     notes: "preferences key favorite_session_ids；sanitize 对齐 favorite_project_dirs"

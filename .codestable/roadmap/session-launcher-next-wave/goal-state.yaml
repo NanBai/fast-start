@@ -5,7 +5,7 @@ driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 2
+current_feature_index: 3
 features:
   - slug: scan-cache-and-metrics
     roadmap_item: scan-cache-and-metrics
@@ -33,7 +33,7 @@ features:
     review: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-review.md"
     qa: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-acceptance.md"
-    status: implementing
+    status: accepted
   - slug: grok-models-and-preview
     roadmap_item: grok-models-and-preview
     feature_dir: ".codestable/features/2026-07-13-grok-models-and-preview"
@@ -42,7 +42,7 @@ features:
     review: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-review.md"
     qa: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-qa.md"
     acceptance: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-acceptance.md"
-    status: pending
+    status: implementing
   - slug: grok-default-profile-policy
     roadmap_item: grok-default-profile-policy
     feature_dir: ".codestable/features/2026-07-13-grok-default-profile-policy"

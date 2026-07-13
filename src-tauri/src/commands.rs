@@ -8,8 +8,8 @@ use crate::models::{
 };
 use crate::preferences::{load_session_list_mode, save_session_list_mode};
 use crate::state::{
-    save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh, save_preferred_terminal,
-    save_theme_mode, AppState,
+    save_favorite_project_dirs, save_favorite_session_ids, save_launch_mode, save_port_auto_refresh,
+    save_preferred_terminal, save_theme_mode, AppState,
 };
 use tauri::State;
 
@@ -123,6 +123,22 @@ pub fn set_favorite_project_dirs(
     let project_dirs = state.sanitize_favorite_project_dirs(project_dirs)?;
     save_favorite_project_dirs(&app, project_dirs.clone())?;
     state.set_favorite_project_dirs(project_dirs)
+}
+
+#[tauri::command]
+pub fn get_favorite_session_ids(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    state.favorite_session_ids()
+}
+
+#[tauri::command]
+pub fn set_favorite_session_ids(
+    session_ids: Vec<String>,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let session_ids = state.sanitize_favorite_session_ids(session_ids)?;
+    save_favorite_session_ids(&app, session_ids.clone())?;
+    state.set_favorite_session_ids(session_ids)
 }
 
 #[tauri::command]
