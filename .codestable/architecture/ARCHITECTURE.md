@@ -7,7 +7,7 @@ last_updated: 2026-07-12
 
 # 快开CLI 架构文档
 
-**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor / grok-build / opencode 五个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。另提供本机开发端口监控（Port 工具页，见 `port_monitor`）。
+**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor / grok-build / opencode 五个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。另提供本机开发端口监控（Port 工具页，见 `port_monitor`），以及 Grok 登录方式管理（Grok 工具页，见 `grok_provider`：API 供应商档案 / 官方账号切换 / 隐私保护本地配置 / 卡片排序置顶）。
 
 ---
 
@@ -58,14 +58,15 @@ src-tauri/src/
 │                  session 源载体删除前的 root/path/kind 校验 + 文件/目录删除执行
 ├── security.rs    validate_command_spec / validate_session_id（注入防护）
 ├── port_monitor/  本机端口扫描与进程终止（Port 工具页）
+├── grok_provider/ Grok config 供应商档案、官方账号清理、隐私保护、备份
 ├── state.rs       AppState（sessions 缓存 + port 缓存 + 偏好）
-└── commands.rs    Tauri commands（session / port / preferences）
+└── commands.rs    Tauri commands（session / port / grok / preferences）
 
-src/               React 前端：App 负责 Session/Port 双工具页与键盘编排；
-                   hooks/ 承载 usePreferences / useSessions / usePorts；
+src/               React 前端：App 负责 Session/Port/Grok 三工具页与键盘编排；
+                   hooks/ 承载 usePreferences / useSessions / usePorts / useGrokProviders；
                    components/ 承载 AgentGroup / ProjectBucket / SessionRow /
-                   Controls / PortWorkspace / Skeleton / icons；
-                   lib/ 承载跨组件纯函数；styles/ 按组件边界拆分样式。
+                   Controls / PortWorkspace / ProvidersWorkspace / Skeleton / icons；
+                   lib/ 承载跨组件纯函数（含 grokProviderCards）；styles/ 按组件边界拆分样式。
 ```
 
 ---

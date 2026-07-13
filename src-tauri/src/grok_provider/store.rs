@@ -95,6 +95,21 @@ impl ProfileStore {
         self.write(&profiles)
     }
 
+    pub fn clear_active(&self) -> Result<(), String> {
+        let mut profiles = self.list()?;
+        let mut changed = false;
+        for p in &mut profiles {
+            if p.is_active {
+                p.is_active = false;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Ok(());
+        }
+        self.write(&profiles)
+    }
+
     fn ensure_dir(&self) -> Result<(), String> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;

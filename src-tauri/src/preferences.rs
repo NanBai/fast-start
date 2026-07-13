@@ -9,6 +9,8 @@ const LAUNCH_MODE_KEY: &str = "launch_mode";
 const THEME_MODE_KEY: &str = "theme_mode";
 const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
 const PORT_AUTO_REFRESH_KEY: &str = "port_auto_refresh";
+const GROK_PROVIDER_ORDER_KEY: &str = "grok_provider_order";
+const GROK_PINNED_PROVIDER_IDS_KEY: &str = "grok_pinned_provider_ids";
 
 fn normalize_project_dirs(project_dirs: Vec<String>) -> Vec<String> {
     let mut normalized = Vec::new();
@@ -129,4 +131,58 @@ pub fn save_favorite_project_dirs(
     store.save().map_err(|err| err.to_string())
 }
 
+fn normalize_string_list(items: Vec<String>) -> Vec<String> {
+    let mut out = Vec::new();
+    for item in items {
+        let s = item.trim().to_string();
+        if s.is_empty() || out.contains(&s) {
+            continue;
+        }
+        out.push(s);
+    }
+    out
+}
+
+pub fn load_grok_provider_layout(
+    app: &AppHandle,
+) -> Result<crate::grok_provider::GrokProviderLayout, String> {
+    use crate::grok_provider::GrokProviderLayout;
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let order = store
+        .get(GROK_PROVIDER_ORDER_KEY)
+        .map(serde_json::from_value::<Vec<String>>)
+        .transpose()
+        .map_err(|err| err.to_string())?
+        .unwrap_or_default();
+    let pinned_ids = store
+        .get(GROK_PINNED_PROVIDER_IDS_KEY)
+        .map(serde_json::from_value::<Vec<String>>)
+        .transpose()
+        .map_err(|err| err.to_string())?
+        .unwrap_or_default();
+    Ok(GrokProviderLayout {
+        order: normalize_string_list(order),
+        pinned_ids: normalize_string_list(pinned_ids),
+    }
+    .sanitize())
+}
+
+pub fn save_grok_provider_layout(
+    app: &AppHandle,
+    layout: crate::grok_provider::GrokProviderLayout,
+) -> Result<crate::grok_provider::GrokProviderLayout, String> {
+    let layout = layout.sanitize();
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(GROK_PROVIDER_ORDER_KEY, json!(layout.order.clone()));
+    store.set(
+        GROK_PINNED_PROVIDER_IDS_KEY,
+        json!(layout.pinned_ids.clone()),
+    );
+    store.save().map_err(|err| err.to_string())?;
+    Ok(layout)
+}
 

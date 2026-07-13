@@ -1,6 +1,8 @@
 use crate::grok_provider::{
-    GrokBackupInfo, GrokProfile, GrokProviderState, GrokProviderStatus,
+    GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile,
+    GrokProviderLayout, GrokProviderState, GrokProviderStatus,
 };
+use crate::preferences::{load_grok_provider_layout, save_grok_provider_layout};
 use crate::models::{LaunchMode, PortScanResponse, ScanResponse, TerminalType, ThemeMode};
 use crate::state::{
     save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh, save_preferred_terminal,
@@ -201,4 +203,31 @@ pub fn grok_restore_backup(
     state: State<'_, GrokProviderState>,
 ) -> Result<(), String> {
     state.restore_backup(&file)
+}
+
+#[tauri::command]
+pub fn grok_activate_official(
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokActivateOfficialResult, String> {
+    state.activate_official()
+}
+
+#[tauri::command]
+pub fn grok_apply_privacy_protection(
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokPrivacyResult, String> {
+    state.apply_privacy_protection()
+}
+
+#[tauri::command]
+pub fn get_grok_provider_layout(app: tauri::AppHandle) -> Result<GrokProviderLayout, String> {
+    load_grok_provider_layout(&app)
+}
+
+#[tauri::command]
+pub fn set_grok_provider_layout(
+    layout: GrokProviderLayout,
+    app: tauri::AppHandle,
+) -> Result<GrokProviderLayout, String> {
+    save_grok_provider_layout(&app, layout)
 }

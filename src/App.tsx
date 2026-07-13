@@ -125,10 +125,14 @@ function App() {
     profiles: grokProfiles,
     status: grokStatus,
     backups: grokBackups,
+    layout: grokLayout,
     loading: grokLoading,
     busyId: grokBusyId,
     refreshAll: refreshGrokProviders,
     activate: activateGrokProfile,
+    activateOfficial: activateGrokOfficial,
+    applyPrivacy: applyGrokPrivacy,
+    saveLayout: saveGrokLayout,
     importCurrent: importGrokCurrent,
     saveProfile: saveGrokProfile,
     removeProfile: removeGrokProfile,
@@ -529,17 +533,21 @@ function App() {
           />
         )
       ) : activeTool === "providers" ? (
-        grokLoading && grokProfiles.length === 0 ? (
+        grokLoading && grokStatus == null ? (
           <Skeleton />
         ) : (
           <ProvidersWorkspace
             profiles={grokProfiles}
             status={grokStatus}
             backups={grokBackups}
+            layout={grokLayout}
             loading={grokLoading}
             busyId={grokBusyId}
             onRefresh={() => void refreshGrokProviders()}
             onActivate={(id) => void activateGrokProfile(id)}
+            onActivateOfficial={() => void activateGrokOfficial()}
+            onApplyPrivacy={() => void applyGrokPrivacy()}
+            onSaveLayout={(next) => saveGrokLayout(next)}
             onImport={() => void importGrokCurrent()}
             onSave={(profile, activateAfter) => saveGrokProfile(profile, activateAfter)}
             onDelete={(id) => void removeGrokProfile(id)}

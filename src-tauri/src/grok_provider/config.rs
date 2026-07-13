@@ -46,6 +46,159 @@ pub fn apply_profile_to_file(path: &Path, profile: &GrokProfile) -> Result<(), S
     atomic_write(path, &next)
 }
 
+/// 清除供应商拥有的 API 覆盖，使 Grok 回退官方 OAuth（auth.json）。
+pub fn use_official_auth_to_file(path: &Path) -> Result<(), String> {
+    let data = if path.exists() {
+        fs::read(path).map_err(|e| e.to_string())?
+    } else {
+        Vec::new()
+    };
+    let next = use_official_auth_text(&data);
+    atomic_write(path, &next)
+}
+
+pub fn use_official_auth_text(data: &[u8]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(data)
+        .trim_start_matches('\u{feff}')
+        .to_string();
+    let lines = split_lines(&text);
+    let mut out: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < lines.len() {
+        let header = parse_header(&lines[i]);
+        if header.is_empty() {
+            out.push(lines[i].clone());
+            i += 1;
+            continue;
+        }
+        if header == "model" || header.starts_with("model.") {
+            i = skip_section(&lines, i + 1);
+            continue;
+        }
+        let end = skip_section(&lines, i + 1);
+        match header.as_str() {
+            "endpoints" => {
+                out.extend(remove_assignments(&lines[i..end], &["models_base_url"]));
+            }
+            "models" => {
+                out.extend(remove_assignments(&lines[i..end], &["default", "web_search"]));
+            }
+            "subagents" => {
+                out.extend(remove_assignments(&lines[i..end], &["default_model"]));
+            }
+            _ => {
+                out.extend(lines[i..end].iter().cloned());
+            }
+        }
+        i = end;
+    }
+    let mut result = out.join("\n");
+    result = result.trim_end_matches('\n').to_string();
+    if result.is_empty() {
+        return Vec::new();
+    }
+    result.push('\n');
+    result.into_bytes()
+}
+
+/// 合并本地隐私保护键，其它段尽量保留。
+pub fn apply_privacy_protection_to_file(path: &Path) -> Result<(), String> {
+    let data = if path.exists() {
+        fs::read(path).map_err(|e| e.to_string())?
+    } else {
+        Vec::new()
+    };
+    let next = apply_privacy_protection_text(&data);
+    atomic_write(path, &next)
+}
+
+pub fn apply_privacy_protection_text(data: &[u8]) -> Vec<u8> {
+    // 固定隐私键清单（与 design / grok-build-switch v0.2.0 对齐）
+    let settings: &[(&str, &[(&str, &str)])] = &[
+        ("features", &[("telemetry", "false")]),
+        (
+            "telemetry",
+            &[("trace_upload", "false"), ("mixpanel_enabled", "false")],
+        ),
+        ("harness", &[("disable_codebase_upload", "true")]),
+    ];
+    let text = String::from_utf8_lossy(data)
+        .trim_start_matches('\u{feff}')
+        .to_string();
+    let lines = split_lines(&text);
+    let mut out: Vec<String> = Vec::new();
+    let mut seen = HashMap::new();
+    let mut i = 0;
+    while i < lines.len() {
+        let header = parse_header(&lines[i]);
+        if header.is_empty() {
+            out.push(lines[i].clone());
+            i += 1;
+            continue;
+        }
+        let end = skip_section(&lines, i + 1);
+        if let Some((_, values)) = settings.iter().find(|(section, _)| *section == header) {
+            let map: HashMap<&str, &str> = values.iter().copied().collect();
+            out.extend(rewrite_values(&lines[i..end], &map));
+            seen.insert(header.clone(), true);
+        } else {
+            out.extend(lines[i..end].iter().cloned());
+        }
+        i = end;
+    }
+    for (section, values) in settings {
+        if seen.contains_key(*section) {
+            continue;
+        }
+        if out.last().map(|s| !s.trim().is_empty()).unwrap_or(false) {
+            out.push(String::new());
+        }
+        let map: HashMap<&str, &str> = values.iter().copied().collect();
+        out.extend(rewrite_values(&[format!("[{section}]")], &map));
+    }
+    let mut result = out.join("\n");
+    result = result.trim_end_matches('\n').to_string();
+    result.push('\n');
+    result.into_bytes()
+}
+
+fn remove_assignments(lines: &[String], keys: &[&str]) -> Vec<String> {
+    let removed: HashMap<&str, bool> = keys.iter().map(|k| (*k, true)).collect();
+    lines
+        .iter()
+        .filter(|line| !removed.contains_key(assignment_key(line).as_str()))
+        .cloned()
+        .collect()
+}
+
+fn rewrite_values(lines: &[String], values: &HashMap<&str, &str>) -> Vec<String> {
+    let mut seen = HashMap::new();
+    let mut out = Vec::new();
+    if lines.is_empty() {
+        return out;
+    }
+    out.push(lines[0].clone());
+    for line in lines.iter().skip(1) {
+        let key = assignment_key(line);
+        if let Some(val) = values.get(key.as_str()) {
+            out.push(format!("{key} = {val}"));
+            seen.insert(key, true);
+            continue;
+        }
+        out.push(line.clone());
+    }
+    let mut missing: Vec<_> = values
+        .keys()
+        .copied()
+        .filter(|k| !seen.contains_key(*k))
+        .collect();
+    missing.sort();
+    for key in missing {
+        out.push(format!("{key} = {}", values[key]));
+    }
+    out
+}
+
 pub fn current_matches(path: &Path, profile: &GrokProfile) -> Result<bool, String> {
     if !path.exists() {
         return Ok(false);
@@ -324,9 +477,78 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_profile_text, import_profile};
+    use super::{
+        apply_privacy_protection_text, apply_profile_text, import_profile, use_official_auth_text,
+    };
     use crate::grok_provider::profile::{GrokModelDef, GrokProfile};
     use std::fs;
+
+    #[test]
+    fn use_official_auth_removes_provider_overrides_keeps_other() {
+        let input = r#"[cli]
+show_tips = false
+
+[endpoints]
+models_base_url = "http://127.0.0.1:9/v1"
+other_url = "keep"
+
+[models]
+default = "m"
+web_search = "m"
+default_reasoning_effort = "high"
+
+[subagents]
+default_model = "m"
+
+[model.m]
+model = "m"
+api_key = "k"
+"#;
+        let out = String::from_utf8(use_official_auth_text(input.as_bytes())).unwrap();
+        assert!(!out.contains("models_base_url"));
+        assert!(!out.contains("default = \"m\""));
+        assert!(!out.contains("web_search"));
+        assert!(!out.contains("default_model"));
+        assert!(!out.contains("[model.m]"));
+        assert!(out.contains("[cli]"));
+        assert!(out.contains("show_tips = false"));
+        assert!(out.contains("other_url = \"keep\""));
+        assert!(out.contains("default_reasoning_effort = \"high\""));
+    }
+
+    #[test]
+    fn use_official_auth_empty_input_ok() {
+        let out = use_official_auth_text(b"");
+        assert!(out.is_empty() || out == b"\n" || String::from_utf8_lossy(&out).trim().is_empty());
+    }
+
+    #[test]
+    fn privacy_merges_keys_preserves_other() {
+        let input = r#"[cli]
+show_tips = true
+
+[features]
+telemetry = true
+other = 1
+"#;
+        let out = String::from_utf8(apply_privacy_protection_text(input.as_bytes())).unwrap();
+        assert!(out.contains("[cli]"));
+        assert!(out.contains("show_tips = true"));
+        assert!(out.contains("telemetry = false"));
+        assert!(out.contains("other = 1"));
+        assert!(out.contains("trace_upload = false"));
+        assert!(out.contains("mixpanel_enabled = false"));
+        assert!(out.contains("disable_codebase_upload = true"));
+    }
+
+    #[test]
+    fn privacy_on_empty_creates_sections() {
+        let out = String::from_utf8(apply_privacy_protection_text(b"")).unwrap();
+        assert!(out.contains("[features]"));
+        assert!(out.contains("telemetry = false"));
+        assert!(out.contains("[telemetry]"));
+        assert!(out.contains("[harness]"));
+    }
 
     #[test]
     fn apply_rewrites_endpoints_and_models_preserves_other() {

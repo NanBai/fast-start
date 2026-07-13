@@ -2,32 +2,48 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   emptyGrokProfile,
+  GrokActivateOfficialResult,
   GrokBackupInfo,
+  GrokPrivacyResult,
   GrokProfile,
+  GrokProviderLayout,
   GrokProviderStatus,
   StatusType,
 } from "../types";
 
 type NotifyStatus = (message: string, type: StatusType) => void;
 
+const emptyLayout = (): GrokProviderLayout => ({ order: [], pinnedIds: [] });
+
 export function useGrokProviders(notifyStatus: NotifyStatus) {
   const [profiles, setProfiles] = useState<GrokProfile[]>([]);
   const [status, setStatus] = useState<GrokProviderStatus | null>(null);
   const [backups, setBackups] = useState<GrokBackupInfo[]>([]);
+  const [layout, setLayout] = useState<GrokProviderLayout>(emptyLayout());
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function refreshAll(showStatus = true) {
     setLoading(true);
     try {
-      const [nextStatus, nextProfiles, nextBackups] = await Promise.all([
+      const [nextStatus, nextProfiles, nextBackups, layoutResult] = await Promise.all([
         invoke<GrokProviderStatus>("grok_provider_status"),
         invoke<GrokProfile[]>("grok_list_profiles"),
         invoke<GrokBackupInfo[]>("grok_list_backups"),
+        invoke<GrokProviderLayout>("get_grok_provider_layout").then(
+          (layout) => ({ ok: true as const, layout }),
+          (error) => ({ ok: false as const, error }),
+        ),
       ]);
       setStatus(nextStatus);
       setProfiles(nextProfiles);
       setBackups(nextBackups);
+      if (layoutResult.ok) {
+        setLayout(layoutResult.layout);
+      } else {
+        setLayout(emptyLayout());
+        notifyStatus(`卡片顺序加载失败，已用默认顺序：${String(layoutResult.error)}`, "error");
+      }
       if (showStatus) {
         notifyStatus(`已加载 ${nextProfiles.length} 个 Grok 供应商`, "success");
       }
@@ -48,6 +64,45 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
       notifyStatus(`启用失败：${String(error)}`, "error");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function activateOfficial() {
+    setBusyId("official");
+    try {
+      const result = await invoke<GrokActivateOfficialResult>("grok_activate_official");
+      notifyStatus(result.message, "success");
+      await refreshAll(false);
+    } catch (error) {
+      notifyStatus(`切换官方账号失败：${String(error)}`, "error");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function applyPrivacy() {
+    setBusyId("privacy");
+    try {
+      const result = await invoke<GrokPrivacyResult>("grok_apply_privacy_protection");
+      notifyStatus(result.message, "success");
+      await refreshAll(false);
+    } catch (error) {
+      notifyStatus(`隐私保护写入失败：${String(error)}`, "error");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function saveLayout(next: GrokProviderLayout) {
+    try {
+      const saved = await invoke<GrokProviderLayout>("set_grok_provider_layout", {
+        layout: next,
+      });
+      setLayout(saved);
+      return saved;
+    } catch (error) {
+      notifyStatus(`保存卡片顺序失败：${String(error)}`, "error");
+      return null;
     }
   }
 
@@ -125,10 +180,14 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
     profiles,
     status,
     backups,
+    layout,
     loading,
     busyId,
     refreshAll,
     activate,
+    activateOfficial,
+    applyPrivacy,
+    saveLayout,
     importCurrent,
     saveProfile,
     removeProfile,

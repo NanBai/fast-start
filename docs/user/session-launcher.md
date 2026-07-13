@@ -34,7 +34,14 @@ pnpm tauri dev
 
 应用打开后会自动扫描本机 session。扫描失败的 CLI 会在页面上显示错误，其他 CLI 的结果仍会展示。
 
-顶部的 `Session` / `Port` / `Grok` 切换用于在历史 session、端口监控和 Grok 上游供应商之间切换。`Cmd+K` 会聚焦当前工具页的搜索框（Grok 页除外）。
+顶部的 `Session` / `Port` / `Grok` 切换用于在历史 session、端口监控和 Grok 登录方式管理之间切换。`Cmd+K` 会聚焦当前工具页的搜索框（Grok 页除外）。
+
+### Grok 工具页
+
+- **官方账号**：清除 `config.toml` 中由 API 供应商写入的上游覆盖，回退使用 `grok login` 的 OAuth（`~/.grok/auth.json`）。切换后需新开 Grok 会话才生效。
+- **API 供应商**：保存 Base URL / API Key / 模型档案到 `~/.grok_switch/profiles.json`，启用时写入 `~/.grok/config.toml` 并自动备份。
+- **隐私保护**：一键合并本地遥测相关开关（不替代 Grok 账号侧 Coding data sharing 或 `/privacy`）。
+- **置顶与排序**：卡片可置顶、可拖动调整顺序，偏好保存在本机 app 设置中。
 
 ### 查找 session
 

@@ -1,0 +1,113 @@
+feature: 2026-07-13-extend-grok-providers-tool
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+    temporary_todo: forbidden
+    commented_out_code: forbidden
+    unused_imports: forbidden
+
+steps:
+  - action: "结构准备：src/lib/grokProviderCards.ts 落地 buildProviderCards（official + profiles + order/pin 算法按 design §2.1）；无 order 时 official 默认最前且 profile 保序"
+    exit_signal: "导出函数旁注释用例表 ≥3 组（默认序/置顶/死 key 过滤）可人工核对，且 pnpm build 通过"
+    status: done
+
+  - action: "后端计算：use_official_auth_text 与 apply_privacy_protection_text（常量隐私键）；单测覆盖清理清单、隐私合并、保留无关段、无初始 config"
+    exit_signal: "cargo test 中 config 变换相关测试全过，断言含保留段与目标键及无文件路径"
+    status: done
+
+  - action: "后端编排与命令：clear_active、activate_official（backup 可选/login Ok 不回滚）、apply_privacy、status 字段、get/set_grok_provider_layout；注册 lib.rs"
+    exit_signal: "单测覆盖 S1/S2/S3/S4/S5/S5b/S10/S12（含 backup 失败→Err）；cargo test --lib 全绿"
+    status: done
+
+  - action: "前端契约：types + useGrokProviders（或并列 hook）接入 activate_official/privacy/layout；busyId 支持 official/privacy"
+    exit_signal: "pnpm build 类型通过；invoke 名与 Result 类型与 design 一致"
+    status: done
+
+  - action: "UI 闭环：官方卡启用、隐私按钮、置顶与同组拖拽、搜索含官方、空 profiles 仍显示官方卡；错误/禁用态可见"
+    exit_signal: "手工可完成 S1/S2/S4/S5/S6/S11；加载/错误/已启用禁用态有表现"
+    status: done
+
+  - action: "harden 与文档：渲染前死 key 清洗；architecture 补 grok_provider 与三能力；user 文档短补；反向无托盘/HTTP 管理面"
+    exit_signal: "文档含官方/隐私/布局关键词；CMD-001 与 CMD-002 通过"
+    status: done
+
+checks:
+  - item: "GrokProviderStatus 含 officialActive（无 isActive profile）与 officialLoggedIn（GROK_HOME/auth.json 存在）"
+    source: 名词契约
+    status: passed
+
+  - item: "GrokActivateOfficialResult / GrokPrivacyResult / GrokProviderLayout 类型与 camelCase 命令契约存在"
+    source: 名词契约
+    status: passed
+
+  - item: "use_official_auth 只移除供应商拥有字段与 model 段；auth 路径不受 GROK_CONFIG 影响"
+    source: 名词契约
+    status: passed
+
+  - item: "隐私保护合并固定键且无 config 时可创建；不改 isActive"
+    source: 名词契约
+    status: passed
+
+  - item: "providerKey 为 official 与 profile:{id}；排序算法按 design 伪代码"
+    source: 名词契约
+    status: passed
+
+  - item: "ActivateOfficial：backup(若存在)→写 config→clear_active→optional login；login 失败仍 Ok"
+    source: 编排骨架
+    status: passed
+
+  - item: "写 config 成功但 clear_active 失败返回 Err，不 Ok"
+    source: 流程级约束
+    status: passed
+
+  - item: "挂载：grok_activate_official、grok_apply_privacy_protection、get/set_grok_provider_layout、status 扩展、ProvidersWorkspace、types"
+    source: 挂载点
+    status: passed
+
+  - item: "不做托盘、开机自启、本地 HTTP 管理面、拉模型列表、完整 config 编辑器、账号侧 /privacy、不改 ensure_default_profile 策略"
+    source: 范围守护
+    status: passed
+
+  - item: "S1 官方切换清理供应商字段并 clear active"
+    source: 验收场景
+    status: passed
+
+  - item: "S2 无 auth 时 loginRequired=true 且清理已提交"
+    source: 验收场景
+    status: passed
+
+  - item: "S4 官方后再启用 API 供应商恢复 apply+active"
+    source: 验收场景
+    status: passed
+
+  - item: "S5/S5b 隐私保护（有/无 config）"
+    source: 验收场景
+    status: passed
+
+  - item: "S6/S7 置顶与排序经 layout 命令持久化"
+    source: 验收场景
+    status: passed
+
+  - item: "S10 备份失败不返回 Ok"
+    source: 验收场景
+    status: passed
+
+  - item: "S11 无 API 供应商时仍显示官方卡"
+    source: 验收场景
+    status: passed
+
+  - item: "S12 无 config 启用官方不因无法备份失败"
+    source: 验收场景
+    status: passed

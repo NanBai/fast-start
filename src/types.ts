@@ -132,6 +132,23 @@ export interface GrokProviderStatus {
   dataDir: string;
   configMatchesActive: boolean;
   configExists: boolean;
+  officialActive: boolean;
+  officialLoggedIn: boolean;
+}
+
+export interface GrokActivateOfficialResult {
+  loginRequired: boolean;
+  message: string;
+}
+
+export interface GrokPrivacyResult {
+  path: string;
+  message: string;
+}
+
+export interface GrokProviderLayout {
+  order: string[];
+  pinnedIds: string[];
 }
 
 export function emptyGrokProfile(): GrokProfile {

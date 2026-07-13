@@ -1,0 +1,13 @@
+feature: "2026-07-13-extend-grok-providers-tool"
+status: passed
+baseline_ref: "e54c79a684aec5096c89e053a0aa4d063889a3f8"
+stage: complete
+driver_kind: native
+driver_id: "main-session-resume"
+handoff_reason: ""
+handoff_next: ""
+design: ".codestable/features/2026-07-13-extend-grok-providers-tool/extend-grok-providers-tool-design.md"
+checklist: ".codestable/features/2026-07-13-extend-grok-providers-tool/extend-grok-providers-tool-checklist.yaml"
+review: ".codestable/features/2026-07-13-extend-grok-providers-tool/extend-grok-providers-tool-review.md"
+qa: ".codestable/features/2026-07-13-extend-grok-providers-tool/extend-grok-providers-tool-qa.md"
+acceptance: ".codestable/features/2026-07-13-extend-grok-providers-tool/extend-grok-providers-tool-acceptance.md"

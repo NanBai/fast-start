@@ -77,6 +77,56 @@ pub struct GrokProviderStatus {
     pub data_dir: PathBuf,
     pub config_matches_active: bool,
     pub config_exists: bool,
+    /// 没有任何 profile isActive（不表示 config 已验证干净）
+    #[serde(default)]
+    pub official_active: bool,
+    /// `GROK_HOME/auth.json` 是否存在
+    #[serde(default)]
+    pub official_logged_in: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GrokActivateOfficialResult {
+    pub login_required: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GrokPrivacyResult {
+    pub path: PathBuf,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GrokProviderLayout {
+    #[serde(default)]
+    pub order: Vec<String>,
+    #[serde(default)]
+    pub pinned_ids: Vec<String>,
+}
+
+impl GrokProviderLayout {
+    pub fn sanitize(mut self) -> Self {
+        self.order = unique_strings(self.order);
+        self.pinned_ids = unique_strings(self.pinned_ids);
+        self
+    }
+}
+
+fn unique_strings(items: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for item in items {
+        let s = item.trim().to_string();
+        if s.is_empty() || !seen.insert(s.clone()) {
+            continue;
+        }
+        out.push(s);
+    }
+    out
 }
 
 impl GrokProfile {

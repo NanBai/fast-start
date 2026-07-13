@@ -90,8 +90,14 @@
 
 .provider-card-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+}
+
+.provider-card-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .provider-card-head h3 {
@@ -99,13 +105,55 @@
   font-size: 15px;
 }
 
-.provider-badge {
+.provider-card-flags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.provider-drag-handle {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: grab;
+  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.provider-drag-handle:active {
+  cursor: grabbing;
+}
+
+.provider-card-pinned {
+  outline: 1px dashed rgba(124, 58, 237, 0.35);
+}
+
+.provider-card-dragging {
+  opacity: 0.65;
+}
+
+.provider-badge,
+.provider-pin-badge {
   align-self: flex-start;
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 999px;
   background: rgba(124, 58, 237, 0.16);
   color: #7c3aed;
+  white-space: nowrap;
+}
+
+.provider-pin-badge {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+
+.btn.ghost {
+  background: transparent;
+  outline: 0.5px solid var(--group-stroke);
 }
 
 .provider-fields {

@@ -1,5 +1,17 @@
 import { FormEvent, useMemo, useState } from "react";
-import { emptyGrokProfile, GrokBackupInfo, GrokProfile, GrokProviderStatus } from "../types";
+import {
+  emptyGrokProfile,
+  GrokBackupInfo,
+  GrokProfile,
+  GrokProviderLayout,
+  GrokProviderStatus,
+} from "../types";
+import {
+  buildProviderCards,
+  filterProviderCards,
+  OFFICIAL_PROVIDER_KEY,
+  type ProviderCard,
+} from "../lib/grokProviderCards";
 
 function maskKey(key: string) {
   if (!key) return "（未设置）";
@@ -11,10 +23,14 @@ export function ProvidersWorkspace({
   profiles,
   status,
   backups,
+  layout,
   loading,
   busyId,
   onRefresh,
   onActivate,
+  onActivateOfficial,
+  onApplyPrivacy,
+  onSaveLayout,
   onImport,
   onSave,
   onDelete,
@@ -23,10 +39,14 @@ export function ProvidersWorkspace({
   profiles: GrokProfile[];
   status: GrokProviderStatus | null;
   backups: GrokBackupInfo[];
+  layout: GrokProviderLayout;
   loading: boolean;
   busyId: string | null;
   onRefresh: () => void;
   onActivate: (id: string) => void;
+  onActivateOfficial: () => void;
+  onApplyPrivacy: () => void;
+  onSaveLayout: (layout: GrokProviderLayout) => Promise<GrokProviderLayout | null>;
   onImport: () => void;
   onSave: (profile: GrokProfile, activateAfter: boolean) => Promise<GrokProfile | null>;
   onDelete: (id: string) => void;
@@ -34,17 +54,14 @@ export function ProvidersWorkspace({
 }) {
   const [editing, setEditing] = useState<GrokProfile | null>(null);
   const [query, setQuery] = useState("");
+  const [draggedKey, setDraggedKey] = useState<string | null>(null);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return profiles;
-    return profiles.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.baseUrl.toLowerCase().includes(q) ||
-        p.defaultModel.toLowerCase().includes(q),
-    );
-  }, [profiles, query]);
+  const cards = useMemo(
+    () => buildProviderCards(profiles, status, layout),
+    [profiles, status, layout],
+  );
+
+  const visible = useMemo(() => filterProviderCards(cards, query), [cards, query]);
 
   async function handleSubmit(event: FormEvent, activateAfter: boolean) {
     event.preventDefault();
@@ -74,6 +91,30 @@ export function ProvidersWorkspace({
     if (saved) setEditing(null);
   }
 
+  async function togglePin(key: string) {
+    const pinned = new Set(layout.pinnedIds);
+    if (pinned.has(key)) pinned.delete(key);
+    else pinned.add(key);
+    await onSaveLayout({
+      order: cards.map((c) => c.key),
+      pinnedIds: [...pinned],
+    });
+  }
+
+  async function reorder(sourceKey: string, targetKey: string) {
+    if (!sourceKey || sourceKey === targetKey) return;
+    const source = cards.find((c) => c.key === sourceKey);
+    const target = cards.find((c) => c.key === targetKey);
+    if (!source || !target || source.pinned !== target.pinned) return;
+    const order = cards.map((c) => c.key);
+    const from = order.indexOf(sourceKey);
+    const to = order.indexOf(targetKey);
+    if (from < 0 || to < 0) return;
+    order.splice(from, 1);
+    order.splice(to, 0, sourceKey);
+    await onSaveLayout({ order, pinnedIds: layout.pinnedIds });
+  }
+
   return (
     <section className="providers-workspace">
       {status && !status.configMatchesActive && status.activeProfile && (
@@ -99,14 +140,22 @@ export function ProvidersWorkspace({
 
       <div className="providers-toolbar">
         <div>
-          <h2 className="providers-title">Grok 供应商</h2>
+          <h2 className="providers-title">Grok 登录方式</h2>
           <p className="providers-desc">
-            切换 `~/.grok/config.toml` 上游；新开 Grok 会话生效
+            在官方账号与 API 供应商之间切换 `~/.grok/config.toml`；新开 Grok 会话生效
           </p>
         </div>
         <div className="providers-actions">
           <button type="button" className="btn" onClick={() => onRefresh()} disabled={loading}>
             刷新
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => onApplyPrivacy()}
+            disabled={!!busyId}
+          >
+            隐私保护
           </button>
           <button type="button" className="btn" onClick={() => onImport()} disabled={!!busyId}>
             导入当前配置
@@ -124,7 +173,7 @@ export function ProvidersWorkspace({
       <input
         className="providers-search"
         type="search"
-        placeholder="搜索供应商名称、URL 或模型…"
+        placeholder="搜索官方账号、供应商名称、URL 或模型…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -133,71 +182,38 @@ export function ProvidersWorkspace({
         <p className="providers-meta muted">
           配置：{status.configPath}
           {status.configExists ? "" : "（文件不存在）"} · 档案目录：{status.dataDir}
+          {status.officialActive ? " · 当前：官方账号" : ""}
         </p>
       )}
 
-      {loading && profiles.length === 0 ? (
-        <div className="empty-state">加载中…</div>
-      ) : visible.length === 0 ? (
+      {loading && !status && (
+        <p className="providers-meta muted" role="status">
+          加载中…
+        </p>
+      )}
+
+      {visible.length === 0 ? (
         <div className="empty-state">
-          <h3>还没有供应商</h3>
-          <p>从当前 config.toml 导入，或添加一个新的上游配置。</p>
+          <h3>没有匹配的登录方式</h3>
+          <p>调整搜索词，或添加一个 API 供应商。</p>
         </div>
       ) : (
         <div className="provider-grid">
-          {visible.map((profile) => (
-            <article
-              key={profile.id}
-              className="provider-card"
-              data-active={profile.isActive}
-            >
-              <header className="provider-card-head">
-                <div>
-                  <h3>{profile.name}</h3>
-                  <p className="muted mono">{profile.baseUrl || "（无 Base URL）"}</p>
-                </div>
-                {profile.isActive && <span className="provider-badge">启用中</span>}
-              </header>
-              <dl className="provider-fields">
-                <div>
-                  <dt>默认模型</dt>
-                  <dd>{profile.defaultModel || "—"}</dd>
-                </div>
-                <div>
-                  <dt>API Key</dt>
-                  <dd className="mono">{maskKey(profile.apiKey)}</dd>
-                </div>
-              </dl>
-              <footer className="provider-card-actions">
-                <button
-                  type="button"
-                  className="btn sm primary"
-                  disabled={profile.isActive || busyId === profile.id}
-                  onClick={() => onActivate(profile.id)}
-                >
-                  {profile.isActive ? "已启用" : "启用"}
-                </button>
-                <button
-                  type="button"
-                  className="btn sm"
-                  onClick={() => setEditing({ ...profile })}
-                >
-                  编辑
-                </button>
-                <button
-                  type="button"
-                  className="btn sm danger"
-                  disabled={busyId === profile.id}
-                  onClick={() => {
-                    if (confirm(`删除供应商「${profile.name}」？不会删除 config.toml`)) {
-                      onDelete(profile.id);
-                    }
-                  }}
-                >
-                  删除
-                </button>
-              </footer>
-            </article>
+          {visible.map((card) => (
+            <ProviderCardView
+              key={card.key}
+              card={card}
+              busyId={busyId}
+              draggedKey={draggedKey}
+              onDragStart={setDraggedKey}
+              onDragEnd={() => setDraggedKey(null)}
+              onDropOn={(target) => void reorder(draggedKey ?? "", target)}
+              onTogglePin={() => void togglePin(card.key)}
+              onActivateOfficial={onActivateOfficial}
+              onActivate={onActivate}
+              onEdit={(p) => setEditing({ ...p })}
+              onDelete={onDelete}
+            />
           ))}
         </div>
       )}
@@ -205,7 +221,7 @@ export function ProvidersWorkspace({
       <section className="providers-backups">
         <h3>配置备份</h3>
         {backups.length === 0 ? (
-          <p className="muted">暂无备份（启用供应商时会自动生成）</p>
+          <p className="muted">暂无备份（启用供应商 / 官方 / 隐私保护时会自动生成）</p>
         ) : (
           <ul className="backup-list">
             {backups.slice(0, 8).map((b) => (
@@ -315,5 +331,147 @@ export function ProvidersWorkspace({
         </div>
       )}
     </section>
+  );
+}
+
+function ProviderCardView({
+  card,
+  busyId,
+  draggedKey,
+  onDragStart,
+  onDragEnd,
+  onDropOn,
+  onTogglePin,
+  onActivateOfficial,
+  onActivate,
+  onEdit,
+  onDelete,
+}: {
+  card: ProviderCard;
+  busyId: string | null;
+  draggedKey: string | null;
+  onDragStart: (key: string) => void;
+  onDragEnd: () => void;
+  onDropOn: (key: string) => void;
+  onTogglePin: () => void;
+  onActivateOfficial: () => void;
+  onActivate: (id: string) => void;
+  onEdit: (profile: GrokProfile) => void;
+  onDelete: (id: string) => void;
+}) {
+  const official = card.kind === "official";
+  const profile = card.profile;
+  const busy =
+    busyId === card.key ||
+    (official && busyId === OFFICIAL_PROVIDER_KEY) ||
+    (!!profile && busyId === profile.id);
+
+  return (
+    <article
+      className={`provider-card${card.pinned ? " provider-card-pinned" : ""}${
+        draggedKey === card.key ? " provider-card-dragging" : ""
+      }`}
+      data-active={card.isActive}
+      data-provider-key={card.key}
+      data-pinned={card.pinned ? "1" : "0"}
+      onDragOver={(e) => {
+        if (!draggedKey || draggedKey === card.key) return;
+        const sourceEl = document.querySelector(
+          `[data-provider-key="${CSS.escape(draggedKey)}"]`,
+        ) as HTMLElement | null;
+        if (!sourceEl || sourceEl.dataset.pinned !== (card.pinned ? "1" : "0")) return;
+        e.preventDefault();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDropOn(card.key);
+      }}
+    >
+      <header className="provider-card-head">
+        <button
+          type="button"
+          className="provider-drag-handle"
+          draggable
+          title="拖动排序"
+          aria-label={`拖动 ${card.name} 排序`}
+          onDragStart={(e) => {
+            onDragStart(card.key);
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", card.key);
+          }}
+          onDragEnd={onDragEnd}
+        >
+          ↕
+        </button>
+        <div className="provider-card-info">
+          <h3>{card.name}</h3>
+          <p className="muted mono">{card.subtitle}</p>
+        </div>
+        <div className="provider-card-flags">
+          {card.pinned && <span className="provider-pin-badge">已置顶</span>}
+          {card.isActive && <span className="provider-badge">启用中</span>}
+        </div>
+      </header>
+      <dl className="provider-fields">
+        {official ? (
+          <>
+            <div>
+              <dt>登录状态</dt>
+              <dd>{card.loggedIn ? "已登录" : "尚未登录"}</dd>
+            </div>
+            <div>
+              <dt>模式</dt>
+              <dd>OAuth / auth.json</dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <dt>默认模型</dt>
+              <dd>{profile?.defaultModel || "—"}</dd>
+            </div>
+            <div>
+              <dt>API Key</dt>
+              <dd className="mono">{maskKey(profile?.apiKey ?? "")}</dd>
+            </div>
+          </>
+        )}
+      </dl>
+      <footer className="provider-card-actions">
+        <button
+          type="button"
+          className="btn sm primary"
+          disabled={card.isActive || busy}
+          onClick={() => {
+            if (official) onActivateOfficial();
+            else if (profile) onActivate(profile.id);
+          }}
+        >
+          {card.isActive ? "已启用" : "启用"}
+        </button>
+        <button type="button" className="btn sm ghost" onClick={onTogglePin}>
+          {card.pinned ? "取消置顶" : "置顶"}
+        </button>
+        {!official && profile && (
+          <>
+            <button type="button" className="btn sm" onClick={() => onEdit(profile)}>
+              编辑
+            </button>
+            <button
+              type="button"
+              className="btn sm danger"
+              disabled={busy}
+              onClick={() => {
+                if (confirm(`删除供应商「${profile.name}」？不会删除 config.toml`)) {
+                  onDelete(profile.id);
+                }
+              }}
+            >
+              删除
+            </button>
+          </>
+        )}
+      </footer>
+    </article>
   );
 }

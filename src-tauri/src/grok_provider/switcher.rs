@@ -1,5 +1,10 @@
-use super::config::{apply_profile_to_file, current_matches, import_profile};
-use super::profile::{GrokBackupInfo, GrokProfile, GrokProviderStatus};
+use super::config::{
+    apply_privacy_protection_to_file, apply_profile_to_file, current_matches, import_profile,
+    use_official_auth_to_file,
+};
+use super::profile::{
+    GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile, GrokProviderStatus,
+};
 use super::store::ProfileStore;
 use chrono::{DateTime, Utc};
 use std::fs;
@@ -8,6 +13,7 @@ use std::time::SystemTime;
 
 pub struct GrokSwitcher {
     config_path: PathBuf,
+    auth_path: PathBuf,
     data_dir: PathBuf,
     backups_dir: PathBuf,
     profiles: ProfileStore,
@@ -15,13 +21,14 @@ pub struct GrokSwitcher {
 
 impl GrokSwitcher {
     pub fn open() -> Result<Self, String> {
-        let (config_path, data_dir) = resolve_paths()?;
+        let (config_path, auth_path, data_dir) = resolve_paths()?;
         let backups_dir = data_dir.join("backups");
         fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
         fs::create_dir_all(&backups_dir).map_err(|e| e.to_string())?;
         let profiles = ProfileStore::new(data_dir.join("profiles.json"));
         let sw = Self {
             config_path,
+            auth_path,
             data_dir,
             backups_dir,
             profiles,
@@ -32,16 +39,31 @@ impl GrokSwitcher {
 
     #[cfg(test)]
     pub fn open_with(config_path: PathBuf, data_dir: PathBuf) -> Result<Self, String> {
+        let auth_path = config_path
+            .parent()
+            .map(|p| p.join("auth.json"))
+            .unwrap_or_else(|| PathBuf::from("auth.json"));
         let backups_dir = data_dir.join("backups");
         fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
         fs::create_dir_all(&backups_dir).map_err(|e| e.to_string())?;
         let profiles = ProfileStore::new(data_dir.join("profiles.json"));
         Ok(Self {
             config_path,
+            auth_path,
             data_dir,
             backups_dir,
             profiles,
         })
+    }
+
+    #[cfg(test)]
+    pub fn set_auth_path_for_test(&mut self, path: PathBuf) {
+        self.auth_path = path;
+    }
+
+    #[cfg(test)]
+    pub fn set_backups_dir_for_test(&mut self, path: PathBuf) {
+        self.backups_dir = path;
     }
 
     pub fn list_profiles(&self) -> Result<Vec<GrokProfile>, String> {
@@ -68,6 +90,46 @@ impl GrokSwitcher {
         let mut active = self.profiles.get(id)?;
         active.is_active = true;
         Ok(active)
+    }
+
+    pub fn activate_official(&self) -> Result<GrokActivateOfficialResult, String> {
+        if self.config_path.exists() {
+            self.backup()?;
+        }
+        use_official_auth_to_file(&self.config_path)?;
+        self.profiles.clear_active().map_err(|e| {
+            format!("已清理 config.toml，但清除供应商启用状态失败，请重试「启用官方」：{e}")
+        })?;
+
+        let login_required = !self.auth_path.exists();
+        let mut message = "已切换到官方账号，新开 Grok 会话生效".to_string();
+        if login_required {
+            match start_grok_login() {
+                Ok(()) => {
+                    message =
+                        "已切换到官方配置，请在浏览器完成 grok login".to_string();
+                }
+                Err(_) => {
+                    message =
+                        "已切换到官方配置，请在终端执行 grok login".to_string();
+                }
+            }
+        }
+        Ok(GrokActivateOfficialResult {
+            login_required,
+            message,
+        })
+    }
+
+    pub fn apply_privacy_protection(&self) -> Result<GrokPrivacyResult, String> {
+        if self.config_path.exists() {
+            self.backup()?;
+        }
+        apply_privacy_protection_to_file(&self.config_path)?;
+        Ok(GrokPrivacyResult {
+            path: self.config_path.clone(),
+            message: "隐私保护配置已写入 config.toml".to_string(),
+        })
     }
 
     pub fn import_current(&self, name: &str, active: bool) -> Result<GrokProfile, String> {
@@ -100,6 +162,8 @@ impl GrokSwitcher {
     pub fn status(&self) -> Result<GrokProviderStatus, String> {
         let profiles = self.profiles.list()?;
         let active = profiles.into_iter().find(|p| p.is_active);
+        let official_active = active.is_none();
+        let official_logged_in = self.auth_path.exists();
         let config_exists = self.config_path.exists();
         let config_matches_active = match &active {
             Some(p) if config_exists => current_matches(&self.config_path, p).unwrap_or(false),
@@ -111,6 +175,8 @@ impl GrokSwitcher {
             data_dir: self.data_dir.clone(),
             config_matches_active,
             config_exists,
+            official_active,
+            official_logged_in,
         })
     }
 
@@ -190,7 +256,35 @@ impl GrokSwitcher {
     }
 }
 
-fn resolve_paths() -> Result<(PathBuf, PathBuf), String> {
+#[cfg(test)]
+fn start_grok_login() -> Result<(), String> {
+    // 单测不得拉起真实 OAuth 设备流
+    Err("skipped in tests".to_string())
+}
+
+#[cfg(not(test))]
+fn start_grok_login() -> Result<(), String> {
+    use std::process::Command;
+    let mut cmd = Command::new("grok");
+    cmd.arg("login");
+    // best-effort：常见安装路径
+    if let Some(home) = dirs::home_dir() {
+        let bin = home.join(".grok").join("bin");
+        if bin.is_dir() {
+            let path = std::env::var_os("PATH").unwrap_or_default();
+            let mut paths = std::env::split_paths(&path).collect::<Vec<_>>();
+            paths.insert(0, bin);
+            if let Ok(joined) = std::env::join_paths(paths) {
+                cmd.env("PATH", joined);
+            }
+        }
+    }
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// config 来自 GROK_CONFIG 或 GROK_HOME/config.toml；
+/// auth 始终来自 GROK_HOME/auth.json（不受 GROK_CONFIG 影响）。
+fn resolve_paths() -> Result<(PathBuf, PathBuf, PathBuf), String> {
     let home = dirs::home_dir().ok_or_else(|| "无法定位用户主目录".to_string())?;
     let grok_home = std::env::var("GROK_HOME")
         .ok()
@@ -202,8 +296,9 @@ fn resolve_paths() -> Result<(PathBuf, PathBuf), String> {
         .filter(|s| !s.trim().is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| grok_home.join("config.toml"));
+    let auth_path = grok_home.join("auth.json");
     let data_dir = home.join(".grok_switch");
-    Ok((config_path, data_dir))
+    Ok((config_path, auth_path, data_dir))
 }
 
 fn system_time_to_utc(time: Option<SystemTime>) -> DateTime<Utc> {
@@ -216,6 +311,31 @@ mod tests {
     use super::GrokSwitcher;
     use crate::grok_provider::profile::{GrokModelDef, GrokProfile};
     use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn sample_profile(name: &str) -> GrokProfile {
+        GrokProfile {
+            id: String::new(),
+            name: name.into(),
+            upstream_format: "openai_chat".into(),
+            base_url: "http://127.0.0.1:9/v1".into(),
+            api_key: "k".into(),
+            available_models: vec![],
+            default_model: "m".into(),
+            web_search_model: "m".into(),
+            subagents_default_model: "m".into(),
+            models: vec![GrokModelDef {
+                name: "m".into(),
+                model: "m".into(),
+                api_key: "k".into(),
+                api_backend: "chat_completions".into(),
+                ..Default::default()
+            }],
+            created_at: None,
+            updated_at: None,
+            is_active: false,
+        }
+    }
 
     #[test]
     fn activate_writes_config_and_marks_active() {
@@ -233,29 +353,7 @@ default = "old"
         )
         .unwrap();
         let sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
-        let created = sw
-            .create_profile(GrokProfile {
-                id: String::new(),
-                name: "Alpha".into(),
-                upstream_format: "openai_chat".into(),
-                base_url: "http://127.0.0.1:9/v1".into(),
-                api_key: "k".into(),
-                available_models: vec![],
-                default_model: "m".into(),
-                web_search_model: "m".into(),
-                subagents_default_model: "m".into(),
-                models: vec![GrokModelDef {
-                    name: "m".into(),
-                    model: "m".into(),
-                    api_key: "k".into(),
-                    api_backend: "chat_completions".into(),
-                    ..Default::default()
-                }],
-                created_at: None,
-                updated_at: None,
-                is_active: false,
-            })
-            .unwrap();
+        let created = sw.create_profile(sample_profile("Alpha")).unwrap();
         let active = sw.activate(&created.id).unwrap();
         assert!(active.is_active);
         let text = fs::read_to_string(&config).unwrap();
@@ -263,5 +361,182 @@ default = "old"
         assert!(text.contains("default = \"m\""));
         assert!(text.contains("[cli]"));
         assert!(sw.list_backups().unwrap().len() >= 1);
+    }
+
+    #[test]
+    fn activate_official_clears_provider_and_active() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(
+            &config,
+            r#"[cli]
+show_tips = false
+
+[endpoints]
+models_base_url = "http://old"
+
+[models]
+default = "old"
+"#,
+        )
+        .unwrap();
+        let mut sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        let created = sw.create_profile(sample_profile("Alpha")).unwrap();
+        sw.activate(&created.id).unwrap();
+        // no auth.json
+        sw.set_auth_path_for_test(temp.path().join("missing-auth.json"));
+        let result = sw.activate_official().unwrap();
+        assert!(result.login_required);
+        let status = sw.status().unwrap();
+        assert!(status.official_active);
+        assert!(!status.official_logged_in);
+        assert!(status.active_profile.is_none());
+        let text = fs::read_to_string(&config).unwrap();
+        assert!(!text.contains("models_base_url"));
+        assert!(text.contains("[cli]"));
+        assert!(sw.list_backups().unwrap().len() >= 1);
+    }
+
+    #[test]
+    fn activate_official_with_auth_not_login_required() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        let auth = temp.path().join("auth.json");
+        fs::write(&config, "[cli]\nshow_tips = false\n").unwrap();
+        fs::write(&auth, "{}").unwrap();
+        let mut sw = GrokSwitcher::open_with(config, data).unwrap();
+        sw.set_auth_path_for_test(auth);
+        let result = sw.activate_official().unwrap();
+        assert!(!result.login_required);
+        assert!(sw.status().unwrap().official_logged_in);
+    }
+
+    #[test]
+    fn activate_official_without_config_skips_backup() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        let mut sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        sw.set_auth_path_for_test(temp.path().join("missing-auth.json"));
+        let result = sw.activate_official().unwrap();
+        assert!(result.login_required);
+        assert!(config.exists());
+        assert!(sw.list_backups().unwrap().is_empty());
+        assert!(sw.status().unwrap().official_active);
+    }
+
+    #[test]
+    fn activate_official_clear_active_failure_returns_err() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nx = 1\n").unwrap();
+        let mut sw = GrokSwitcher::open_with(config.clone(), data.clone()).unwrap();
+        let created = sw.create_profile(sample_profile("Locked")).unwrap();
+        sw.activate(&created.id).unwrap();
+        // 备份写到 data 外，避免锁 data 后 backup 先失败
+        let alt_backups = temp.path().join("alt-backups");
+        fs::create_dir_all(&alt_backups).unwrap();
+        sw.set_backups_dir_for_test(alt_backups);
+        let mut perms = fs::metadata(&data).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&data, perms).unwrap();
+        let result = sw.activate_official();
+        let mut restore = fs::metadata(&data).unwrap().permissions();
+        restore.set_mode(0o755);
+        fs::set_permissions(&data, restore).unwrap();
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("清除供应商") || err.contains("重试"),
+            "unexpected err: {err}"
+        );
+        // config 可能已清理，但不返回 Ok
+        let text = fs::read_to_string(&config).unwrap();
+        assert!(!text.contains("models_base_url"));
+    }
+
+    #[test]
+    fn activate_then_official_then_api_again() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nx = 1\n").unwrap();
+        let sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        let created = sw.create_profile(sample_profile("Beta")).unwrap();
+        sw.activate(&created.id).unwrap();
+        sw.activate_official().unwrap();
+        assert!(sw.status().unwrap().official_active);
+        sw.activate(&created.id).unwrap();
+        let status = sw.status().unwrap();
+        assert!(!status.official_active);
+        assert_eq!(status.active_profile.as_ref().unwrap().id, created.id);
+        let text = fs::read_to_string(&config).unwrap();
+        assert!(text.contains("models_base_url"));
+    }
+
+    #[test]
+    fn privacy_without_config_creates_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        let sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        let result = sw.apply_privacy_protection().unwrap();
+        assert_eq!(result.path, config);
+        let text = fs::read_to_string(&config).unwrap();
+        assert!(text.contains("telemetry = false"));
+        assert!(text.contains("disable_codebase_upload = true"));
+        assert!(sw.list_backups().unwrap().is_empty());
+    }
+
+    #[test]
+    fn privacy_with_config_backs_up() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nshow_tips = true\n").unwrap();
+        let sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        sw.apply_privacy_protection().unwrap();
+        let text = fs::read_to_string(&config).unwrap();
+        assert!(text.contains("show_tips = true"));
+        assert!(text.contains("telemetry = false"));
+        assert!(!sw.list_backups().unwrap().is_empty());
+    }
+
+    #[test]
+    fn activate_official_backup_failure_returns_err() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nx = 1\n").unwrap();
+        let mut sw = GrokSwitcher::open_with(config, data.clone()).unwrap();
+        // 用文件占用 backups 路径，使 create_dir_all / 写入失败
+        let bad_backups = data.join("backups-as-file");
+        fs::write(&bad_backups, b"not-a-dir").unwrap();
+        sw.set_backups_dir_for_test(bad_backups);
+        let err = sw.activate_official().unwrap_err();
+        assert!(!err.is_empty());
+    }
+
+    #[test]
+    fn activate_official_backup_unwritable_dir_returns_err() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nx = 1\n").unwrap();
+        let mut sw = GrokSwitcher::open_with(config, data).unwrap();
+        let locked = temp.path().join("locked-backups");
+        fs::create_dir_all(&locked).unwrap();
+        let mut perms = fs::metadata(&locked).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&locked, perms).unwrap();
+        sw.set_backups_dir_for_test(locked.clone());
+        let result = sw.activate_official();
+        // 恢复权限便于 temp 清理
+        let mut perms = fs::metadata(&locked).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&locked, perms).unwrap();
+        assert!(result.is_err());
     }
 }

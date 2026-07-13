@@ -10,12 +10,13 @@ mod session_delete;
 mod state;
 
 use commands::{
-    delete_session, get_favorite_project_dirs, get_launch_mode, get_port_auto_refresh,
-    get_preferred_terminal, get_theme_mode, grok_activate_profile, grok_create_profile,
-    grok_delete_profile, grok_import_current, grok_list_backups, grok_list_profiles,
-    grok_provider_status, grok_restore_backup, grok_update_profile, launch_session,
-    list_available_terminals, refresh_ports, refresh_sessions, scan_ports, scan_sessions,
-    set_favorite_project_dirs, set_launch_mode, set_port_auto_refresh, set_preferred_terminal,
+    delete_session, get_favorite_project_dirs, get_grok_provider_layout, get_launch_mode,
+    get_port_auto_refresh, get_preferred_terminal, get_theme_mode, grok_activate_official,
+    grok_activate_profile, grok_apply_privacy_protection, grok_create_profile, grok_delete_profile,
+    grok_import_current, grok_list_backups, grok_list_profiles, grok_provider_status,
+    grok_restore_backup, grok_update_profile, launch_session, list_available_terminals,
+    refresh_ports, refresh_sessions, scan_ports, scan_sessions, set_favorite_project_dirs,
+    set_grok_provider_layout, set_launch_mode, set_port_auto_refresh, set_preferred_terminal,
     set_theme_mode, terminate_port_processes,
 };
 use grok_provider::GrokProviderState;
@@ -88,9 +89,13 @@ pub fn run() {
             grok_update_profile,
             grok_delete_profile,
             grok_activate_profile,
+            grok_activate_official,
+            grok_apply_privacy_protection,
             grok_import_current,
             grok_list_backups,
             grok_restore_backup,
+            get_grok_provider_layout,
+            set_grok_provider_layout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
