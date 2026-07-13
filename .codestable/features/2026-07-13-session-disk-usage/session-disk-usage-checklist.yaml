@@ -1,0 +1,28 @@
+feature: 2026-07-13-session-disk-usage
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "基于 health approxBytes 的 CLI/项目聚合展示"
+    exit_signal: "UI 可见聚合；OpenCode 不虚报整库"
+    status: pending
+
+checks:
+  - item: "不递归 project_dir 工作区"
+    source: 范围守护
+    status: pending
+  - item: "允许 null/size_capped"
+    source: 名词契约
+    status: pending
+  - item: "依赖 inspect 已落地"
+    source: 编排骨架
+    status: pending

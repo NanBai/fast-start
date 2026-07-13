@@ -71,6 +71,31 @@ export interface LaunchCommandPreview {
   cd: boolean;
 }
 
+export type PreflightSeverity = "block" | "warn";
+
+export type PreflightCheckCode =
+  | "session_not_found"
+  | "cwd_missing"
+  | "cwd_not_dir"
+  | "program_not_found"
+  | "source_missing"
+  | "source_unverified"
+  | "invalid_session_id"
+  | "invalid_spec";
+
+export interface PreflightCheck {
+  code: PreflightCheckCode | string;
+  severity: PreflightSeverity;
+  message: string;
+}
+
+export interface PreflightResult {
+  sessionListId: string;
+  ok: boolean;
+  checks: PreflightCheck[];
+  preview: LaunchCommandPreview | null;
+}
+
 export const CLI_ORDER: CliType[] = [
   "codex",
   "claude-code",

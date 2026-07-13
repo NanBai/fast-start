@@ -1,0 +1,53 @@
+feature: 2026-07-13-launch-preflight
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "落地 session_source::check_session_source 共享函数 + OpenCode 行探测单测"
+    exit_signal: "health/preflight 可 import 同一函数；OpenCode 不以 db 文件存在为源"
+    status: done
+  - action: "预检类型 + preflight_session 矩阵单测（含缓存窗/PATH resolver）"
+    exit_signal: "cargo test 覆盖 block/warn 矩阵"
+    status: done
+  - action: "preflight_launch command + lib 注册；preview 同组装路径"
+    exit_signal: "command 可 invoke；未知 id 返回 Ok+check"
+    status: done
+  - action: "launch_session 复用预检 block 门闩"
+    exit_signal: "有 block 时不写 wrapper / 不启动"
+    status: done
+  - action: "前端展示 checks / 启动失败信息"
+    exit_signal: "pnpm build；坏 cwd 可见原因"
+    status: done
+
+checks:
+  - item: "未知 id 走 Ok+session_not_found block"
+    source: 名词契约
+    status: passed
+  - item: "缓存窗 source_unverified warn 且不拦 launch"
+    source: 流程级约束
+    status: passed
+  - item: "OpenCode 源=行非 db 文件；共享 check_session_source"
+    source: 名词契约
+    status: passed
+  - item: "PATH 与 launcher login 缓存一致"
+    source: 流程级约束
+    status: passed
+  - item: "launch 有 block 不启动"
+    source: 验收场景
+    status: passed
+  - item: "不写 wrapper / 不做全文索引"
+    source: 范围守护
+    status: passed

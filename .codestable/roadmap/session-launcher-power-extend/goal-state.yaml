@@ -1,0 +1,108 @@
+roadmap: "session-launcher-power-extend"
+status: running
+baseline_ref: "bb5bec084d708d05cfd3303ebe095b2b9cb87d8f"
+driver_kind: none
+driver_id: ""
+handoff_reason: ""
+handoff_next: ""
+current_feature_index: 1
+features:
+  - slug: launch-preflight
+    roadmap_item: launch-preflight
+    feature_dir: ".codestable/features/2026-07-13-launch-preflight"
+    design: ".codestable/features/2026-07-13-launch-preflight/launch-preflight-design.md"
+    checklist: ".codestable/features/2026-07-13-launch-preflight/launch-preflight-checklist.yaml"
+    review: ".codestable/features/2026-07-13-launch-preflight/launch-preflight-review.md"
+    qa: ".codestable/features/2026-07-13-launch-preflight/launch-preflight-qa.md"
+    acceptance: ".codestable/features/2026-07-13-launch-preflight/launch-preflight-acceptance.md"
+    status: accepted
+  - slug: session-health-inspect
+    roadmap_item: session-health-inspect
+    feature_dir: ".codestable/features/2026-07-13-session-health-inspect"
+    design: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-design.md"
+    checklist: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-checklist.yaml"
+    review: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-review.md"
+    qa: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-qa.md"
+    acceptance: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-acceptance.md"
+    status: pending
+  - slug: session-summary-enrichment
+    roadmap_item: session-summary-enrichment
+    feature_dir: ".codestable/features/2026-07-13-session-summary-enrichment"
+    design: ".codestable/features/2026-07-13-session-summary-enrichment/session-summary-enrichment-design.md"
+    checklist: ".codestable/features/2026-07-13-session-summary-enrichment/session-summary-enrichment-checklist.yaml"
+    review: ".codestable/features/2026-07-13-session-summary-enrichment/session-summary-enrichment-review.md"
+    qa: ".codestable/features/2026-07-13-session-summary-enrichment/session-summary-enrichment-qa.md"
+    acceptance: ".codestable/features/2026-07-13-session-summary-enrichment/session-summary-enrichment-acceptance.md"
+    status: pending
+  - slug: session-bulk-delete
+    roadmap_item: session-bulk-delete
+    feature_dir: ".codestable/features/2026-07-13-session-bulk-delete"
+    design: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-design.md"
+    checklist: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-checklist.yaml"
+    review: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-review.md"
+    qa: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-qa.md"
+    acceptance: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-acceptance.md"
+    status: pending
+  - slug: session-disk-usage
+    roadmap_item: session-disk-usage
+    feature_dir: ".codestable/features/2026-07-13-session-disk-usage"
+    design: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-design.md"
+    checklist: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-checklist.yaml"
+    review: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-review.md"
+    qa: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-qa.md"
+    acceptance: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-acceptance.md"
+    status: pending
+  - slug: port-protect-list
+    roadmap_item: port-protect-list
+    feature_dir: ".codestable/features/2026-07-13-port-protect-list"
+    design: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-design.md"
+    checklist: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-checklist.yaml"
+    review: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-review.md"
+    qa: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-qa.md"
+    acceptance: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-acceptance.md"
+    status: pending
+  - slug: port-group-and-terminate-by-project
+    roadmap_item: port-group-and-terminate-by-project
+    feature_dir: ".codestable/features/2026-07-13-port-group-and-terminate-by-project"
+    design: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-design.md"
+    checklist: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-checklist.yaml"
+    review: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-review.md"
+    qa: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-qa.md"
+    acceptance: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-acceptance.md"
+    status: pending
+  - slug: grok-config-health
+    roadmap_item: grok-config-health
+    feature_dir: ".codestable/features/2026-07-13-grok-config-health"
+    design: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-design.md"
+    checklist: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-checklist.yaml"
+    review: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-review.md"
+    qa: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-qa.md"
+    acceptance: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-acceptance.md"
+    status: pending
+  - slug: terminal-adapter-extend
+    roadmap_item: terminal-adapter-extend
+    feature_dir: ".codestable/features/2026-07-13-terminal-adapter-extend"
+    design: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-design.md"
+    checklist: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-checklist.yaml"
+    review: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-review.md"
+    qa: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-qa.md"
+    acceptance: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-acceptance.md"
+    status: pending
+  - slug: cli-extension-contract
+    roadmap_item: cli-extension-contract
+    feature_dir: ".codestable/features/2026-07-13-cli-extension-contract"
+    design: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-design.md"
+    checklist: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-checklist.yaml"
+    review: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-review.md"
+    qa: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-qa.md"
+    acceptance: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-acceptance.md"
+    status: pending
+  - slug: power-extend-harden-and-docs
+    roadmap_item: power-extend-harden-and-docs
+    feature_dir: ".codestable/features/2026-07-13-power-extend-harden-and-docs"
+    design: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-design.md"
+    checklist: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-checklist.yaml"
+    review: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-review.md"
+    qa: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-qa.md"
+    acceptance: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-acceptance.md"
+    status: pending

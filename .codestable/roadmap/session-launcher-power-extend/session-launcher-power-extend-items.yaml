@@ -1,0 +1,103 @@
+roadmap: session-launcher-power-extend
+created: 2026-07-13
+
+items:
+  - slug: launch-preflight
+    description: 对 session 列表稳定 id 做只读启动预检（cwd/program/源）；launch 复用 block 判定；UI 展示 checks
+    depends_on: []
+    status: done
+    feature: 2026-07-13-launch-preflight
+    minimal_loop: true
+    notes: "最小闭环；未知 id 走 Ok+session_not_found；缓存窗 source_unverified=warn 不拦 launch；源探测与 inspect 同源；OpenCode source=行非 db 文件"
+
+  - slug: session-health-inspect
+    description: inspect_session_health 返回 cwd/源/flags/approxBytes；列表可筛 missing_cwd 与 missing_source
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-session-health-inspect
+    minimal_loop: false
+    notes: "≤200 ids；OpenCode source=行存在 approxBytes=null；目录有界 du；不暴露路径"
+
+  - slug: session-summary-enrichment
+    description: 各 scanner 摘要质量与长度约定落地，fixture 测试锁定噪声过滤与 clean_summary 行为
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-session-summary-enrichment
+    minimal_loop: false
+    notes: "截断仅 clean_summary ≤160；不建全文索引"
+
+  - slug: session-bulk-delete
+    description: 多选 session 后 delete_sessions 批量删除；返回 deletedIds 与 failures；复用单条删除全路径
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-session-bulk-delete
+    minimal_loop: false
+    notes: "上限50；走 AppState::delete_session 含 OpenCode；sanitize recent+cache；先 cs-req 修订批量边界；UI 必展示 failures"
+
+  - slug: session-disk-usage
+    description: 按 CLI 与项目聚合 session 源载体近似体积并在 UI 展示
+    depends_on:
+      - session-health-inspect
+    status: in-progress
+    feature: 2026-07-13-session-disk-usage
+    minimal_loop: false
+    notes: "非核心；可 drop 时从 harden depends_on 移除；允许 null/size_capped"
+
+  - slug: port-protect-list
+    description: preferences port_protect_ports；terminate 命中保护端口则整批失败
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-port-protect-list
+    minimal_loop: false
+    notes: "protect 优先于多选；无 force 绕过"
+
+  - slug: port-group-and-terminate-by-project
+    description: Port 列表按 working_directory 项目分组；组内多选后调用既有 terminate_port_processes（遵守 protect）
+    depends_on:
+      - port-protect-list
+    status: in-progress
+    feature: 2026-07-13-port-group-and-terminate-by-project
+    minimal_loop: false
+    notes: "写死 UI-only；不新增 terminate_ports_for_project；未知目录组无一键关"
+
+  - slug: grok-config-health
+    description: grok_config_health 产出可测 issues[] 诊断；聚合 status/backups 只读且无 secret/绝对路径
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-grok-config-health
+    minimal_loop: false
+    notes: "delta 于既有 status/list_backups；不写盘、不出站、不 log apiKey"
+
+  - slug: terminal-adapter-extend
+    description: 至少一个新 macOS TerminalLauncher（Warp 或 WezTerm）；list_available_terminals 与偏好可选；wrapper+校验
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-terminal-adapter-extend
+    minimal_loop: false
+    notes: "trait 含 LaunchMode/supports_tab；本机均不可用可 drop 并从 harden depends 移除"
+
+  - slug: cli-extension-contract
+    description: 为每个 CliType 增加注册完整性 cargo 测试、前端 labels 覆盖与 docs/dev CLI 扩展 checklist
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-cli-extension-contract
+    minimal_loop: false
+    notes: "编译期契约；无动态插件加载"
+
+  - slug: power-extend-harden-and-docs
+    description: 本 epic 收口：交叉回归、ARCHITECTURE/用户文档/AGENTS 偏好 key 同步、残留风险清单
+    depends_on:
+      - launch-preflight
+      - session-health-inspect
+      - session-summary-enrichment
+      - session-bulk-delete
+      - session-disk-usage
+      - port-protect-list
+      - port-group-and-terminate-by-project
+      - grok-config-health
+      - terminal-adapter-extend
+      - cli-extension-contract
+    status: in-progress
+    feature: 2026-07-13-power-extend-harden-and-docs
+    minimal_loop: false
+    notes: "若 drop 非核心 item 须同步改 depends_on"

@@ -1,5 +1,6 @@
 mod commands;
 mod grok_provider;
+mod launch_preflight;
 mod launcher;
 mod models;
 mod port_monitor;
@@ -7,6 +8,7 @@ mod preferences;
 mod scanner;
 mod security;
 mod session_delete;
+mod session_source;
 mod state;
 
 use commands::{
@@ -17,10 +19,11 @@ use commands::{
     grok_create_profile, grok_delete_profile, grok_fetch_models, grok_import_current,
     grok_list_backups, grok_list_profiles, grok_preview_apply, grok_provider_status,
     grok_restore_backup, grok_test_connection, grok_update_profile, launch_session,
-    list_available_terminals, preview_launch_command, refresh_ports, refresh_sessions, scan_ports,
-    scan_sessions, set_favorite_project_dirs, set_favorite_session_ids, set_grok_provider_layout,
-    set_launch_mode, set_port_auto_refresh, set_port_ignore_ports, set_port_project_path_prefixes,
-    set_preferred_terminal, set_session_list_mode, set_theme_mode, terminate_port_processes,
+    list_available_terminals, preflight_launch, preview_launch_command, refresh_ports,
+    refresh_sessions, scan_ports, scan_sessions, set_favorite_project_dirs,
+    set_favorite_session_ids, set_grok_provider_layout, set_launch_mode, set_port_auto_refresh,
+    set_port_ignore_ports, set_port_project_path_prefixes, set_preferred_terminal,
+    set_session_list_mode, set_theme_mode, terminate_port_processes,
 };
 use grok_provider::GrokProviderState;
 use state::{
@@ -91,6 +94,7 @@ pub fn run() {
             scan_sessions,
             refresh_sessions,
             launch_session,
+            preflight_launch,
             preview_launch_command,
             get_recent_launches,
             delete_session,

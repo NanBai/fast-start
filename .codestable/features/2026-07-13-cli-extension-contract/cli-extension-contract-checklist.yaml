@@ -1,0 +1,28 @@
+feature: 2026-07-13-cli-extension-contract
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "CliType 全变体注册完整性测试（scanner/spec/白名单/校验/删除）"
+    exit_signal: "cargo test 绿"
+    status: pending
+  - action: "前端 labels 覆盖 + docs/dev CLI 扩展 checklist"
+    exit_signal: "文档 7 挂点齐全"
+    status: pending
+
+checks:
+  - item: "无动态插件 API"
+    source: 范围守护
+    status: pending
+  - item: "7 挂点均被测或文档化"
+    source: 名词契约
+    status: pending

@@ -3,6 +3,7 @@ use crate::grok_provider::{
     GrokProfile, GrokProviderLayout, GrokProviderState, GrokProviderStatus,
     GrokTestConnectionResult,
 };
+use crate::launch_preflight::PreflightResult;
 use crate::models::{
     LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch, ScanResponse,
     SessionListMode, TerminalType, ThemeMode,
@@ -56,6 +57,15 @@ pub fn preview_launch_command(
     state: State<'_, AppState>,
 ) -> Result<LaunchCommandPreview, String> {
     state.preview_launch_command(&session_list_id)
+}
+
+/// 只读启动预检。未知 `session_list_id` 返回 `Ok(PreflightResult{ok:false,...})`，不走 command Err。
+#[tauri::command]
+pub fn preflight_launch(
+    session_list_id: String,
+    state: State<'_, AppState>,
+) -> Result<PreflightResult, String> {
+    state.preflight_launch(&session_list_id)
 }
 
 #[tauri::command]

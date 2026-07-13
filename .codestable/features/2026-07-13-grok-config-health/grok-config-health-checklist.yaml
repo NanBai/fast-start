@@ -1,0 +1,35 @@
+feature: 2026-07-13-grok-config-health
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "health 映射 + issues 生成 + 禁止字段单测"
+    exit_signal: "无 secret/path 泄漏用例通过"
+    status: pending
+  - action: "command + Grok UI 诊断面板"
+    exit_signal: "pnpm build；面板可见 issues"
+    status: pending
+
+checks:
+  - item: "验收以 issues[] 为准非再包 status"
+    source: 名词契约
+    status: pending
+  - item: "不写盘/不出站/不 log key"
+    source: 范围守护
+    status: pending
+  - item: "backups 仅 name+时间"
+    source: 名词契约
+    status: pending

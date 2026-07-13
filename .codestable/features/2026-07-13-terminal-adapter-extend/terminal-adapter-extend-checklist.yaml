@@ -1,0 +1,36 @@
+feature: 2026-07-13-terminal-adapter-extend
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "TerminalType::WezTerm + WezTermLauncher（tab/window 表 + is_available 探测）"
+    exit_signal: "未装时 is_available=false 单测绿；supports_tab=true 与回退文档一致"
+    status: pending
+  - action: "wrapper+validate 启动路径 + 偏好 UI labels"
+    exit_signal: "pnpm build；禁止直注业务命令"
+    status: pending
+
+checks:
+  - item: "trait 含 LaunchMode/supports_tab；NewTab 失败回退窗口"
+    source: 名词契约
+    status: pending
+  - item: "仅 wrapper 注入"
+    source: 流程级约束
+    status: pending
+  - item: "本机探测结论已记录；可 drop"
+    source: 范围守护
+    status: pending
+

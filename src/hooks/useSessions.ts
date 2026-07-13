@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   CliScanError,
   LaunchCommandPreview,
+  PreflightResult,
   RecentLaunch,
   ScanResponse,
   SessionData,
@@ -91,11 +92,42 @@ export function useSessions(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function preflightLaunch(sessionId: string): Promise<PreflightResult | null> {
+    try {
+      return await invoke<PreflightResult>("preflight_launch", {
+        sessionListId: sessionId,
+      });
+    } catch (error) {
+      notifyStatus(`预检失败：${String(error)}`, "error");
+      return null;
+    }
+  }
+
   async function launchSession(sessionId: string) {
     setLaunchingId(sessionId);
     notifyStatus("正在启动终端…", "info");
     try {
       // sessionListId = Session.id（列表稳定 id），不是 CLI 原始 sessionId
+      // 先只读预检，把 block/warn 展示给用户；launch_session 仍会再跑同一门闩。
+      const preflight = await preflightLaunch(sessionId);
+      if (preflight && !preflight.ok) {
+        const blocks = preflight.checks
+          .filter((c) => c.severity === "block")
+          .map((c) => c.message);
+        notifyStatus(
+          `启动失败：${blocks.length > 0 ? blocks.join("；") : "预检未通过"}`,
+          "error",
+        );
+        return;
+      }
+      if (preflight) {
+        const warns = preflight.checks
+          .filter((c) => c.severity === "warn")
+          .map((c) => c.message);
+        if (warns.length > 0) {
+          notifyStatus(`预检提示：${warns.join("；")}`, "info");
+        }
+      }
       await invoke("launch_session", { sessionListId: sessionId });
       notifyStatus("终端启动成功", "success");
       await loadRecentLaunches();
@@ -108,6 +140,33 @@ export function useSessions(notifyStatus: NotifyStatus) {
 
   async function previewLaunchCommand(sessionId: string) {
     try {
+      // 优先走 preflight：同组装路径 + 可展示 checks
+      const preflight = await preflightLaunch(sessionId);
+      if (preflight?.preview) {
+        setCommandPreview(preflight.preview);
+        const warnText = preflight.checks
+          .filter((c) => c.severity === "warn")
+          .map((c) => c.message)
+          .join("；");
+        const blockText = preflight.checks
+          .filter((c) => c.severity === "block")
+          .map((c) => c.message)
+          .join("；");
+        if (blockText) {
+          notifyStatus(`预览可用但预检未通过：${blockText}`, "error");
+        } else if (warnText) {
+          notifyStatus(
+            `命令预览：${preflight.preview.program} ${preflight.preview.args.join(" ")} · ${warnText}`,
+            "info",
+          );
+        } else {
+          notifyStatus(
+            `命令预览：${preflight.preview.program} ${preflight.preview.args.join(" ")}`,
+            "info",
+          );
+        }
+        return preflight.preview;
+      }
       const preview = await invoke<LaunchCommandPreview>("preview_launch_command", {
         sessionListId: sessionId,
       });
@@ -169,6 +228,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
     loadSessions,
     refreshSessions,
     launchSession,
+    preflightLaunch,
     previewLaunchCommand,
     clearCommandPreview,
     loadRecentLaunches,

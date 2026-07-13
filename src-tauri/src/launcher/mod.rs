@@ -143,6 +143,37 @@ fn cached_login_path() -> &'static str {
     CACHED_LOGIN_PATH.get_or_init(resolve_login_path_once)
 }
 
+/// 与 Ghostty wrapper 注入语义一致的 PATH：优先 `~/.grok/bin`，再 login shell PATH。
+/// 供 launch preflight 的 `ResolveProgram` 生产实现复用，避免与 wrapper 分叉。
+pub fn launch_path_string() -> String {
+    let mut path = String::new();
+    if let Some(home) = std::env::var_os("HOME") {
+        let grok_bin = PathBuf::from(home).join(".grok/bin");
+        if grok_bin.is_dir() {
+            path.push_str(&grok_bin.to_string_lossy());
+            path.push(':');
+        }
+    }
+    path.push_str(cached_login_path());
+    path
+}
+
+/// 在 launch PATH 上解析 program（存在且为普通文件即视为可解析）。
+pub fn resolve_program_on_launch_path(program: &str) -> Option<PathBuf> {
+    if program.is_empty() || program.contains('/') {
+        // 仅允许白名单短名；带路径的 program 不走 PATH 搜索
+        let p = PathBuf::from(program);
+        return if p.is_file() { Some(p) } else { None };
+    }
+    for dir in launch_path_string().split(':').filter(|d| !d.is_empty()) {
+        let candidate = Path::new(dir).join(program);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
 fn resolve_login_path_once() -> String {
     for shell in ["zsh", "bash"] {
         let Ok(output) = Command::new(shell)

@@ -1,6 +1,9 @@
 mod ports;
 mod scan_cache;
 
+use crate::launch_preflight::{
+    block_messages, preflight_session, LoginPathProgramResolver, PreflightResult,
+};
 use crate::launcher::{launcher_for, launchers, LaunchError};
 use crate::models::{
     CliScanError, CliType, LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch,
@@ -375,8 +378,32 @@ impl AppState {
         Ok(())
     }
 
+    /// 只读启动预检；未知 id 仍 Ok（业务结果在 `PreflightResult` 内）。
+    pub fn preflight_launch(&self, session_list_id: &str) -> Result<PreflightResult, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        let session = guard
+            .sessions
+            .iter()
+            .find(|session| session.id == session_list_id);
+        Ok(preflight_session(
+            session_list_id,
+            session,
+            guard.ops_ready,
+            &LoginPathProgramResolver,
+        ))
+    }
+
     /// `session_list_id` = `Session.id`（列表稳定 id）。成功时返回 session 供写入最近记录。
+    /// 有 preflight block 时返回中文 Err 且不写 wrapper / 不启动。
     pub fn launch_session(&self, session_list_id: &str) -> Result<Session, String> {
+        let preflight = self.preflight_launch(session_list_id)?;
+        if let Some(msg) = block_messages(&preflight) {
+            return Err(msg);
+        }
+
         let session = self.find_session(session_list_id)?;
         let preferred = self.preferred_terminal()?;
         let mode = self.launch_mode()?;
@@ -405,6 +432,11 @@ impl AppState {
         &self,
         session_list_id: &str,
     ) -> Result<LaunchCommandPreview, String> {
+        // 与 preflight preview 同一 CommandSpec 组装路径
+        let preflight = self.preflight_launch(session_list_id)?;
+        if let Some(preview) = preflight.preview {
+            return Ok(preview);
+        }
         let session = self.find_session(session_list_id)?;
         let spec = command_spec_for_session(&session)?;
         Ok(LaunchCommandPreview {

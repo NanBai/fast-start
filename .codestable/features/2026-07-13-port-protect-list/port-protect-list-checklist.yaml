@@ -1,0 +1,38 @@
+feature: 2026-07-13-port-protect-list
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "preferences port_protect_ports + get/set"
+    exit_signal: "重启可回读"
+    status: pending
+  - action: "terminate 命中 protect 整批 Err + 单测"
+    exit_signal: "cargo test 覆盖"
+    status: pending
+  - action: "Port UI 编辑保护列表"
+    exit_signal: "pnpm build"
+    status: pending
+
+checks:
+  - item: "protect 优先于多选无 force"
+    source: 流程级约束
+    status: pending
+  - item: "ignore 不改变终止语义"
+    source: 范围守护
+    status: pending
+  - item: "all-or-nothing 保持"
+    source: 验收场景
+    status: pending

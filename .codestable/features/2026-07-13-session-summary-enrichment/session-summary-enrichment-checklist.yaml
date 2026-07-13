@@ -1,0 +1,31 @@
+feature: 2026-07-13-session-summary-enrichment
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "clean_summary ≤160 截断 + 单测"
+    exit_signal: "超长输入输出 ≤160"
+    status: pending
+  - action: "各 CLI 摘要优先级缺口与 fixture"
+    exit_signal: "五家相关 fixture 绿"
+    status: pending
+
+checks:
+  - item: "截断仅 clean_summary"
+    source: 名词契约
+    status: pending
+  - item: "不建全文索引"
+    source: 范围守护
+    status: pending
+  - item: "OpenCode 不用 directory 整串当摘要"
+    source: 验收场景
+    status: pending
