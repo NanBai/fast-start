@@ -68,12 +68,8 @@ export function useSessions(notifyStatus: NotifyStatus) {
     });
     const status = formatScanStatus(result);
     notifyStatus(status.message, status.type);
-    // 缓存窗无 delete_target，跳过源 IO；full scan 后再探测（≤200）
-    if (result.fromCache === true) {
-      setHealthById(new Map());
-    } else {
-      void inspectHealthForSessions(result.sessions);
-    }
+    // 按需 inspect：扫描结果变化时清缓存，不自动探测（见 health-inspect-on-demand）
+    setHealthById(new Map());
   }
 
   function toggleSessionSelected(sessionId: string) {
@@ -219,27 +215,8 @@ export function useSessions(notifyStatus: NotifyStatus) {
     setLaunchingId(sessionId);
     notifyStatus("正在启动终端…", "info");
     try {
-      // sessionListId = Session.id（列表稳定 id），不是 CLI 原始 sessionId
-      // 先只读预检，把 block/warn 展示给用户；launch_session 仍会再跑同一门闩。
-      const preflight = await preflightLaunch(sessionId);
-      if (preflight && !preflight.ok) {
-        const blocks = preflight.checks
-          .filter((c) => c.severity === "block")
-          .map((c) => c.message);
-        notifyStatus(
-          `启动失败：${blocks.length > 0 ? blocks.join("；") : "预检未通过"}`,
-          "error",
-        );
-        return;
-      }
-      if (preflight) {
-        const warns = preflight.checks
-          .filter((c) => c.severity === "warn")
-          .map((c) => c.message);
-        if (warns.length > 0) {
-          notifyStatus(`预检提示：${warns.join("；")}`, "info");
-        }
-      }
+      // sessionListId = Session.id；后端 launch_session 内强制 preflight 门闩。
+      // 前端不再先 preflight，避免双次 status 闪烁。
       await invoke("launch_session", { sessionListId: sessionId });
       notifyStatus("终端启动成功", "success");
       await loadRecentLaunches();

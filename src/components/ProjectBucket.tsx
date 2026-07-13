@@ -1,12 +1,7 @@
 import type { MouseEvent } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Icon } from "./icons/Icon";
-import { SessionRow } from "./SessionRow";
-import {
-  ambiguousSessionTitleKeys,
-  sessionTitle,
-  uniqueShortSessionIds,
-} from "../lib/sessionUtils";
+import { VirtualSessionRows } from "./VirtualSessionRows";
 import { SessionData } from "../types";
 
 export function ProjectBucket({
@@ -52,11 +47,6 @@ export function ProjectBucket({
   const [expanded, setExpanded] = useState(false);
   const open = forceOpen || expanded;
   const panelId = `project-bucket-${projectDir.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-  const ambiguousTitles = useMemo(
-    () => ambiguousSessionTitleKeys(sessions),
-    [sessions],
-  );
-  const shortIds = useMemo(() => uniqueShortSessionIds(sessions), [sessions]);
 
   return (
     <div className="project-bucket" data-open={open} data-favorite={favorite}>
@@ -100,29 +90,20 @@ export function ProjectBucket({
         inert={!open ? true : undefined}
       >
         <div className="project-bucket-collapse-inner">
-          <div className="project-bucket-body">
-            {sessions.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                active={activeSessionId === session.id}
-                launchingId={launchingId}
-                deletingId={deletingId}
-                showCliLabel={showCliLabel}
-                favorite={favoriteSessionIds.has(session.id)}
-                titleAmbiguous={ambiguousTitles.has(
-                  sessionTitle(session).toLowerCase(),
-                )}
-                displayShortId={shortIds.get(session.sessionId)}
-                healthBadge={healthBadgeFor?.(session.id) ?? null}
-                selected={selectedIds?.has(session.id) ?? false}
-                onToggleSelected={onToggleSelected}
-                onLaunch={onLaunch}
-                onToggleFavorite={onToggleSessionFavorite}
-                onContextMenu={onSessionContextMenu}
-              />
-            ))}
-          </div>
+          <VirtualSessionRows
+            sessions={sessions}
+            showCliLabel={showCliLabel}
+            favoriteSessionIds={favoriteSessionIds}
+            activeSessionId={activeSessionId}
+            launchingId={launchingId}
+            deletingId={deletingId}
+            healthBadgeFor={healthBadgeFor}
+            selectedIds={selectedIds}
+            onToggleSelected={onToggleSelected}
+            onLaunch={onLaunch}
+            onToggleSessionFavorite={onToggleSessionFavorite}
+            onSessionContextMenu={onSessionContextMenu}
+          />
         </div>
       </div>
     </div>

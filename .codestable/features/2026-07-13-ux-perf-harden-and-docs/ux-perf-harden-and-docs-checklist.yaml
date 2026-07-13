@@ -18,15 +18,15 @@ dod:
 steps:
   - action: "更新 README / 用户文档 / ARCHITECTURE / next-wave status"
     exit_signal: "与代码一致"
-    status: pending
+    status: done
   - action: "全量 cargo test + pnpm build"
     exit_signal: "全绿"
-    status: pending
+    status: done
 
 checks:
   - item: "文档与代码一致"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "无新功能混入"
     source: 范围守护
-    status: pending
+    status: passed

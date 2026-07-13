@@ -14,15 +14,15 @@ dod:
 steps:
   - action: "抽出 session_ops（或等价）并 re-export"
     exit_signal: "mod.rs 变薄；compile"
-    status: pending
+    status: done
   - action: "cargo test --lib 全绿"
     exit_signal: "无失败"
-    status: pending
+    status: done
 
 checks:
   - item: "行为等价 / 测试全绿"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "不改 Tauri command 契约"
     source: 范围守护
-    status: pending
+    status: passed

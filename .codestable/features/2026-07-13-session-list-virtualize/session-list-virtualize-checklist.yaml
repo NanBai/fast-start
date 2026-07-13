@@ -14,18 +14,18 @@ dod:
 steps:
   - action: "实现轻量虚拟列表并挂到 Session 行渲染"
     exit_signal: "窗口外行不挂载或显著减少"
-    status: pending
+    status: done
   - action: "键盘活跃行 scrollIntoView；多选/收藏/启动"
     exit_signal: "pnpm build；手工烟雾"
-    status: pending
+    status: done
 
 checks:
   - item: "无重型新依赖"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "键盘与多选可用"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "不暴露源路径"
     source: 安全
-    status: pending
+    status: passed

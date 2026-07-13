@@ -18,12 +18,12 @@ dod:
 steps:
   - action: "收敛 launchSession status 时序；保留后端门闩"
     exit_signal: "pnpm build；launch 路径清晰"
-    status: pending
+    status: done
 
 checks:
   - item: "后端 preflight 门闩仍存在"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "失败中文原因仍可见"
     source: 验收场景
-    status: pending
+    status: passed

@@ -1,38 +1,21 @@
 roadmap: "session-launcher-ux-perf"
-status: running
+status: complete
 baseline_ref: "cbafbd7f84158aea4ecde21dd1bd74ba4d35073c"
 driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 1
+current_feature_index: 6
 features:
   - slug: app-shell-split
-    roadmap_item: app-shell-split
-    feature_dir: ".codestable/features/2026-07-13-app-shell-split"
-    design: ".codestable/features/2026-07-13-app-shell-split/app-shell-split-design.md"
-    checklist: ".codestable/features/2026-07-13-app-shell-split/app-shell-split-checklist.yaml"
-    review: ".codestable/features/2026-07-13-app-shell-split/app-shell-split-review.md"
-    qa: ".codestable/features/2026-07-13-app-shell-split/app-shell-split-qa.md"
-    acceptance: ".codestable/features/2026-07-13-app-shell-split/app-shell-split-acceptance.md"
     status: accepted
   - slug: state-module-split
-    roadmap_item: state-module-split
-    feature_dir: ".codestable/features/2026-07-13-state-module-split"
-    status: pending
+    status: accepted
   - slug: health-inspect-on-demand
-    roadmap_item: health-inspect-on-demand
-    feature_dir: ".codestable/features/2026-07-13-health-inspect-on-demand"
-    status: pending
+    status: accepted
   - slug: session-list-virtualize
-    roadmap_item: session-list-virtualize
-    feature_dir: ".codestable/features/2026-07-13-session-list-virtualize"
-    status: pending
+    status: accepted
   - slug: launch-feedback-polish
-    roadmap_item: launch-feedback-polish
-    feature_dir: ".codestable/features/2026-07-13-launch-feedback-polish"
-    status: pending
+    status: accepted
   - slug: ux-perf-harden-and-docs
-    roadmap_item: ux-perf-harden-and-docs
-    feature_dir: ".codestable/features/2026-07-13-ux-perf-harden-and-docs"
-    status: pending
+    status: accepted

@@ -103,6 +103,7 @@ function App() {
     requestBulkDelete,
     cancelBulkDelete,
     confirmBulkDelete,
+    inspectHealthForSessions,
   } = useSessions(notifyStatus);
 
   const {
@@ -438,6 +439,7 @@ function App() {
           requestBulkDelete={requestBulkDelete}
           cancelBulkDelete={cancelBulkDelete}
           confirmBulkDelete={confirmBulkDelete}
+          inspectHealthForSessions={inspectHealthForSessions}
         />
       ) : (
         <div className="workspace-panel" key={activeTool}>

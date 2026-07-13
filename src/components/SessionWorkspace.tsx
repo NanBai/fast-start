@@ -86,6 +86,7 @@ export type SessionWorkspaceProps = {
   requestBulkDelete: () => void;
   cancelBulkDelete: () => void;
   confirmBulkDelete: () => Promise<void>;
+  inspectHealthForSessions: (list: SessionData[]) => Promise<void>;
 };
 
 export function SessionWorkspace(props: SessionWorkspaceProps) {
@@ -128,6 +129,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
     requestBulkDelete,
     cancelBulkDelete,
     confirmBulkDelete,
+    inspectHealthForSessions,
   } = props;
 
   const [recentDays, setRecentDays] = useState<RecentDaysFilter>("7");
@@ -136,6 +138,15 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionMenu, setSessionMenu] = useState<SessionMenuState | null>(null);
   const [diskUsageOpen, setDiskUsageOpen] = useState(false);
+
+  // 按需健康探测：陈旧筛选或磁盘面板打开时再 inspect
+  useEffect(() => {
+    const needHealth = healthFilter !== "all" || diskUsageOpen;
+    if (!needHealth || sessions.length === 0) {
+      return;
+    }
+    void inspectHealthForSessions(sessions);
+  }, [healthFilter, diskUsageOpen, sessions, inspectHealthForSessions]);
 
   async function handleLaunch(sessionId: string) {
     setSessionMenu(null);
