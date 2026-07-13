@@ -13,7 +13,7 @@ items:
   - slug: session-mixed-project-view
     description: Session 列表增加按 projectDir 聚合多 CLI 的视图，可与按 Agent 视图切换
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-mixed-project-view
     minimal_loop: false
     notes: null

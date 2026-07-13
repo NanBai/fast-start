@@ -12,7 +12,7 @@ last_reviewed: 2026-07-07
 
 ## 功能简介
 
-Session Launcher 会扫描本机 Codex、Claude Code、Cursor、Grok Build 和 OpenCode 的历史 session，按 agent 和项目目录整理成列表。你可以搜索目标 session、收藏高频项目、选择外部终端，并从当前列表直接恢复工作现场。应用还提供 Port 工具页，用于查看本机开发服务端口并关闭当前用户的残留进程。
+Session Launcher 会扫描本机 Codex、Claude Code、Cursor、Grok Build 和 OpenCode 的历史 session，按 agent 或按项目目录整理成列表。你可以搜索目标 session、收藏高频项目、选择外部终端，并从当前列表直接恢复工作现场。应用还提供 Port 工具页，用于查看本机开发服务端口并关闭当前用户的残留进程。
 
 ## 前置条件
 
@@ -42,6 +42,15 @@ pnpm tauri dev
 - **API 供应商**：保存 Base URL / API Key / 模型档案到 `~/.grok_switch/profiles.json`，启用时写入 `~/.grok/config.toml` 并自动备份。
 - **隐私保护**：一键合并本地遥测相关开关（不替代 Grok 账号侧 Coding data sharing 或 `/privacy`）。
 - **置顶与排序**：卡片可置顶、可拖动调整顺序，偏好保存在本机 app 设置中。
+
+### 切换列表视图
+
+控制栏提供 **按 Agent** / **按项目** 切换：
+
+- **按 Agent**（默认）：先按 CLI 分组，再在组内按项目目录聚合。
+- **按项目**：同一 `projectDir` 下的多 CLI session 归到同一项目组；行内显示 Agent 标签。
+
+视图偏好保存在本机，重启后保留。
 
 ### 查找 session
 

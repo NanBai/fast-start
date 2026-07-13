@@ -18,24 +18,24 @@ dod:
 steps:
   - action: "sessionUtils.groupSessionsByProject + 模式类型"
     exit_signal: "可静态核验排序/分组规则；pnpm build"
-    status: pending
+    status: done
   - action: "preferences load/save session_list_mode"
     exit_signal: "保存后再 load 一致"
-    status: pending
+    status: done
   - action: "UI 切换与列表渲染"
     exit_signal: "手工切换两种视图正确"
-    status: pending
+    status: done
   - action: "用户文档短补"
     exit_signal: "docs 含按项目视图"
-    status: pending
+    status: done
 
 checks:
   - item: "session_list_mode 偏好存在"
     source: 挂载点
-    status: pending
+    status: passed
   - item: "by-project 跨 CLI 聚合"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "不改 ScanResponse/scanner"
     source: 范围守护
-    status: pending
+    status: passed

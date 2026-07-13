@@ -9,6 +9,8 @@ import {
   PORT_SCOPE_LABELS,
   PortProtocol,
   PortScope,
+  SESSION_LIST_MODE_LABELS,
+  SessionListMode,
   TERMINAL_LABELS,
   TerminalType,
   THEME_MODE_LABELS,
@@ -75,6 +77,30 @@ export function PortScopeSegmented({
           onClick={() => onChange(scope)}
         >
           {PORT_SCOPE_LABELS[scope]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function SessionListModeSegmented({
+  value,
+  onChange,
+}: {
+  value: SessionListMode;
+  onChange: (mode: SessionListMode) => void | Promise<void>;
+}) {
+  return (
+    <div className="segmented session-list-mode-segmented" data-mode={value}>
+      {(["by-agent", "by-project"] as SessionListMode[]).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          className="segment"
+          data-active={value === mode}
+          onClick={() => void onChange(mode)}
+        >
+          {SESSION_LIST_MODE_LABELS[mode]}
         </button>
       ))}
     </div>

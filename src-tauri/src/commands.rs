@@ -3,7 +3,10 @@ use crate::grok_provider::{
     GrokProviderLayout, GrokProviderState, GrokProviderStatus,
 };
 use crate::preferences::{load_grok_provider_layout, save_grok_provider_layout};
-use crate::models::{LaunchMode, PortScanResponse, ScanResponse, TerminalType, ThemeMode};
+use crate::models::{
+    LaunchMode, PortScanResponse, ScanResponse, SessionListMode, TerminalType, ThemeMode,
+};
+use crate::preferences::{load_session_list_mode, save_session_list_mode};
 use crate::state::{
     save_favorite_project_dirs, save_launch_mode, save_port_auto_refresh, save_preferred_terminal,
     save_theme_mode, AppState,
@@ -135,6 +138,19 @@ pub fn set_port_auto_refresh(
 ) -> Result<(), String> {
     save_port_auto_refresh(&app, enabled)?;
     state.set_port_auto_refresh(enabled)
+}
+
+#[tauri::command]
+pub fn get_session_list_mode(app: tauri::AppHandle) -> Result<SessionListMode, String> {
+    load_session_list_mode(&app)
+}
+
+#[tauri::command]
+pub fn set_session_list_mode(
+    mode: SessionListMode,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    save_session_list_mode(&app, mode)
 }
 
 // --- Grok provider (suppliers) ---

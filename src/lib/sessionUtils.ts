@@ -2,6 +2,12 @@ import { CLI_LABELS, SessionData } from "../types";
 
 export type RecentDaysFilter = "1" | "3" | "7" | "14" | "30" | "all";
 
+export type ProjectSessionGroup = {
+  projectDir: string;
+  projectName: string;
+  sessions: SessionData[];
+};
+
 export type QuickAccessOptions = {
   recentDays: RecentDaysFilter;
   query: string;
@@ -96,6 +102,29 @@ export function sanitizeFavoriteProjectDirs(
     seen.add(projectDir);
     return true;
   });
+}
+
+/**
+ * 跨 CLI 按 projectDir 聚合；保留输入列表中的首次出现顺序
+ * （调用方应先完成收藏排序 / 时间过滤）。
+ */
+export function groupSessionsByProject(sessions: SessionData[]): ProjectSessionGroup[] {
+  const groups: ProjectSessionGroup[] = [];
+  const groupIndex = new Map<string, number>();
+  for (const session of sessions) {
+    const existing = groupIndex.get(session.projectDir);
+    if (existing === undefined) {
+      groupIndex.set(session.projectDir, groups.length);
+      groups.push({
+        projectDir: session.projectDir,
+        projectName: session.projectName,
+        sessions: [session],
+      });
+    } else {
+      groups[existing].sessions.push(session);
+    }
+  }
+  return groups;
 }
 
 function sortSessionsByFavoriteProject(

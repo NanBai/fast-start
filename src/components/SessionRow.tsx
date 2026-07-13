@@ -1,13 +1,14 @@
 import type { MouseEvent } from "react";
 import { Icon } from "./icons/Icon";
 import { formatRelative } from "../lib/sessionUtils";
-import { SessionData } from "../types";
+import { CLI_LABELS, SessionData } from "../types";
 
 export function SessionRow({
   session,
   active,
   launchingId,
   deletingId,
+  showCliLabel = false,
   onLaunch,
   onContextMenu,
 }: {
@@ -15,6 +16,7 @@ export function SessionRow({
   active: boolean;
   launchingId: string | null;
   deletingId: string | null;
+  showCliLabel?: boolean;
   onLaunch: (sessionId: string) => Promise<void>;
   onContextMenu: (session: SessionData, event: MouseEvent<HTMLDivElement>) => void;
 }) {
@@ -30,6 +32,11 @@ export function SessionRow({
       onContextMenu={(event) => onContextMenu(session, event)}
     >
       <div className="session-main">
+        {showCliLabel && (
+          <span className="session-cli-label" data-cli={session.cliType}>
+            {CLI_LABELS[session.cliType]}
+          </span>
+        )}
         <span className="session-name" title={summary ?? session.projectName}>
           {summary ?? session.projectName}
         </span>

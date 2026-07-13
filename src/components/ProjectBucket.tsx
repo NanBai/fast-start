@@ -10,6 +10,7 @@ export function ProjectBucket({
   sessions,
   favorite,
   forceOpen = false,
+  showCliLabel = false,
   activeSessionId,
   launchingId,
   deletingId,
@@ -22,6 +23,7 @@ export function ProjectBucket({
   sessions: SessionData[];
   favorite: boolean;
   forceOpen?: boolean;
+  showCliLabel?: boolean;
   activeSessionId: string | null;
   launchingId: string | null;
   deletingId: string | null;
@@ -76,6 +78,7 @@ export function ProjectBucket({
               active={activeSessionId === session.id}
               launchingId={launchingId}
               deletingId={deletingId}
+              showCliLabel={showCliLabel}
               onLaunch={onLaunch}
               onContextMenu={onSessionContextMenu}
             />

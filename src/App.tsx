@@ -9,9 +9,11 @@ import {
   ProtocolMenu,
   RecentDaysMenu,
   SearchBox,
+  SessionListModeSegmented,
   TerminalMenu,
   ThemeMenu,
 } from "./components/Controls";
+import { ProjectBucket } from "./components/ProjectBucket";
 import { Icon } from "./components/icons/Icon";
 import { PortConfirmDialog } from "./components/PortConfirmDialog";
 import { PortWorkspace } from "./components/PortWorkspace";
@@ -25,6 +27,7 @@ import { useSessions } from "./hooks/useSessions";
 import { filterPorts } from "./lib/portUtils";
 import {
   filterSessionsForQuickAccess,
+  groupSessionsByProject,
   RecentDaysFilter,
   sanitizeFavoriteProjectDirs,
 } from "./lib/sessionUtils";
@@ -83,12 +86,14 @@ function App() {
     themeMode,
     favoriteProjectDirs,
     portAutoRefresh,
+    sessionListMode,
     loadPreferences,
     handleTerminalChange,
     handleLaunchModeChange,
     handleThemeModeChange,
     handleFavoriteProjectDirsChange,
     handlePortAutoRefreshChange,
+    handleSessionListModeChange,
   } = usePreferences(notifyStatus);
 
   const {
@@ -288,6 +293,10 @@ function App() {
   for (const session of visibleSessions) {
     sessionsByCli.get(session.cliType)?.push(session);
   }
+  const projectGroups =
+    sessionListMode === "by-project"
+      ? groupSessionsByProject(visibleSessions)
+      : [];
 
   const showHint =
     preferredTerminal === "system" && launchMode === "new-tab";
@@ -462,6 +471,10 @@ function App() {
               visibleCount={visibleSessions.length}
               totalCount={sessions.length}
             />
+            <SessionListModeSegmented
+              value={sessionListMode}
+              onChange={handleSessionListModeChange}
+            />
             <LaunchSegmented value={launchMode} onChange={handleLaunchModeChange} />
             <TerminalMenu
               value={preferredTerminal}
@@ -561,22 +574,46 @@ function App() {
       ) : hasSearchQuery && quickAccess.matchCount === 0 ? (
         <p className="state-line">没有匹配的 session</p>
       ) : (
-        <div className="session-list">
-          {CLI_ORDER.map((cliType) => (
-            <AgentGroup
-              key={cliType}
-              cliType={cliType}
-              sessions={sessionsByCli.get(cliType) ?? []}
-              favoriteProjectDirs={favoriteProjectDirSet}
-              forceOpen={hasSearchQuery}
-              activeSessionId={activeQuickSessionId}
-              launchingId={launchingId}
-              deletingId={deletingId}
-              onLaunch={handleLaunch}
-              onToggleFavoriteProject={toggleFavoriteProject}
-              onSessionContextMenu={handleSessionContextMenu}
-            />
-          ))}
+        <div className="session-list" data-list-mode={sessionListMode}>
+          {sessionListMode === "by-project" ? (
+            projectGroups.length === 0 ? (
+              <p className="state-line">暂无 session</p>
+            ) : (
+              projectGroups.map((group) => (
+                <ProjectBucket
+                  key={group.projectDir}
+                  projectDir={group.projectDir}
+                  projectName={group.projectName}
+                  sessions={group.sessions}
+                  favorite={favoriteProjectDirSet.has(group.projectDir)}
+                  forceOpen={hasSearchQuery}
+                  showCliLabel
+                  activeSessionId={activeQuickSessionId}
+                  launchingId={launchingId}
+                  deletingId={deletingId}
+                  onLaunch={handleLaunch}
+                  onToggleFavorite={toggleFavoriteProject}
+                  onSessionContextMenu={handleSessionContextMenu}
+                />
+              ))
+            )
+          ) : (
+            CLI_ORDER.map((cliType) => (
+              <AgentGroup
+                key={cliType}
+                cliType={cliType}
+                sessions={sessionsByCli.get(cliType) ?? []}
+                favoriteProjectDirs={favoriteProjectDirSet}
+                forceOpen={hasSearchQuery}
+                activeSessionId={activeQuickSessionId}
+                launchingId={launchingId}
+                deletingId={deletingId}
+                onLaunch={handleLaunch}
+                onToggleFavoriteProject={toggleFavoriteProject}
+                onSessionContextMenu={handleSessionContextMenu}
+              />
+            ))
+          )}
         </div>
       )}
 

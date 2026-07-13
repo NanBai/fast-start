@@ -37,6 +37,14 @@ pub enum LaunchMode {
     NewWindow,
 }
 
+/// Session 列表顶层分组：按 Agent 或按项目目录（跨 CLI）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SessionListMode {
+    ByAgent,
+    ByProject,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PortProtocol {

@@ -1,6 +1,7 @@
 export type CliType = "codex" | "claude-code" | "cursor" | "grok-build" | "opencode";
 export type TerminalType = "system" | "iterm2" | "ghostty";
 export type LaunchMode = "new-tab" | "new-window";
+export type SessionListMode = "by-agent" | "by-project";
 export type ThemeMode = "dark" | "light" | "system";
 export type StatusType = "info" | "success" | "error";
 export type AppTool = "sessions" | "ports" | "providers";
@@ -79,6 +80,11 @@ export const TERMINAL_LABELS: Record<TerminalType, string> = {
 export const LAUNCH_MODE_LABELS: Record<LaunchMode, string> = {
   "new-tab": "新标签页",
   "new-window": "新窗口",
+};
+
+export const SESSION_LIST_MODE_LABELS: Record<SessionListMode, string> = {
+  "by-agent": "按 Agent",
+  "by-project": "按项目",
 };
 
 export const THEME_MODE_OPTIONS: ThemeMode[] = ["dark", "light", "system"];

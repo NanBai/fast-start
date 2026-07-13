@@ -5,7 +5,7 @@ driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 1
+current_feature_index: 2
 features:
   - slug: scan-cache-and-metrics
     roadmap_item: scan-cache-and-metrics
@@ -24,7 +24,7 @@ features:
     review: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-review.md"
     qa: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-acceptance.md"
-    status: implementing
+    status: accepted
   - slug: session-favorites-and-empty-states
     roadmap_item: session-favorites-and-empty-states
     feature_dir: ".codestable/features/2026-07-13-session-favorites-and-empty-states"
@@ -33,7 +33,7 @@ features:
     review: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-review.md"
     qa: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-acceptance.md"
-    status: pending
+    status: implementing
   - slug: grok-models-and-preview
     roadmap_item: grok-models-and-preview
     feature_dir: ".codestable/features/2026-07-13-grok-models-and-preview"

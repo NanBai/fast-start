@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   LAUNCH_MODE_LABELS,
   LaunchMode,
+  SESSION_LIST_MODE_LABELS,
+  SessionListMode,
   StatusType,
   TERMINAL_LABELS,
   TerminalType,
@@ -22,16 +24,20 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [favoriteProjectDirs, setFavoriteProjectDirs] = useState<string[]>([]);
   const [portAutoRefresh, setPortAutoRefresh] = useState(true);
+  const [sessionListMode, setSessionListMode] =
+    useState<SessionListMode>("by-agent");
 
   async function loadPreferences() {
-    const [available, preferred, mode, theme, favorites, autoRefresh] = await Promise.all([
-      invoke<TerminalType[]>("list_available_terminals"),
-      invoke<TerminalType>("get_preferred_terminal"),
-      invoke<LaunchMode>("get_launch_mode"),
-      invoke<ThemeMode>("get_theme_mode"),
-      invoke<string[]>("get_favorite_project_dirs"),
-      invoke<boolean>("get_port_auto_refresh"),
-    ]);
+    const [available, preferred, mode, theme, favorites, autoRefresh, listMode] =
+      await Promise.all([
+        invoke<TerminalType[]>("list_available_terminals"),
+        invoke<TerminalType>("get_preferred_terminal"),
+        invoke<LaunchMode>("get_launch_mode"),
+        invoke<ThemeMode>("get_theme_mode"),
+        invoke<string[]>("get_favorite_project_dirs"),
+        invoke<boolean>("get_port_auto_refresh"),
+        invoke<SessionListMode>("get_session_list_mode"),
+      ]);
     setAvailableTerminals(available);
     const resolved = available.includes(preferred)
       ? preferred
@@ -44,6 +50,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     setThemeMode(theme);
     setFavoriteProjectDirs(favorites);
     setPortAutoRefresh(autoRefresh);
+    setSessionListMode(listMode);
   }
 
   async function handleTerminalChange(terminal: TerminalType) {
@@ -87,6 +94,18 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function handleSessionListModeChange(mode: SessionListMode) {
+    const previous = sessionListMode;
+    setSessionListMode(mode);
+    try {
+      await invoke("set_session_list_mode", { mode });
+      notifyStatus(`列表视图：${SESSION_LIST_MODE_LABELS[mode]}`, "info");
+    } catch (error) {
+      setSessionListMode(previous);
+      notifyStatus(`列表视图保存失败：${String(error)}`, "error");
+    }
+  }
+
   return {
     availableTerminals,
     preferredTerminal,
@@ -94,11 +113,13 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     themeMode,
     favoriteProjectDirs,
     portAutoRefresh,
+    sessionListMode,
     loadPreferences,
     handleTerminalChange,
     handleLaunchModeChange,
     handleThemeModeChange,
     handleFavoriteProjectDirsChange,
     handlePortAutoRefreshChange,
+    handleSessionListModeChange,
   };
 }

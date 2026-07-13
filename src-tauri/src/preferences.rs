@@ -1,5 +1,5 @@
 //! 本机 preferences.json 读写（tauri-plugin-store）。
-use crate::models::{LaunchMode, TerminalType, ThemeMode};
+use crate::models::{LaunchMode, SessionListMode, TerminalType, ThemeMode};
 use serde_json::json;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
@@ -9,6 +9,7 @@ const LAUNCH_MODE_KEY: &str = "launch_mode";
 const THEME_MODE_KEY: &str = "theme_mode";
 const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
 const PORT_AUTO_REFRESH_KEY: &str = "port_auto_refresh";
+const SESSION_LIST_MODE_KEY: &str = "session_list_mode";
 const GROK_PROVIDER_ORDER_KEY: &str = "grok_provider_order";
 const GROK_PINNED_PROVIDER_IDS_KEY: &str = "grok_pinned_provider_ids";
 
@@ -100,6 +101,26 @@ pub fn save_theme_mode(app: &AppHandle, mode: ThemeMode) -> Result<(), String> {
         .store("preferences.json")
         .map_err(|err| err.to_string())?;
     store.set(THEME_MODE_KEY, json!(mode));
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_session_list_mode(app: &AppHandle) -> Result<SessionListMode, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(SESSION_LIST_MODE_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw).map_err(|err| err.to_string())
+    } else {
+        Ok(SessionListMode::ByAgent)
+    }
+}
+
+pub fn save_session_list_mode(app: &AppHandle, mode: SessionListMode) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(SESSION_LIST_MODE_KEY, json!(mode));
     store.save().map_err(|err| err.to_string())
 }
 

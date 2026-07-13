@@ -476,6 +476,32 @@
   min-width: 0;
 }
 
+.session-main:has(.session-cli-label) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.session-cli-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--hover-overlay);
+  white-space: nowrap;
+}
+
+.session-list[data-list-mode="by-project"] {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.session-list[data-list-mode="by-project"] > .project-bucket {
+  border-radius: 12px;
+  background: var(--surface-elevated, transparent);
+  outline: 1px solid var(--divider-soft);
+}
+
 .session-name {
   font-size: 0.93rem;
   font-weight: 500;
