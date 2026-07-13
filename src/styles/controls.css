@@ -107,6 +107,7 @@
 
 .segment[data-active="true"] {
   color: var(--text-primary);
+  font-weight: 600;
 }
 
 .segment:not([data-active="true"]):hover {
@@ -141,6 +142,11 @@
 }
 
 .port-scope-segmented[data-mode="all"]::before {
+  transform: translateX(100%);
+}
+
+/* 列表视图：by-agent | by-project */
+.session-list-mode-segmented[data-mode="by-project"]::before {
   transform: translateX(100%);
 }
 

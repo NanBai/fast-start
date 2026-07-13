@@ -481,14 +481,96 @@
 }
 
 .session-cli-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: 3px 8px 3px 5px;
+  border-radius: 8px;
   background: var(--hover-overlay);
   white-space: nowrap;
+  max-width: 9.5rem;
+}
+
+.session-cli-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  color: var(--agent-color, var(--text-primary));
+  background: var(--agent-soft, var(--control-bg));
+}
+
+.session-cli-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+.session-cli-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 与 Agent 分组一致的品牌色，便于同项目多 CLI 一眼区分 */
+.session-cli-label[data-cli="codex"] {
+  --agent-color: #10a37f;
+  --agent-soft: rgba(16, 163, 127, 0.16);
+}
+.session-cli-label[data-cli="claude-code"] {
+  --agent-color: #d97757;
+  --agent-soft: rgba(217, 119, 87, 0.18);
+}
+.session-cli-label[data-cli="cursor"] {
+  --agent-color: #7c8cff;
+  --agent-soft: rgba(124, 140, 255, 0.18);
+}
+.session-cli-label[data-cli="grok-build"] {
+  --agent-color: #e8b84a;
+  --agent-soft: rgba(232, 184, 74, 0.2);
+}
+.session-cli-label[data-cli="opencode"] {
+  --agent-color: #5b9fd4;
+  --agent-soft: rgba(91, 159, 212, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  .session-cli-label[data-cli="codex"] {
+    --agent-soft: rgba(16, 163, 127, 0.22);
+  }
+  .session-cli-label[data-cli="claude-code"] {
+    --agent-soft: rgba(217, 119, 87, 0.24);
+  }
+  .session-cli-label[data-cli="cursor"] {
+    --agent-soft: rgba(124, 140, 255, 0.24);
+  }
+  .session-cli-label[data-cli="grok-build"] {
+    --agent-soft: rgba(232, 184, 74, 0.26);
+  }
+  .session-cli-label[data-cli="opencode"] {
+    --agent-soft: rgba(91, 159, 212, 0.24);
+  }
+}
+
+html[data-theme="dark"] .session-cli-label[data-cli="codex"] {
+  --agent-soft: rgba(16, 163, 127, 0.22);
+}
+html[data-theme="dark"] .session-cli-label[data-cli="claude-code"] {
+  --agent-soft: rgba(217, 119, 87, 0.24);
+}
+html[data-theme="dark"] .session-cli-label[data-cli="cursor"] {
+  --agent-soft: rgba(124, 140, 255, 0.24);
+}
+html[data-theme="dark"] .session-cli-label[data-cli="grok-build"] {
+  --agent-soft: rgba(232, 184, 74, 0.26);
+}
+html[data-theme="dark"] .session-cli-label[data-cli="opencode"] {
+  --agent-soft: rgba(91, 159, 212, 0.24);
 }
 
 .session-actions {

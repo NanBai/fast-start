@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { BrandMark } from "./icons/BrandMark";
 import { Icon } from "./icons/Icon";
 import { formatRelative } from "../lib/sessionUtils";
 import { CLI_LABELS, SessionData } from "../types";
@@ -38,8 +39,15 @@ export function SessionRow({
     >
       <div className="session-main">
         {showCliLabel && (
-          <span className="session-cli-label" data-cli={session.cliType}>
-            {CLI_LABELS[session.cliType]}
+          <span
+            className="session-cli-label"
+            data-cli={session.cliType}
+            title={CLI_LABELS[session.cliType]}
+          >
+            <span className="session-cli-mark" aria-hidden="true">
+              <BrandMark cliType={session.cliType} />
+            </span>
+            <span className="session-cli-text">{CLI_LABELS[session.cliType]}</span>
           </span>
         )}
         <span className="session-name" title={summary ?? session.projectName}>
