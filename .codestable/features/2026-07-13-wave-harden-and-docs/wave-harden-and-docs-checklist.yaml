@@ -18,18 +18,18 @@ dod:
 steps:
   - action: "全量验证命令 + 记录证据"
     exit_signal: "CMD-001/002 通过"
-    status: pending
+    status: done
   - action: "ARCHITECTURE/用户文档/AGENTS 同步"
     exit_signal: "关键关键词存在"
-    status: pending
+    status: done
   - action: "epic items 收口检查与 residual risk"
     exit_signal: "acceptance 文档完成"
-    status: pending
+    status: done
 
 checks:
   - item: "文档与实现一致"
     source: 验收场景
-    status: pending
+    status: done
   - item: "无未解释的架构冲突"
     source: 范围守护
-    status: pending
+    status: done

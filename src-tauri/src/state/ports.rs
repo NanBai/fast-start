@@ -18,7 +18,17 @@ impl AppState {
     }
 
     pub fn refresh_ports(&self) -> Result<PortScanResponse, String> {
-        let response = port_monitor::scan_ports()?;
+        let (ignore, prefixes) = {
+            let guard = self
+                .inner
+                .lock()
+                .map_err(|_| "无法获取应用状态".to_string())?;
+            (
+                guard.port_ignore_ports.clone(),
+                guard.port_project_path_prefixes.clone(),
+            )
+        };
+        let response = port_monitor::scan_ports_with_rules(&ignore, &prefixes)?;
         let mut guard = self
             .inner
             .lock()
@@ -43,7 +53,19 @@ impl AppState {
                 .ok_or_else(|| "请先刷新端口列表".to_string())?
         };
 
-        let current_response = port_monitor::scan_ports()?;
+        let current_response = {
+            let (ignore, prefixes) = {
+                let guard = self
+                    .inner
+                    .lock()
+                    .map_err(|_| "无法获取应用状态".to_string())?;
+                (
+                    guard.port_ignore_ports.clone(),
+                    guard.port_project_path_prefixes.clone(),
+                )
+            };
+            port_monitor::scan_ports_with_rules(&ignore, &prefixes)?
+        };
         {
             let mut guard = self
                 .inner
@@ -74,4 +96,13 @@ impl AppState {
         Ok(())
     }
 
+    /// 规则变更后丢弃缓存，下次 scan/refresh 重新应用。
+    pub fn invalidate_port_scan_cache(&self) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.port_scan = None;
+        Ok(())
+    }
 }

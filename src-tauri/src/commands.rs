@@ -3,14 +3,18 @@ use crate::grok_provider::{
     GrokProfile, GrokProviderLayout, GrokProviderState, GrokProviderStatus,
     GrokTestConnectionResult,
 };
-use crate::preferences::{load_grok_provider_layout, save_grok_provider_layout};
 use crate::models::{
-    LaunchMode, PortScanResponse, ScanResponse, SessionListMode, TerminalType, ThemeMode,
+    LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch, ScanResponse,
+    SessionListMode, TerminalType, ThemeMode,
 };
-use crate::preferences::{load_session_list_mode, save_session_list_mode};
+use crate::preferences::{
+    load_grok_provider_layout, load_session_list_mode, save_grok_provider_layout,
+    save_session_list_mode,
+};
 use crate::state::{
     save_favorite_project_dirs, save_favorite_session_ids, save_launch_mode, save_port_auto_refresh,
-    save_preferred_terminal, save_theme_mode, AppState,
+    save_port_ignore_ports, save_port_project_path_prefixes, save_preferred_terminal,
+    save_recent_launches, save_theme_mode, AppState,
 };
 use tauri::State;
 
@@ -25,12 +29,32 @@ pub fn refresh_sessions(state: State<'_, AppState>) -> Result<ScanResponse, Stri
 }
 
 /// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
+/// 仅成功启动后写入 recent_launches。
 #[tauri::command]
 pub fn launch_session(
     session_list_id: String,
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state.launch_session(&session_list_id)
+    let session = state.launch_session(&session_list_id)?;
+    let launches = state.record_recent_launch(&session)?;
+    save_recent_launches(&app, launches)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn preview_launch_command(
+    session_list_id: String,
+    state: State<'_, AppState>,
+) -> Result<LaunchCommandPreview, String> {
+    state.preview_launch_command(&session_list_id)
+}
+
+#[tauri::command]
+pub fn get_recent_launches(state: State<'_, AppState>) -> Result<Vec<RecentLaunch>, String> {
+    // 若已有扫描结果，剔除已删除 session；否则原样返回。
+    let _ = state.sanitize_recent_launches();
+    state.recent_launches()
 }
 
 /// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
@@ -155,6 +179,40 @@ pub fn set_port_auto_refresh(
 ) -> Result<(), String> {
     save_port_auto_refresh(&app, enabled)?;
     state.set_port_auto_refresh(enabled)
+}
+
+#[tauri::command]
+pub fn get_port_ignore_ports(state: State<'_, AppState>) -> Result<Vec<u16>, String> {
+    state.port_ignore_ports()
+}
+
+#[tauri::command]
+pub fn set_port_ignore_ports(
+    ports: Vec<u16>,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    save_port_ignore_ports(&app, ports.clone())?;
+    state.set_port_ignore_ports(ports)?;
+    state.invalidate_port_scan_cache()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_port_project_path_prefixes(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    state.port_project_path_prefixes()
+}
+
+#[tauri::command]
+pub fn set_port_project_path_prefixes(
+    prefixes: Vec<String>,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    save_port_project_path_prefixes(&app, prefixes.clone())?;
+    state.set_port_project_path_prefixes(prefixes)?;
+    state.invalidate_port_scan_cache()?;
+    Ok(())
 }
 
 #[tauri::command]

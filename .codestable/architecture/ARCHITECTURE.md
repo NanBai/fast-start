@@ -1,13 +1,13 @@
 ---
 type: architecture
 project: 快开CLI
-version: 1.3
-last_updated: 2026-07-12
+version: 1.4
+last_updated: 2026-07-13
 ---
 
 # 快开CLI 架构文档
 
-**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor / grok-build / opencode 五个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。另提供本机开发端口监控（Port 工具页，见 `port_monitor`），以及 Grok 登录方式管理（Grok 工具页，见 `grok_provider`：API 供应商档案 / 官方账号切换 / 隐私保护本地配置 / 卡片排序置顶）。
+**项目简介**：一个 Tauri 桌面应用，聚合展示 codex / claude-code / cursor / grok-build / opencode 五个 AI CLI agent 的最近 session，选中后一键拉起外部终端、cd 到工作目录、以 session ID resume 对应 agent，快速恢复工作上下文。另提供本机开发端口监控（Port 工具页，见 `port_monitor`），以及 Grok 登录方式管理（Grok 工具页，见 `grok_provider`：API 供应商档案 / 官方账号切换 / 用户触发拉模型与 config 预览 / 隐私保护本地配置 / 卡片排序置顶）。
 
 ---
 
@@ -16,9 +16,11 @@ last_updated: 2026-07-12
 桌面端三层结构：React 前端（展示与交互）↔ Tauri command 边界 ↔ Rust 后端（扫描 + 终端拉起 + 本地 session 删除）。
 
 - **扫描**：前端首次加载 / 用户刷新时，通过 Tauri command 触发 `AppState` 扫描；`scan_sessions` 复用内存缓存，冷启动可先读本机 `scan-cache-v1.json` 秒开列表（`fromCache=true`，无 `delete_target`），前端随即 `refresh_sessions` 全量扫描；`refresh_sessions` 强制 full scan 并原子写回 snapshot。后端并行调用各 `SessionScanner` 实现，从各 CLI 的本地存储读 session 元数据，聚合按时间排序；响应可带 `scanDurationMs`。
-- **快速访问**：搜索、最近天数和项目收藏都在前端从扫描结果派生；稳定顺序是“最近天数过滤 → 搜索过滤 → 收藏排序 → agent/project 渲染”。搜索不下推到 scanner，不触发重新扫描。
-- **恢复**：用户点"启动"→ 后端按 session_id 反查 → 对应 Scanner 产出 `CommandSpec` → 按 `preferred_terminal` 选 `TerminalLauncher` 实现 → 开窗、cd、执行 resume 命令。
+- **快速访问**：搜索、最近天数、项目收藏与 session 收藏都在前端从扫描结果派生；稳定顺序是“最近天数过滤 → 搜索过滤 → session 收藏 > 项目收藏 > 时间 → agent/project 渲染”。可按 Agent 或按项目（跨 CLI）视图切换。搜索不下推到 scanner，不触发重新扫描。
+- **恢复**：用户点"启动"→ 后端按 session_id 反查 → 对应 Scanner 产出 `CommandSpec` → 按 `preferred_terminal` 选 `TerminalLauncher` 实现 → 开窗、cd、执行 resume 命令；**仅成功**后写入 `recent_launches`（上限 20）。`preview_launch_command` 只读返回 program/args/cwd，不写 wrapper。
 - **删除**：用户右键单条 session → 前端确认 → `delete_session` 按前端 `Session.id` 反查缓存里的后端内部删除目标 → 校验 root/path/kind → 删除对应 CLI session 源文件或 chat 目录 → 从缓存移除当前行。
+- **Port**：扫描后应用 `port_ignore_ports` / `port_project_path_prefixes`；loopback 可开浏览器；terminate 仍 all-or-nothing。
+- **Grok 出站**：`grok_fetch_models` / `grok_test_connection` 仅用户触发，Rust（ureq）发起，不 log apiKey；`grok_preview_apply` 不写盘。
 
 详细设计见首个 feature：`.codestable/features/2026-06-17-cli-session-launcher/`。
 
@@ -36,8 +38,9 @@ last_updated: 2026-07-12
 | `SessionScanner` trait | `cli_type()` / `scan_sessions() -> Result<Vec<Session>, ScanError>`；每 CLI 一实现 | `src-tauri/src/scanner.rs` |
 | `TerminalLauncher` trait | `terminal_type()` / `is_available()` / `launch(&CommandSpec)`；每终端一实现，跨平台预留 | `src-tauri/src/launcher.rs` |
 | `QuickAccessOptions` / `QuickAccessResult` | 前端列表派生契约：用 sessions、recentDays、query、favoriteProjectDirs 算出当前可见 sessions、匹配数量和活跃项 | `src/lib/sessionUtils.ts` |
-| `favorite_project_dirs` | 本机偏好里的收藏项目列表，key 是精确 `projectDir` 字符串；只影响前端排序，不进入 `Session` / `ScanResponse` | `src-tauri/src/state.rs` |
-| `AppState` | Tauri 管理的全局状态：sessions 缓存 + scan_errors + preferred_terminal + launch_mode + theme_mode + favorite_project_dirs + scan-cache 路径 / ops_ready | `src-tauri/src/state/` |
+| `favorite_project_dirs` / `favorite_session_ids` | 本机偏好收藏；sanitize 对齐已扫描 sessions；只影响前端排序 | `src-tauri/src/preferences.rs` |
+| `recent_launches` | 成功 launch 后的最近记录（上限 20） | `src-tauri/src/models.rs` / preferences |
+| `AppState` | sessions 缓存 + port 规则 + recent_launches + scan-cache / ops_ready + 终端/主题偏好 | `src-tauri/src/state/` |
 | `scan-cache-v1.json` | 本机扫描快照（app_data）；仅可序列化 Session 字段，永不写 `delete_target`；缓存窗删除文件型 CLI 需先 full scan | `src-tauri/src/state/scan_cache.rs` |
 
 ---

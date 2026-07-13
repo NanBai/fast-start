@@ -9,15 +9,63 @@ use std::collections::{HashMap, HashSet};
 const SCAN_COMMAND_DESCRIPTION: &str = "/usr/sbin/lsof -nP -F pcunPTn -iTCP -sTCP:LISTEN -iUDP";
 
 pub fn scan_ports() -> Result<PortScanResponse, String> {
+    scan_ports_with_rules(&[], &[])
+}
+
+/// 扫描并应用偏好规则：ignore 端口剔除；path prefixes 扩大 is_project_service。
+pub fn scan_ports_with_rules(
+    ignore_ports: &[u16],
+    project_path_prefixes: &[String],
+) -> Result<PortScanResponse, String> {
     let (output, raw_line_count) = process::scan_ports_output()?;
     let mut ports = parse_lsof_ports(&output);
     enrich_ports(&mut ports);
+    apply_port_rules(&mut ports, ignore_ports, project_path_prefixes);
 
     Ok(PortScanResponse {
         ports,
         raw_line_count,
         command_description: SCAN_COMMAND_DESCRIPTION.to_string(),
         scanned_at: Utc::now(),
+    })
+}
+
+/// 规则后处理：忽略端口不展示；prefix 可把符合本地监听条件的端口标为项目服务。
+pub fn apply_port_rules(
+    ports: &mut Vec<PortUsage>,
+    ignore_ports: &[u16],
+    project_path_prefixes: &[String],
+) {
+    if !ignore_ports.is_empty() {
+        ports.retain(|port| !ignore_ports.contains(&port.port));
+    }
+    if project_path_prefixes.is_empty() {
+        return;
+    }
+    for port in ports.iter_mut() {
+        if port.is_project_service {
+            continue;
+        }
+        if expands_project_service(port, project_path_prefixes) {
+            port.is_project_service = true;
+        }
+    }
+}
+
+fn expands_project_service(port: &PortUsage, prefixes: &[String]) -> bool {
+    if port.protocol != PortProtocol::Tcp || port.state != "LISTEN" || !port.user_owned {
+        return false;
+    }
+    if !is_local_address(&port.address) {
+        return false;
+    }
+    let cwd = port.working_directory.as_str();
+    if cwd.is_empty() {
+        return false;
+    }
+    prefixes.iter().any(|prefix| {
+        let p = prefix.trim();
+        !p.is_empty() && (cwd == p || cwd.starts_with(&format!("{p}/")))
     })
 }
 
@@ -176,7 +224,7 @@ fn current_user_tokens() -> HashSet<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_project_service, pids_for_port_ids};
+    use super::{apply_port_rules, expands_project_service, is_project_service, pids_for_port_ids};
     use crate::models::{PortProtocol, PortUsage};
 
     fn port(id: &str, pid: i32, user_owned: bool) -> PortUsage {
@@ -236,5 +284,31 @@ mod tests {
         assert!(!is_project_service(&item, Some("/Users/me")));
         item.working_directory = "/tmp/app".to_string();
         assert!(is_project_service(&item, Some("/Users/me")));
+    }
+
+    #[test]
+    fn apply_port_rules_drops_ignored_ports() {
+        let mut ports = vec![port("a", 1, true), port("b", 2, true)];
+        ports[1].port = 5432;
+        apply_port_rules(&mut ports, &[5432], &[]);
+        assert_eq!(ports.len(), 1);
+        assert_eq!(ports[0].id, "a");
+    }
+
+    #[test]
+    fn path_prefix_expands_project_service() {
+        let mut item = port("a", 42, true);
+        item.is_project_service = false;
+        item.executable_path = "/Applications/Chrome.app/Contents/MacOS/Chrome".to_string();
+        item.working_directory = "/Users/me/codes/app".to_string();
+        // 系统路径可执行文件本非项目服务，但 cwd 命中 prefix 可扩大
+        assert!(expands_project_service(
+            &item,
+            &["/Users/me/codes".to_string()]
+        ));
+        apply_port_rules(&mut vec![item.clone()], &[], &["/Users/me/codes".to_string()]);
+        let mut list = vec![item];
+        apply_port_rules(&mut list, &[], &["/Users/me/codes".to_string()]);
+        assert!(list[0].is_project_service);
     }
 }

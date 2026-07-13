@@ -18,15 +18,15 @@ dod:
 steps:
   - action: "编写 release 脚本与版本校验"
     exit_signal: "dry-run 可执行退出 0"
-    status: pending
+    status: done
   - action: "文档接入 release-readiness"
     exit_signal: "文档含脚本路径"
-    status: pending
+    status: done
 
 checks:
   - item: "版本三处一致校验"
     source: 验收场景
-    status: pending
+    status: done
   - item: "dry-run 不破坏远程"
     source: 流程级约束
-    status: pending
+    status: done

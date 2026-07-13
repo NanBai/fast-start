@@ -25,6 +25,10 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   const [favoriteProjectDirs, setFavoriteProjectDirs] = useState<string[]>([]);
   const [favoriteSessionIds, setFavoriteSessionIds] = useState<string[]>([]);
   const [portAutoRefresh, setPortAutoRefresh] = useState(true);
+  const [portIgnorePorts, setPortIgnorePorts] = useState<number[]>([]);
+  const [portProjectPathPrefixes, setPortProjectPathPrefixes] = useState<
+    string[]
+  >([]);
   const [sessionListMode, setSessionListMode] =
     useState<SessionListMode>("by-agent");
 
@@ -37,6 +41,8 @@ export function usePreferences(notifyStatus: NotifyStatus) {
       favorites,
       sessionFavorites,
       autoRefresh,
+      ignorePorts,
+      pathPrefixes,
       listMode,
     ] = await Promise.all([
       invoke<TerminalType[]>("list_available_terminals"),
@@ -46,6 +52,8 @@ export function usePreferences(notifyStatus: NotifyStatus) {
       invoke<string[]>("get_favorite_project_dirs"),
       invoke<string[]>("get_favorite_session_ids"),
       invoke<boolean>("get_port_auto_refresh"),
+      invoke<number[]>("get_port_ignore_ports"),
+      invoke<string[]>("get_port_project_path_prefixes"),
       invoke<SessionListMode>("get_session_list_mode"),
     ]);
     setAvailableTerminals(available);
@@ -61,6 +69,8 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     setFavoriteProjectDirs(favorites);
     setFavoriteSessionIds(sessionFavorites);
     setPortAutoRefresh(autoRefresh);
+    setPortIgnorePorts(ignorePorts);
+    setPortProjectPathPrefixes(pathPrefixes);
     setSessionListMode(listMode);
   }
 
@@ -116,6 +126,30 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function handlePortIgnorePortsChange(ports: number[]) {
+    const previous = portIgnorePorts;
+    setPortIgnorePorts(ports);
+    try {
+      await invoke("set_port_ignore_ports", { ports });
+      notifyStatus("已更新忽略端口规则", "info");
+    } catch (error) {
+      setPortIgnorePorts(previous);
+      notifyStatus(`忽略端口保存失败：${String(error)}`, "error");
+    }
+  }
+
+  async function handlePortProjectPathPrefixesChange(prefixes: string[]) {
+    const previous = portProjectPathPrefixes;
+    setPortProjectPathPrefixes(prefixes);
+    try {
+      await invoke("set_port_project_path_prefixes", { prefixes });
+      notifyStatus("已更新项目路径前缀规则", "info");
+    } catch (error) {
+      setPortProjectPathPrefixes(previous);
+      notifyStatus(`路径前缀保存失败：${String(error)}`, "error");
+    }
+  }
+
   async function handleSessionListModeChange(mode: SessionListMode) {
     const previous = sessionListMode;
     setSessionListMode(mode);
@@ -136,6 +170,8 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     favoriteProjectDirs,
     favoriteSessionIds,
     portAutoRefresh,
+    portIgnorePorts,
+    portProjectPathPrefixes,
     sessionListMode,
     loadPreferences,
     handleTerminalChange,
@@ -144,6 +180,8 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     handleFavoriteProjectDirsChange,
     handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
+    handlePortIgnorePortsChange,
+    handlePortProjectPathPrefixesChange,
     handleSessionListModeChange,
   };
 }

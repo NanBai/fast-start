@@ -2,6 +2,8 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   CliScanError,
+  LaunchCommandPreview,
+  RecentLaunch,
   ScanResponse,
   SessionData,
   StatusType,
@@ -37,6 +39,10 @@ export function useSessions(notifyStatus: NotifyStatus) {
   const [launchingId, setLaunchingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SessionData | null>(null);
+  const [recentLaunches, setRecentLaunches] = useState<RecentLaunch[]>([]);
+  const [commandPreview, setCommandPreview] = useState<LaunchCommandPreview | null>(
+    null,
+  );
 
   function applyScanResult(result: ScanResponse) {
     setSessions(result.sessions);
@@ -50,6 +56,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
     try {
       const result = await invoke<ScanResponse>("scan_sessions");
       applyScanResult(result);
+      void loadRecentLaunches();
       // 缓存秒开后立即全量 refresh，补齐 delete_target 并写回 snapshot
       if (result.fromCache === true) {
         setLoading(false);
@@ -75,6 +82,15 @@ export function useSessions(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function loadRecentLaunches() {
+    try {
+      const launches = await invoke<RecentLaunch[]>("get_recent_launches");
+      setRecentLaunches(launches);
+    } catch {
+      // 非关键路径：启动历史失败不阻断列表
+    }
+  }
+
   async function launchSession(sessionId: string) {
     setLaunchingId(sessionId);
     notifyStatus("正在启动终端…", "info");
@@ -82,11 +98,33 @@ export function useSessions(notifyStatus: NotifyStatus) {
       // sessionListId = Session.id（列表稳定 id），不是 CLI 原始 sessionId
       await invoke("launch_session", { sessionListId: sessionId });
       notifyStatus("终端启动成功", "success");
+      await loadRecentLaunches();
     } catch (error) {
       notifyStatus(`启动失败：${String(error)}`, "error");
     } finally {
       setLaunchingId(null);
     }
+  }
+
+  async function previewLaunchCommand(sessionId: string) {
+    try {
+      const preview = await invoke<LaunchCommandPreview>("preview_launch_command", {
+        sessionListId: sessionId,
+      });
+      setCommandPreview(preview);
+      notifyStatus(
+        `命令预览：${preview.program} ${preview.args.join(" ")}`,
+        "info",
+      );
+      return preview;
+    } catch (error) {
+      notifyStatus(`预览失败：${String(error)}`, "error");
+      return null;
+    }
+  }
+
+  function clearCommandPreview() {
+    setCommandPreview(null);
   }
 
   function requestDeleteSession(session: SessionData) {
@@ -125,9 +163,14 @@ export function useSessions(notifyStatus: NotifyStatus) {
     launchingId,
     deletingId,
     pendingDelete,
+    recentLaunches,
+    commandPreview,
     loadSessions,
     refreshSessions,
     launchSession,
+    previewLaunchCommand,
+    clearCommandPreview,
+    loadRecentLaunches,
     requestDeleteSession,
     cancelDeleteSession,
     confirmDeleteSession,

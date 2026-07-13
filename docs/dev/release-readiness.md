@@ -38,6 +38,23 @@ pnpm install
 pnpm tauri dev
 ```
 
+## 发布脚本
+
+仓库提供 `scripts/release.sh`：
+
+```bash
+# 只校验版本并打印步骤
+DRY_RUN=1 ./scripts/release.sh
+
+# 构建 dmg（不自动创建 GitHub Release）
+./scripts/release.sh
+
+# 构建并 gh release create（需本机 gh 登录；签名/公证仍为人工门禁）
+CREATE_GITHUB_RELEASE=1 ./scripts/release.sh
+```
+
+脚本会校验 `package.json` / `src-tauri/Cargo.toml` / `src-tauri/tauri.conf.json` 版本一致，再执行 `pnpm build` 与 `pnpm tauri build`。
+
 只启动前端开发服务器：
 
 ```bash

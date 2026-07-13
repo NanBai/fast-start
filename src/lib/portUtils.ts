@@ -56,6 +56,27 @@ export function serverURLLabel(port: PortUsage) {
   return `${normalizedServerHost(port.address)}:${port.port}`;
 }
 
+/** 仅 loopback / 通配监听允许在浏览器打开。 */
+export function isLoopbackAddress(address: string) {
+  return (
+    address === "*" ||
+    address === "0.0.0.0" ||
+    address === "::" ||
+    address === "[::]" ||
+    address === "[::1]" ||
+    address === "::1" ||
+    address.startsWith("127.") ||
+    address.toLowerCase().includes("localhost")
+  );
+}
+
+/** 可在浏览器打开时返回 http URL，否则 null。 */
+export function loopbackBrowserUrl(port: PortUsage): string | null {
+  if (port.protocol !== "tcp") return null;
+  if (!isLoopbackAddress(port.address)) return null;
+  return `http://127.0.0.1:${port.port}`;
+}
+
 export function protocolLabel(protocol: PortProtocol) {
   return PORT_PROTOCOL_LABELS[protocol];
 }

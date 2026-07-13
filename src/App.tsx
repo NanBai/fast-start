@@ -88,6 +88,8 @@ function App() {
     favoriteProjectDirs,
     favoriteSessionIds,
     portAutoRefresh,
+    portIgnorePorts,
+    portProjectPathPrefixes,
     sessionListMode,
     loadPreferences,
     handleTerminalChange,
@@ -96,6 +98,8 @@ function App() {
     handleFavoriteProjectDirsChange,
     handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
+    handlePortIgnorePortsChange,
+    handlePortProjectPathPrefixesChange,
     handleSessionListModeChange,
   } = usePreferences(notifyStatus);
 
@@ -107,9 +111,13 @@ function App() {
     launchingId,
     deletingId,
     pendingDelete,
+    recentLaunches,
+    commandPreview,
     loadSessions,
     refreshSessions,
     launchSession,
+    previewLaunchCommand,
+    clearCommandPreview,
     requestDeleteSession: requestDelete,
     cancelDeleteSession,
     confirmDeleteSession,
@@ -543,6 +551,48 @@ function App() {
         </div>
       )}
 
+      {activeTool === "sessions" && recentLaunches.length > 0 && (
+        <div className="recent-launches" aria-label="最近启动">
+          <span className="recent-launches-label">最近启动</span>
+          <div className="recent-launches-list">
+            {recentLaunches.slice(0, 8).map((item) => (
+              <button
+                key={`${item.sessionListId}-${item.launchedAt}`}
+                type="button"
+                className="recent-launch-chip"
+                disabled={
+                  launchingId === item.sessionListId ||
+                  deletingId === item.sessionListId
+                }
+                title={`${item.projectDir}\n预览后可再启动`}
+                onClick={() => void handleLaunch(item.sessionListId)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  void previewLaunchCommand(item.sessionListId);
+                }}
+              >
+                <span className="recent-launch-cli">{CLI_LABELS[item.cliType]}</span>
+                <span className="recent-launch-name">
+                  {item.summary?.trim() || item.projectName}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTool === "sessions" && commandPreview && (
+        <div className="command-preview" aria-label="命令预览">
+          <code>
+            {commandPreview.cd ? `cd ${commandPreview.cwd} && ` : ""}
+            {commandPreview.program} {commandPreview.args.join(" ")}
+          </code>
+          <button type="button" className="btn" onClick={clearCommandPreview}>
+            关闭预览
+          </button>
+        </div>
+      )}
+
       {activeTool === "sessions" && scanErrors.length > 0 && (
         <div className="scan-errors" aria-label="扫描失败的 CLI">
           {scanErrors.map((error) => (
@@ -566,9 +616,19 @@ function App() {
             terminatingIds={terminatingIds}
             lastUpdated={portLastUpdated}
             diagnosticText={portDiagnostic}
+            ignorePorts={portIgnorePorts}
+            projectPathPrefixes={portProjectPathPrefixes}
             onRefresh={() => void refreshPorts()}
             onTerminate={requestTerminatePorts}
             onNotify={notifyStatus}
+            onIgnorePortsChange={(ports) =>
+              void handlePortIgnorePortsChange(ports).then(() => refreshPorts())
+            }
+            onProjectPathPrefixesChange={(prefixes) =>
+              void handlePortProjectPathPrefixesChange(prefixes).then(() =>
+                refreshPorts(),
+              )
+            }
           />
         )
       ) : activeTool === "providers" ? (

@@ -1,90 +1,45 @@
 roadmap: "session-launcher-next-wave"
-status: implementing
+status: complete
 baseline_ref: "725ad49867ba2702f559bd803bc383308db2ccf8"
 driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 5
+current_feature_index: 9
 features:
   - slug: scan-cache-and-metrics
     roadmap_item: scan-cache-and-metrics
     feature_dir: ".codestable/features/2026-07-13-scan-cache-and-metrics"
-    design: ".codestable/features/2026-07-13-scan-cache-and-metrics/scan-cache-and-metrics-design.md"
-    checklist: ".codestable/features/2026-07-13-scan-cache-and-metrics/scan-cache-and-metrics-checklist.yaml"
-    review: ".codestable/features/2026-07-13-scan-cache-and-metrics/scan-cache-and-metrics-review.md"
-    qa: ".codestable/features/2026-07-13-scan-cache-and-metrics/scan-cache-and-metrics-qa.md"
-    acceptance: ".codestable/features/2026-07-13-scan-cache-and-metrics/scan-cache-and-metrics-acceptance.md"
     status: accepted
   - slug: session-mixed-project-view
     roadmap_item: session-mixed-project-view
     feature_dir: ".codestable/features/2026-07-13-session-mixed-project-view"
-    design: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-design.md"
-    checklist: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-checklist.yaml"
-    review: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-review.md"
-    qa: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-qa.md"
-    acceptance: ".codestable/features/2026-07-13-session-mixed-project-view/session-mixed-project-view-acceptance.md"
     status: accepted
   - slug: session-favorites-and-empty-states
     roadmap_item: session-favorites-and-empty-states
     feature_dir: ".codestable/features/2026-07-13-session-favorites-and-empty-states"
-    design: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-design.md"
-    checklist: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-checklist.yaml"
-    review: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-review.md"
-    qa: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-qa.md"
-    acceptance: ".codestable/features/2026-07-13-session-favorites-and-empty-states/session-favorites-and-empty-states-acceptance.md"
     status: accepted
   - slug: grok-models-and-preview
     roadmap_item: grok-models-and-preview
     feature_dir: ".codestable/features/2026-07-13-grok-models-and-preview"
-    design: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-design.md"
-    checklist: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-checklist.yaml"
-    review: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-review.md"
-    qa: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-qa.md"
-    acceptance: ".codestable/features/2026-07-13-grok-models-and-preview/grok-models-and-preview-acceptance.md"
     status: accepted
   - slug: grok-default-profile-policy
     roadmap_item: grok-default-profile-policy
     feature_dir: ".codestable/features/2026-07-13-grok-default-profile-policy"
-    design: ".codestable/features/2026-07-13-grok-default-profile-policy/grok-default-profile-policy-design.md"
-    checklist: ".codestable/features/2026-07-13-grok-default-profile-policy/grok-default-profile-policy-checklist.yaml"
-    review: ".codestable/features/2026-07-13-grok-default-profile-policy/grok-default-profile-policy-review.md"
-    qa: ".codestable/features/2026-07-13-grok-default-profile-policy/grok-default-profile-policy-qa.md"
-    acceptance: ".codestable/features/2026-07-13-grok-default-profile-policy/grok-default-profile-policy-acceptance.md"
     status: accepted
   - slug: port-power-ops
     roadmap_item: port-power-ops
     feature_dir: ".codestable/features/2026-07-13-port-power-ops"
-    design: ".codestable/features/2026-07-13-port-power-ops/port-power-ops-design.md"
-    checklist: ".codestable/features/2026-07-13-port-power-ops/port-power-ops-checklist.yaml"
-    review: ".codestable/features/2026-07-13-port-power-ops/port-power-ops-review.md"
-    qa: ".codestable/features/2026-07-13-port-power-ops/port-power-ops-qa.md"
-    acceptance: ".codestable/features/2026-07-13-port-power-ops/port-power-ops-acceptance.md"
-    status: implementing
+    status: accepted
   - slug: launch-history-and-preview
     roadmap_item: launch-history-and-preview
     feature_dir: ".codestable/features/2026-07-13-launch-history-and-preview"
-    design: ".codestable/features/2026-07-13-launch-history-and-preview/launch-history-and-preview-design.md"
-    checklist: ".codestable/features/2026-07-13-launch-history-and-preview/launch-history-and-preview-checklist.yaml"
-    review: ".codestable/features/2026-07-13-launch-history-and-preview/launch-history-and-preview-review.md"
-    qa: ".codestable/features/2026-07-13-launch-history-and-preview/launch-history-and-preview-qa.md"
-    acceptance: ".codestable/features/2026-07-13-launch-history-and-preview/launch-history-and-preview-acceptance.md"
-    status: pending
+    status: accepted
   - slug: release-automation
     roadmap_item: release-automation
     feature_dir: ".codestable/features/2026-07-13-release-automation"
-    design: ".codestable/features/2026-07-13-release-automation/release-automation-design.md"
-    checklist: ".codestable/features/2026-07-13-release-automation/release-automation-checklist.yaml"
-    review: ".codestable/features/2026-07-13-release-automation/release-automation-review.md"
-    qa: ".codestable/features/2026-07-13-release-automation/release-automation-qa.md"
-    acceptance: ".codestable/features/2026-07-13-release-automation/release-automation-acceptance.md"
-    status: pending
+    status: accepted
   - slug: wave-harden-and-docs
     roadmap_item: wave-harden-and-docs
     feature_dir: ".codestable/features/2026-07-13-wave-harden-and-docs"
-    design: ".codestable/features/2026-07-13-wave-harden-and-docs/wave-harden-and-docs-design.md"
-    checklist: ".codestable/features/2026-07-13-wave-harden-and-docs/wave-harden-and-docs-checklist.yaml"
-    review: ".codestable/features/2026-07-13-wave-harden-and-docs/wave-harden-and-docs-review.md"
-    qa: ".codestable/features/2026-07-13-wave-harden-and-docs/wave-harden-and-docs-qa.md"
-    acceptance: ".codestable/features/2026-07-13-wave-harden-and-docs/wave-harden-and-docs-acceptance.md"
-    status: pending
+    status: accepted

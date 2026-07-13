@@ -55,6 +55,22 @@ export interface PortScanResponse {
   scannedAt: string;
 }
 
+export interface RecentLaunch {
+  sessionListId: string;
+  cliType: CliType;
+  projectName: string;
+  projectDir: string;
+  summary?: string | null;
+  launchedAt: string;
+}
+
+export interface LaunchCommandPreview {
+  cwd: string;
+  program: string;
+  args: string[];
+  cd: boolean;
+}
+
 export const CLI_ORDER: CliType[] = [
   "codex",
   "claude-code",

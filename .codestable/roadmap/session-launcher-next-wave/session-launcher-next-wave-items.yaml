@@ -45,7 +45,7 @@ items:
   - slug: port-power-ops
     description: 在现有多 id terminate 之上增加 loopback 打开浏览器与可配置项目路径/忽略端口规则，必要时补跨组多选 UI
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-port-power-ops
     minimal_loop: false
     notes: "terminate 已支持 Vec id 且 all-or-nothing；本条不重写 kill 语义"
@@ -53,7 +53,7 @@ items:
   - slug: launch-history-and-preview
     description: 成功启动写入最近记录并支持快捷再启动；可选预览 resume 命令（program/args/cwd）
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-launch-history-and-preview
     minimal_loop: false
     notes: null
@@ -61,7 +61,7 @@ items:
   - slug: release-automation
     description: 提供 release 脚本/文档：校验版本号一致、构建 dmg、创建 GitHub Release
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-release-automation
     minimal_loop: false
     notes: "不替代人工确认签名与推送策略时可 dry-run"
@@ -77,7 +77,7 @@ items:
       - port-power-ops
       - launch-history-and-preview
       - release-automation
-    status: in-progress
+    status: done
     feature: 2026-07-13-wave-harden-and-docs
     minimal_loop: false
     notes: "polish/harden/文档扫尾；前置均可 done 或用户决定 drop 后调整 depends"

@@ -524,6 +524,73 @@
   gap: var(--space-2);
 }
 
+.recent-launches {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-4) 8px;
+  overflow-x: auto;
+}
+
+.recent-launches-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.recent-launches-list {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recent-launch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--control-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.recent-launch-chip:hover {
+  background: var(--control-bg-hover, var(--hover-overlay));
+}
+
+.recent-launch-cli {
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.recent-launch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-4) 10px;
+}
+
+.command-preview code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--control-bg);
+}
+
 .session-list[data-list-mode="by-project"] > .project-bucket {
   border-radius: 12px;
   background: var(--surface-elevated, transparent);

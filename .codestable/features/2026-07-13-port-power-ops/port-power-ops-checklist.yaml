@@ -18,24 +18,24 @@ dod:
 steps:
   - action: "preferences 规则 key + 过滤逻辑"
     exit_signal: "纯函数/单测或可核验规则"
-    status: pending
+    status: done
   - action: "打开浏览器 loopback 校验 + UI"
     exit_signal: "pnpm build；非 loopback 禁用"
-    status: pending
+    status: done
   - action: "terminate 回归与多选 UI 补齐（若缺）"
     exit_signal: "cargo test port 相关；手工批量"
-    status: pending
+    status: done
   - action: "用户文档短补"
     exit_signal: "docs 含打开/规则"
-    status: pending
+    status: done
 
 checks:
   - item: "不重写 kill 语义 all-or-nothing"
     source: 范围守护
-    status: pending
+    status: done
   - item: "仅 loopback 打开"
     source: 流程级约束
-    status: pending
+    status: done
   - item: "规则 preferences 生效"
     source: 验收场景
-    status: pending
+    status: done

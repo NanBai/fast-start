@@ -131,6 +131,29 @@ pub struct PortScanResponse {
     pub scanned_at: DateTime<Utc>,
 }
 
+/// 成功启动后写入的最近记录（上限由 state 截断）。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentLaunch {
+    pub session_list_id: String,
+    pub cli_type: CliType,
+    pub project_name: String,
+    pub project_dir: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    pub launched_at: DateTime<Utc>,
+}
+
+/// 只读 resume 命令预览（不写 wrapper、不执行）。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchCommandPreview {
+    pub cwd: String,
+    pub program: String,
+    pub args: Vec<String>,
+    pub cd: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliScanError {

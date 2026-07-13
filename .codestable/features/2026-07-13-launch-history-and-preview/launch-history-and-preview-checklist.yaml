@@ -18,24 +18,24 @@ dod:
 steps:
   - action: "preferences + launch 成功写入 + sanitize"
     exit_signal: "逻辑可测"
-    status: pending
+    status: done
   - action: "preview_launch_command 命令"
     exit_signal: "cargo test/校验白名单"
-    status: pending
+    status: done
   - action: "UI 最近启动与预览"
     exit_signal: "pnpm build；手工"
-    status: pending
+    status: done
   - action: "文档一句"
     exit_signal: "docs 含最近启动"
-    status: pending
+    status: done
 
 checks:
   - item: "仅成功 launch 写入"
     source: 流程级约束
-    status: pending
+    status: done
   - item: "preview 不执行命令"
     source: 验收场景
-    status: pending
+    status: done
   - item: "上限 20 + sanitize"
     source: 名词契约
-    status: pending
+    status: done

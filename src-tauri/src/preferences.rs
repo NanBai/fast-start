@@ -1,5 +1,5 @@
 //! 本机 preferences.json 读写（tauri-plugin-store）。
-use crate::models::{LaunchMode, SessionListMode, TerminalType, ThemeMode};
+use crate::models::{LaunchMode, RecentLaunch, SessionListMode, TerminalType, ThemeMode};
 use serde_json::json;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
@@ -10,6 +10,9 @@ const THEME_MODE_KEY: &str = "theme_mode";
 const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
 const FAVORITE_SESSION_IDS_KEY: &str = "favorite_session_ids";
 const PORT_AUTO_REFRESH_KEY: &str = "port_auto_refresh";
+const PORT_IGNORE_PORTS_KEY: &str = "port_ignore_ports";
+const PORT_PROJECT_PATH_PREFIXES_KEY: &str = "port_project_path_prefixes";
+const RECENT_LAUNCHES_KEY: &str = "recent_launches";
 const SESSION_LIST_MODE_KEY: &str = "session_list_mode";
 const GROK_PROVIDER_ORDER_KEY: &str = "grok_provider_order";
 const GROK_PINNED_PROVIDER_IDS_KEY: &str = "grok_pinned_provider_ids";
@@ -43,6 +46,85 @@ pub fn save_port_auto_refresh(app: &AppHandle, enabled: bool) -> Result<(), Stri
         .map_err(|err| err.to_string())?;
     store.set(PORT_AUTO_REFRESH_KEY, json!(enabled));
     store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_port_ignore_ports(app: &AppHandle) -> Result<Vec<u16>, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(PORT_IGNORE_PORTS_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw)
+            .map(normalize_ports)
+            .map_err(|err| err.to_string())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+pub fn save_port_ignore_ports(app: &AppHandle, ports: Vec<u16>) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(PORT_IGNORE_PORTS_KEY, json!(normalize_ports(ports)));
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_port_project_path_prefixes(app: &AppHandle) -> Result<Vec<String>, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(PORT_PROJECT_PATH_PREFIXES_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw)
+            .map(normalize_string_list)
+            .map_err(|err| err.to_string())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+pub fn save_port_project_path_prefixes(app: &AppHandle, prefixes: Vec<String>) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(
+        PORT_PROJECT_PATH_PREFIXES_KEY,
+        json!(normalize_string_list(prefixes)),
+    );
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_recent_launches(app: &AppHandle) -> Result<Vec<RecentLaunch>, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(RECENT_LAUNCHES_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw).map_err(|err| err.to_string())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+pub fn save_recent_launches(app: &AppHandle, launches: Vec<RecentLaunch>) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(RECENT_LAUNCHES_KEY, json!(launches));
+    store.save().map_err(|err| err.to_string())
+}
+
+fn normalize_ports(ports: Vec<u16>) -> Vec<u16> {
+    let mut out = Vec::new();
+    for port in ports {
+        if port == 0 || out.contains(&port) {
+            continue;
+        }
+        out.push(port);
+    }
+    out.sort_unstable();
+    out
 }
 
 pub fn load_preferred_terminal(app: &AppHandle) -> Result<TerminalType, String> {

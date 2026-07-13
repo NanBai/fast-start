@@ -11,20 +11,22 @@ mod state;
 
 use commands::{
     delete_session, get_favorite_project_dirs, get_favorite_session_ids, get_grok_provider_layout,
-    get_launch_mode, get_port_auto_refresh, get_preferred_terminal, get_session_list_mode,
-    get_theme_mode, grok_activate_official, grok_activate_profile, grok_apply_privacy_protection,
+    get_launch_mode, get_port_auto_refresh, get_port_ignore_ports, get_port_project_path_prefixes,
+    get_preferred_terminal, get_recent_launches, get_session_list_mode, get_theme_mode,
+    grok_activate_official, grok_activate_profile, grok_apply_privacy_protection,
     grok_create_profile, grok_delete_profile, grok_fetch_models, grok_import_current,
     grok_list_backups, grok_list_profiles, grok_preview_apply, grok_provider_status,
-    grok_restore_backup, grok_test_connection, grok_update_profile,
-    launch_session, list_available_terminals, refresh_ports, refresh_sessions, scan_ports,
+    grok_restore_backup, grok_test_connection, grok_update_profile, launch_session,
+    list_available_terminals, preview_launch_command, refresh_ports, refresh_sessions, scan_ports,
     scan_sessions, set_favorite_project_dirs, set_favorite_session_ids, set_grok_provider_layout,
-    set_launch_mode, set_port_auto_refresh, set_preferred_terminal, set_session_list_mode,
-    set_theme_mode, terminate_port_processes,
+    set_launch_mode, set_port_auto_refresh, set_port_ignore_ports, set_port_project_path_prefixes,
+    set_preferred_terminal, set_session_list_mode, set_theme_mode, terminate_port_processes,
 };
 use grok_provider::GrokProviderState;
 use state::{
     load_favorite_project_dirs, load_favorite_session_ids, load_launch_mode, load_port_auto_refresh,
-    load_preferred_terminal, load_theme_mode, save_preferred_terminal, AppState,
+    load_port_ignore_ports, load_port_project_path_prefixes, load_preferred_terminal,
+    load_recent_launches, load_theme_mode, save_preferred_terminal, AppState,
 };
 use tauri::{Manager, path::BaseDirectory};
 
@@ -60,6 +62,15 @@ pub fn run() {
                 save_preferred_terminal(app.handle(), preferred)?;
                 state.set_preferred_terminal(preferred)?;
             }
+            let _ = state.set_port_ignore_ports(
+                load_port_ignore_ports(app.handle()).unwrap_or_default(),
+            );
+            let _ = state.set_port_project_path_prefixes(
+                load_port_project_path_prefixes(app.handle()).unwrap_or_default(),
+            );
+            let _ = state.set_recent_launches(
+                load_recent_launches(app.handle()).unwrap_or_default(),
+            );
             // 扫描磁盘缓存：{app_data}/scan-cache-v1.json（不含 delete_target）
             if let Ok(app_data) = app.path().resolve("", BaseDirectory::AppData) {
                 let cache_path = app_data.join("scan-cache-v1.json");
@@ -80,6 +91,8 @@ pub fn run() {
             scan_sessions,
             refresh_sessions,
             launch_session,
+            preview_launch_command,
+            get_recent_launches,
             delete_session,
             scan_ports,
             refresh_ports,
@@ -97,6 +110,10 @@ pub fn run() {
             set_favorite_session_ids,
             get_port_auto_refresh,
             set_port_auto_refresh,
+            get_port_ignore_ports,
+            set_port_ignore_ports,
+            get_port_project_path_prefixes,
+            set_port_project_path_prefixes,
             get_session_list_mode,
             set_session_list_mode,
             grok_provider_status,

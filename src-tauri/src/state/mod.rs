@@ -3,18 +3,23 @@ mod scan_cache;
 
 use crate::launcher::{launcher_for, launchers, LaunchError};
 use crate::models::{
-    CliScanError, CliType, LaunchMode, PortScanResponse, ScanResponse, Session, TerminalType,
-    ThemeMode,
+    CliScanError, CliType, LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch,
+    ScanResponse, Session, TerminalType, ThemeMode,
 };
 use crate::scanner::{command_spec_for_session, scanners};
 use crate::session_delete::delete_session_target;
+use chrono::Utc;
 use scan_cache::{load_scan_cache, save_scan_cache, snapshot_from_sessions};
 
 pub use crate::preferences::{
     load_favorite_project_dirs, load_favorite_session_ids, load_launch_mode, load_port_auto_refresh,
-    load_preferred_terminal, load_theme_mode, save_favorite_project_dirs, save_favorite_session_ids,
-    save_launch_mode, save_port_auto_refresh, save_preferred_terminal, save_theme_mode,
+    load_port_ignore_ports, load_port_project_path_prefixes, load_preferred_terminal,
+    load_recent_launches, load_theme_mode, save_favorite_project_dirs, save_favorite_session_ids,
+    save_launch_mode, save_port_auto_refresh, save_port_ignore_ports,
+    save_port_project_path_prefixes, save_preferred_terminal, save_recent_launches, save_theme_mode,
 };
+
+pub const RECENT_LAUNCHES_LIMIT: usize = 20;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -39,6 +44,9 @@ pub(crate) struct AppStateInner {
     favorite_project_dirs: Vec<String>,
     favorite_session_ids: Vec<String>,
     port_auto_refresh: bool,
+    port_ignore_ports: Vec<u16>,
+    port_project_path_prefixes: Vec<String>,
+    recent_launches: Vec<RecentLaunch>,
     /// 是否已有可展示的 sessions（磁盘缓存或 full scan）。
     scanned: bool,
     /// full scan 完成：sessions 含 delete_target，可安全删除文件型 CLI。
@@ -67,6 +75,9 @@ impl AppState {
                 favorite_project_dirs: normalize_project_dirs(favorite_project_dirs),
                 favorite_session_ids: normalize_id_list(favorite_session_ids),
                 port_auto_refresh,
+                port_ignore_ports: Vec::new(),
+                port_project_path_prefixes: Vec::new(),
+                recent_launches: Vec::new(),
                 scanned: false,
                 ops_ready: false,
                 scan_cache_path: None,
@@ -364,8 +375,8 @@ impl AppState {
         Ok(())
     }
 
-    /// `session_list_id` = `Session.id`（列表稳定 id）。
-    pub fn launch_session(&self, session_list_id: &str) -> Result<(), String> {
+    /// `session_list_id` = `Session.id`（列表稳定 id）。成功时返回 session 供写入最近记录。
+    pub fn launch_session(&self, session_list_id: &str) -> Result<Session, String> {
         let session = self.find_session(session_list_id)?;
         let preferred = self.preferred_terminal()?;
         let mode = self.launch_mode()?;
@@ -377,15 +388,123 @@ impl AppState {
 
         // Terminal.app 不支持开 tab：选了 NewTab 时回退到 NewWindow 并提示。
         if mode == LaunchMode::NewTab && !launcher.supports_tab() {
-            return launcher
+            launcher
                 .launch(&command_spec_for_session(&session)?, LaunchMode::NewWindow)
-                .map_err(|err: LaunchError| err.message());
+                .map_err(|err: LaunchError| err.message())?;
+            return Ok(session);
         }
 
         let spec = command_spec_for_session(&session)?;
         launcher
             .launch(&spec, mode)
-            .map_err(|err: LaunchError| err.message())
+            .map_err(|err: LaunchError| err.message())?;
+        Ok(session)
+    }
+
+    pub fn preview_launch_command(
+        &self,
+        session_list_id: &str,
+    ) -> Result<LaunchCommandPreview, String> {
+        let session = self.find_session(session_list_id)?;
+        let spec = command_spec_for_session(&session)?;
+        Ok(LaunchCommandPreview {
+            cwd: spec.cwd.to_string_lossy().to_string(),
+            program: spec.program,
+            args: spec.args,
+            cd: spec.cd,
+        })
+    }
+
+    pub fn recent_launches(&self) -> Result<Vec<RecentLaunch>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.recent_launches.clone())
+    }
+
+    pub fn set_recent_launches(&self, launches: Vec<RecentLaunch>) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.recent_launches = launches;
+        Ok(())
+    }
+
+    /// 成功启动后写入；同 session 去重置顶；上限 RECENT_LAUNCHES_LIMIT。
+    pub fn record_recent_launch(&self, session: &Session) -> Result<Vec<RecentLaunch>, String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        let entry = RecentLaunch {
+            session_list_id: session.id.clone(),
+            cli_type: session.cli_type,
+            project_name: session.project_name.clone(),
+            project_dir: session.project_dir.to_string_lossy().to_string(),
+            summary: session.summary.clone(),
+            launched_at: Utc::now(),
+        };
+        guard
+            .recent_launches
+            .retain(|item| item.session_list_id != entry.session_list_id);
+        guard.recent_launches.insert(0, entry);
+        if guard.recent_launches.len() > RECENT_LAUNCHES_LIMIT {
+            guard.recent_launches.truncate(RECENT_LAUNCHES_LIMIT);
+        }
+        Ok(guard.recent_launches.clone())
+    }
+
+    pub fn sanitize_recent_launches(&self) -> Result<Vec<RecentLaunch>, String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        // 尚未扫描时不清理，避免冷启动把历史清空。
+        if guard.sessions.is_empty() {
+            return Ok(guard.recent_launches.clone());
+        }
+        let allowed: std::collections::HashSet<String> =
+            guard.sessions.iter().map(|s| s.id.clone()).collect();
+        guard
+            .recent_launches
+            .retain(|item| allowed.contains(&item.session_list_id));
+        Ok(guard.recent_launches.clone())
+    }
+
+    pub fn port_ignore_ports(&self) -> Result<Vec<u16>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.port_ignore_ports.clone())
+    }
+
+    pub fn set_port_ignore_ports(&self, ports: Vec<u16>) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.port_ignore_ports = ports;
+        Ok(())
+    }
+
+    pub fn port_project_path_prefixes(&self) -> Result<Vec<String>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.port_project_path_prefixes.clone())
+    }
+
+    pub fn set_port_project_path_prefixes(&self, prefixes: Vec<String>) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.port_project_path_prefixes = prefixes;
+        Ok(())
     }
 
     /// `session_list_id` = `Session.id`（列表稳定 id）。
@@ -503,6 +622,9 @@ mod tests {
                 favorite_project_dirs: Vec::new(),
                 favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
+                port_ignore_ports: Vec::new(),
+                port_project_path_prefixes: Vec::new(),
+                recent_launches: Vec::new(),
                 scanned: true,
                 ops_ready: true,
                 scan_cache_path: None,
@@ -525,6 +647,9 @@ mod tests {
                 favorite_project_dirs: Vec::new(),
                 favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
+                port_ignore_ports: Vec::new(),
+                port_project_path_prefixes: Vec::new(),
+                recent_launches: Vec::new(),
                 scanned: true,
                 ops_ready: false,
                 scan_cache_path: Some(cache_path),
