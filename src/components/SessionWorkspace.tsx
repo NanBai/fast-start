@@ -476,7 +476,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             onClick={() => setDiskUsageOpen((open) => !open)}
             aria-expanded={diskUsageOpen}
           >
-            磁盘占用（源载体近似）{diskUsageOpen ? " ▾" : " ▸"}
+            磁盘占用{diskUsageOpen ? " ▾" : " ▸"}
           </button>
           {diskUsageOpen && (
             <div className="disk-usage-body">
