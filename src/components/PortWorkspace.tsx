@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Icon } from "./icons/Icon";
 import {
@@ -53,6 +53,15 @@ export function PortWorkspace({
   const metrics = portMetrics(ports);
   const groups = groupPorts(visiblePorts);
   const busy = loading || refreshing;
+
+  // 偏好异步加载后同步 draft，避免 blur 把空值写回。
+  useEffect(() => {
+    setIgnoreDraft(ignorePorts.join(", "));
+  }, [ignorePorts]);
+
+  useEffect(() => {
+    setPrefixDraft(projectPathPrefixes.join("\n"));
+  }, [projectPathPrefixes]);
 
   function toggleSelected(id: string) {
     setSelectedIds((current) => {

@@ -129,6 +129,8 @@ pub fn test_connection(
 }
 
 fn http_get_limited(url: &str, api_key: &str) -> Result<String, String> {
+    use std::io::Read;
+
     let agent = ureq::AgentBuilder::new()
         .timeout_connect(TIMEOUT)
         .timeout_read(TIMEOUT)
@@ -147,16 +149,31 @@ fn http_get_limited(url: &str, api_key: &str) -> Result<String, String> {
     if !(200..300).contains(&status) {
         return Err(format!("HTTP {status}"));
     }
-    let body = response
-        .into_string()
-        .map_err(|e| format!("读取响应失败: {e}"))?;
-    if body.len() as u64 > MAX_BODY_BYTES {
-        return Err(format!(
-            "响应体超过上限 {} 字节",
-            MAX_BODY_BYTES
-        ));
+    // Content-Length 预检：明显过大直接拒，避免读入。
+    if let Some(len_header) = response.header("Content-Length") {
+        if let Ok(len) = len_header.parse::<u64>() {
+            if len > MAX_BODY_BYTES {
+                return Err(format!("响应体超过上限 {} 字节", MAX_BODY_BYTES));
+            }
+        }
     }
-    Ok(body)
+    // 流式读取并硬限 2MiB，防止 into_string 先吃满内存。
+    let mut reader = response.into_reader();
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        let n = reader
+            .read(&mut chunk)
+            .map_err(|e| format!("读取响应失败: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        if (buf.len() as u64) + (n as u64) > MAX_BODY_BYTES {
+            return Err(format!("响应体超过上限 {} 字节", MAX_BODY_BYTES));
+        }
+        buf.extend_from_slice(&chunk[..n]);
+    }
+    String::from_utf8(buf).map_err(|e| format!("响应不是合法 UTF-8: {e}"))
 }
 
 fn map_ureq_error(err: ureq::Error) -> String {
@@ -222,5 +239,10 @@ mod tests {
     fn parse_models_rejects_garbage() {
         assert!(parse_models_json("not-json").is_err());
         assert!(parse_models_json(r#"{"foo":1}"#).is_err());
+    }
+
+    #[test]
+    fn max_body_constant_is_two_mib() {
+        assert_eq!(super::MAX_BODY_BYTES, 2 * 1024 * 1024);
     }
 }

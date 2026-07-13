@@ -29,7 +29,7 @@ pub fn refresh_sessions(state: State<'_, AppState>) -> Result<ScanResponse, Stri
 }
 
 /// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
-/// 仅成功启动后写入 recent_launches。
+/// 仅成功启动后写入 recent_launches；写盘失败不把启动成功改成失败。
 #[tauri::command]
 pub fn launch_session(
     session_list_id: String,
@@ -37,8 +37,16 @@ pub fn launch_session(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let session = state.launch_session(&session_list_id)?;
-    let launches = state.record_recent_launch(&session)?;
-    save_recent_launches(&app, launches)?;
+    match state.record_recent_launch(&session) {
+        Ok(launches) => {
+            if let Err(err) = save_recent_launches(&app, launches) {
+                eprintln!("recent_launches save after launch failed: {err}");
+            }
+        }
+        Err(err) => {
+            eprintln!("recent_launches record after launch failed: {err}");
+        }
+    }
     Ok(())
 }
 
@@ -51,19 +59,38 @@ pub fn preview_launch_command(
 }
 
 #[tauri::command]
-pub fn get_recent_launches(state: State<'_, AppState>) -> Result<Vec<RecentLaunch>, String> {
-    // 若已有扫描结果，剔除已删除 session；否则原样返回。
-    let _ = state.sanitize_recent_launches();
-    state.recent_launches()
+pub fn get_recent_launches(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Vec<RecentLaunch>, String> {
+    let (launches, changed) = state.sanitize_recent_launches()?;
+    if changed {
+        if let Err(err) = save_recent_launches(&app, launches.clone()) {
+            eprintln!("recent_launches save after sanitize failed: {err}");
+        }
+    }
+    Ok(launches)
 }
 
 /// `session_list_id` 是列表稳定 `Session.id`，**不是** CLI 原始 `session_id`。
 #[tauri::command]
 pub fn delete_session(
     session_list_id: String,
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<ScanResponse, String> {
-    state.delete_session(&session_list_id)
+    let response = state.delete_session(&session_list_id)?;
+    // 删除后同步清理最近启动并落盘，避免 ghost chip。
+    match state.sanitize_recent_launches() {
+        Ok((launches, changed)) if changed => {
+            if let Err(err) = save_recent_launches(&app, launches) {
+                eprintln!("recent_launches save after delete failed: {err}");
+            }
+        }
+        Ok(_) => {}
+        Err(err) => eprintln!("recent_launches sanitize after delete failed: {err}"),
+    }
+    Ok(response)
 }
 
 #[tauri::command]

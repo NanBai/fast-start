@@ -146,6 +146,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
         sessionListId: pendingDelete.id,
       });
       applyScanResult(result);
+      await loadRecentLaunches();
       notifyStatus("session 已删除", "success");
       setPendingDelete(null);
     } catch (error) {

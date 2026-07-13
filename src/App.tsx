@@ -555,28 +555,42 @@ function App() {
         <div className="recent-launches" aria-label="最近启动">
           <span className="recent-launches-label">最近启动</span>
           <div className="recent-launches-list">
-            {recentLaunches.slice(0, 8).map((item) => (
-              <button
-                key={`${item.sessionListId}-${item.launchedAt}`}
-                type="button"
-                className="recent-launch-chip"
-                disabled={
-                  launchingId === item.sessionListId ||
-                  deletingId === item.sessionListId
-                }
-                title={`${item.projectDir}\n预览后可再启动`}
-                onClick={() => void handleLaunch(item.sessionListId)}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  void previewLaunchCommand(item.sessionListId);
-                }}
-              >
-                <span className="recent-launch-cli">{CLI_LABELS[item.cliType]}</span>
-                <span className="recent-launch-name">
-                  {item.summary?.trim() || item.projectName}
-                </span>
-              </button>
-            ))}
+            {recentLaunches.slice(0, 8).map((item) => {
+              const stillExists = sessions.some(
+                (session) => session.id === item.sessionListId,
+              );
+              const busyChip =
+                launchingId === item.sessionListId ||
+                deletingId === item.sessionListId;
+              return (
+                <button
+                  key={`${item.sessionListId}-${item.launchedAt}`}
+                  type="button"
+                  className="recent-launch-chip"
+                  data-stale={!stillExists}
+                  disabled={busyChip || !stillExists}
+                  title={
+                    stillExists
+                      ? `${item.projectDir}\n右键预览命令`
+                      : "该 session 已不存在，刷新后将清理"
+                  }
+                  onClick={() => {
+                    if (!stillExists) return;
+                    void handleLaunch(item.sessionListId);
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    if (!stillExists) return;
+                    void previewLaunchCommand(item.sessionListId);
+                  }}
+                >
+                  <span className="recent-launch-cli">{CLI_LABELS[item.cliType]}</span>
+                  <span className="recent-launch-name">
+                    {item.summary?.trim() || item.projectName}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

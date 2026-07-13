@@ -456,21 +456,25 @@ impl AppState {
         Ok(guard.recent_launches.clone())
     }
 
-    pub fn sanitize_recent_launches(&self) -> Result<Vec<RecentLaunch>, String> {
+    /// 剔除已不在 sessions 中的历史项。
+    /// 返回 `(launches, changed)`：`changed=true` 时调用方应落盘。
+    pub fn sanitize_recent_launches(&self) -> Result<(Vec<RecentLaunch>, bool), String> {
         let mut guard = self
             .inner
             .lock()
             .map_err(|_| "无法获取应用状态".to_string())?;
         // 尚未扫描时不清理，避免冷启动把历史清空。
         if guard.sessions.is_empty() {
-            return Ok(guard.recent_launches.clone());
+            return Ok((guard.recent_launches.clone(), false));
         }
+        let before = guard.recent_launches.len();
         let allowed: std::collections::HashSet<String> =
             guard.sessions.iter().map(|s| s.id.clone()).collect();
         guard
             .recent_launches
             .retain(|item| allowed.contains(&item.session_list_id));
-        Ok(guard.recent_launches.clone())
+        let changed = guard.recent_launches.len() != before;
+        Ok((guard.recent_launches.clone(), changed))
     }
 
     pub fn port_ignore_ports(&self) -> Result<Vec<u16>, String> {
@@ -846,6 +850,42 @@ mod tests {
             ])
             .unwrap();
         assert_eq!(sanitized, vec!["also", "keep-me"]);
+    }
+
+    #[test]
+    fn sanitize_recent_launches_drops_missing_and_reports_changed() {
+        use crate::models::RecentLaunch;
+        let state = state_with_sessions(vec![test_session_at_project(
+            "alive",
+            PathBuf::from("/tmp/a"),
+            None,
+        )]);
+        state
+            .set_recent_launches(vec![
+                RecentLaunch {
+                    session_list_id: "alive".into(),
+                    cli_type: CliType::Codex,
+                    project_name: "a".into(),
+                    project_dir: "/tmp/a".into(),
+                    summary: None,
+                    launched_at: Utc::now(),
+                },
+                RecentLaunch {
+                    session_list_id: "gone".into(),
+                    cli_type: CliType::Codex,
+                    project_name: "b".into(),
+                    project_dir: "/tmp/b".into(),
+                    summary: None,
+                    launched_at: Utc::now(),
+                },
+            ])
+            .unwrap();
+        let (launches, changed) = state.sanitize_recent_launches().unwrap();
+        assert!(changed);
+        assert_eq!(launches.len(), 1);
+        assert_eq!(launches[0].session_list_id, "alive");
+        let (_, changed_again) = state.sanitize_recent_launches().unwrap();
+        assert!(!changed_again);
     }
 
     #[test]

@@ -127,10 +127,18 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   }
 
   async function handlePortIgnorePortsChange(ports: number[]) {
+    const normalized = [...ports].sort((a, b) => a - b);
+    const previousSorted = [...portIgnorePorts].sort((a, b) => a - b);
+    if (
+      normalized.length === previousSorted.length &&
+      normalized.every((port, index) => port === previousSorted[index])
+    ) {
+      return;
+    }
     const previous = portIgnorePorts;
-    setPortIgnorePorts(ports);
+    setPortIgnorePorts(normalized);
     try {
-      await invoke("set_port_ignore_ports", { ports });
+      await invoke("set_port_ignore_ports", { ports: normalized });
       notifyStatus("已更新忽略端口规则", "info");
     } catch (error) {
       setPortIgnorePorts(previous);
@@ -139,6 +147,12 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   }
 
   async function handlePortProjectPathPrefixesChange(prefixes: string[]) {
+    if (
+      prefixes.length === portProjectPathPrefixes.length &&
+      prefixes.every((prefix, index) => prefix === portProjectPathPrefixes[index])
+    ) {
+      return;
+    }
     const previous = portProjectPathPrefixes;
     setPortProjectPathPrefixes(prefixes);
     try {

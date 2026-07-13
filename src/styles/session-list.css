@@ -558,8 +558,17 @@
   font-size: 12px;
 }
 
-.recent-launch-chip:hover {
+.recent-launch-chip:hover:not(:disabled) {
   background: var(--control-bg-hover, var(--hover-overlay));
+}
+
+.recent-launch-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.recent-launch-chip[data-stale="true"] {
+  text-decoration: line-through;
 }
 
 .recent-launch-cli {
