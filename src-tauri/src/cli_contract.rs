@@ -1,50 +1,47 @@
 //! CliType 注册完整性：新增 CLI 时防漏 scanner / command_spec / 白名单 / 删除映射。
-
-use crate::models::CliType;
-use crate::scanner::{command_spec_for_session, scanners};
-use crate::security::validate_program;
-use chrono::Utc;
-use std::path::PathBuf;
-
-fn all_cli_types() -> [CliType; 5] {
-    [
-        CliType::Codex,
-        CliType::ClaudeCode,
-        CliType::Cursor,
-        CliType::GrokBuild,
-        CliType::OpenCode,
-    ]
-}
-
-fn expected_program(cli: CliType) -> &'static str {
-    match cli {
-        CliType::Codex => "codex",
-        CliType::ClaudeCode => "claude",
-        CliType::Cursor => "cursor-agent",
-        CliType::GrokBuild => "grok",
-        CliType::OpenCode => "opencode",
-    }
-}
-
-fn sample_session(cli: CliType) -> crate::models::Session {
-    use crate::models::Session;
-    let project = PathBuf::from("/tmp/cli-contract");
-    Session {
-        id: Session::stable_id(cli, "fixture-id", &project),
-        cli_type: cli,
-        session_id: "fixture-id".into(),
-        project_dir: project.clone(),
-        project_name: "cli-contract".into(),
-        last_active_at: Utc::now(),
-        summary: None,
-        delete_target: None,
-    }
-}
+//! 本模块仅承载单测，无运行时 API。
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::CliType;
+    use crate::models::{CliType, Session};
+    use crate::scanner::{command_spec_for_session, scanners};
+    use crate::security::validate_program;
+    use chrono::Utc;
+    use std::path::PathBuf;
+
+    fn all_cli_types() -> [CliType; 5] {
+        [
+            CliType::Codex,
+            CliType::ClaudeCode,
+            CliType::Cursor,
+            CliType::GrokBuild,
+            CliType::OpenCode,
+        ]
+    }
+
+    fn expected_program(cli: CliType) -> &'static str {
+        match cli {
+            CliType::Codex => "codex",
+            CliType::ClaudeCode => "claude",
+            CliType::Cursor => "cursor-agent",
+            CliType::GrokBuild => "grok",
+            CliType::OpenCode => "opencode",
+        }
+    }
+
+    fn sample_session(cli: CliType) -> Session {
+        let project = PathBuf::from("/tmp/cli-contract");
+        Session {
+            id: Session::stable_id(cli, "fixture-id", &project),
+            cli_type: cli,
+            session_id: "fixture-id".into(),
+            project_dir: project.clone(),
+            project_name: "cli-contract".into(),
+            last_active_at: Utc::now(),
+            summary: None,
+            delete_target: None,
+        }
+    }
 
     #[test]
     fn every_cli_type_has_scanner_registration() {
