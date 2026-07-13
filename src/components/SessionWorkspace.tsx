@@ -406,6 +406,24 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
         </div>
       )}
 
+      {/* 勾选后吸顶，滚动列表时仍可点批量删除 */}
+      {selectedIds.size > 0 && (
+        <div className="bulk-select-bar" aria-label="批量选择">
+          <span>已选 {selectedIds.size} 条</span>
+          <button type="button" className="btn" onClick={clearSessionSelection}>
+            取消选择
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={bulkDeleting}
+            onClick={requestBulkDelete}
+          >
+            批量删除
+          </button>
+        </div>
+      )}
+
       {recentLaunches.length > 0 && (
         <div className="recent-launches" aria-label="最近启动">
           <span className="recent-launches-label">最近启动</span>
@@ -447,23 +465,6 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {selectedIds.size > 0 && (
-        <div className="bulk-select-bar" aria-label="批量选择">
-          <span>已选 {selectedIds.size} 条</span>
-          <button type="button" className="btn" onClick={clearSessionSelection}>
-            取消选择
-          </button>
-          <button
-            type="button"
-            className="btn danger"
-            disabled={bulkDeleting}
-            onClick={requestBulkDelete}
-          >
-            批量删除
-          </button>
         </div>
       )}
 

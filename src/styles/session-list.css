@@ -568,20 +568,37 @@
 .session-main {
   flex: 1 1 auto;
   display: grid;
+  /* 默认：标题 | 时间 */
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
+/* 有勾选框：勾选 | 标题 | 时间 —— 避免 time 折到勾选列下被遮挡 */
+.session-main:has(.session-select) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 10px;
+}
+
 /*
- * Fixed first column keeps titles on one vertical edge.
+ * Fixed CLI column keeps titles on one vertical edge.
  * Pill is max-content (not width:100%) so short labels like Cursor stay compact.
  */
 .session-main:has(.session-cli-label) {
   grid-template-columns: 6.5rem minmax(0, 1fr) auto;
   align-items: start;
   column-gap: 10px;
+}
+
+/* 勾选 + CLI 标签：勾选 | CLI | 标题 | 时间 */
+.session-main:has(.session-select):has(.session-cli-label) {
+  grid-template-columns: auto 6.5rem minmax(0, 1fr) auto;
+}
+
+.session-main .session-time {
+  grid-column: -1;
+  justify-self: end;
 }
 
 .session-main:has(.session-cli-label) .session-time {
@@ -651,30 +668,55 @@
 .session-select {
   display: inline-flex;
   align-items: center;
-  margin-right: 4px;
+  justify-content: center;
   flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.55rem; /* 对齐 session-name 行高，避免与标题错位 */
+  margin: 0;
+  z-index: 1;
 }
 
 .session-select input {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
+  margin: 0;
   cursor: pointer;
+  accent-color: var(--accent, #0a84ff);
+}
+
+/* 有勾选时，左侧 active 指示条略让开，避免压住 checkbox */
+.session-row:has(.session-select) {
+  padding-left: 12px;
+}
+
+.session-row:has(.session-select)[data-active="true"]::after {
+  left: 3px;
+  opacity: 0.85;
 }
 
 .bulk-select-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   margin-bottom: var(--space-2, 8px);
   border-radius: 10px;
-  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.3));
-  background: var(--surface-elevated, rgba(127, 127, 127, 0.08));
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.35));
+  background: color-mix(in srgb, var(--bg-elevated, var(--bg, #1c1c1e)) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px rgba(0, 0, 0, 0.28);
   font-size: 0.85rem;
 }
 
 .bulk-select-bar .btn.danger {
   color: var(--danger, #c44);
+  margin-left: auto;
 }
 
 .disk-usage-panel {

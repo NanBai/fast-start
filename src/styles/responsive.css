@@ -125,19 +125,31 @@
     gap: 2px;
   }
 
+  .session-main:has(.session-select) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
   .session-main:has(.session-cli-label) {
     grid-template-columns: 6.5rem minmax(0, 1fr);
     align-items: start;
   }
 
-  .session-main:has(.session-cli-label) .session-time {
-    grid-column: 2;
-    justify-self: start;
-    padding-top: 0;
+  .session-main:has(.session-select):has(.session-cli-label) {
+    grid-template-columns: auto 6.5rem minmax(0, 1fr);
   }
 
-  .session-time {
+  /* 窄屏：时间跟在标题列下方，不抢勾选列 */
+  .session-main .session-time {
+    grid-column: -1;
     justify-self: start;
+  }
+
+  .session-main:has(.session-select) .session-time {
+    grid-column: 2 / -1;
+  }
+
+  .session-main:has(.session-cli-label) .session-time {
+    padding-top: 0;
   }
 
   .launch-btn {
