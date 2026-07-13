@@ -14,15 +14,15 @@ dod:
 steps:
   - action: "CliType 全变体注册完整性测试（scanner/spec/白名单/校验/删除）"
     exit_signal: "cargo test 绿"
-    status: pending
+    status: done
   - action: "前端 labels 覆盖 + docs/dev CLI 扩展 checklist"
     exit_signal: "文档 7 挂点齐全"
-    status: pending
+    status: done
 
 checks:
   - item: "无动态插件 API"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "7 挂点均被测或文档化"
     source: 名词契约
-    status: pending
+    status: passed

@@ -26,8 +26,10 @@ import { usePreferences } from "./hooks/usePreferences";
 import { useSessions } from "./hooks/useSessions";
 import { filterPorts } from "./lib/portUtils";
 import {
+  aggregateDiskUsage,
   filterSessionsByHealth,
   filterSessionsForQuickAccess,
+  formatBytes,
   groupSessionsByProject,
   RecentDaysFilter,
   sanitizeFavoriteProjectDirs,
@@ -93,6 +95,7 @@ function App() {
     favoriteSessionIds,
     portAutoRefresh,
     portIgnorePorts,
+    portProtectPorts,
     portProjectPathPrefixes,
     sessionListMode,
     loadPreferences,
@@ -103,9 +106,12 @@ function App() {
     handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
     handlePortIgnorePortsChange,
+    handlePortProtectPortsChange,
     handlePortProjectPathPrefixesChange,
     handleSessionListModeChange,
   } = usePreferences(notifyStatus);
+
+  const [diskUsageOpen, setDiskUsageOpen] = useState(false);
 
   const {
     sessions,
@@ -154,6 +160,7 @@ function App() {
     profiles: grokProfiles,
     status: grokStatus,
     backups: grokBackups,
+    health: grokHealth,
     layout: grokLayout,
     loading: grokLoading,
     busyId: grokBusyId,
@@ -728,6 +735,59 @@ function App() {
         </div>
       )}
 
+      {activeTool === "sessions" && !loading && sessions.length > 0 && (
+        <div className="disk-usage-panel" aria-label="磁盘占用">
+          <button
+            type="button"
+            className="disk-usage-toggle"
+            onClick={() => setDiskUsageOpen((open) => !open)}
+            aria-expanded={diskUsageOpen}
+          >
+            磁盘占用（源载体近似）{diskUsageOpen ? " ▾" : " ▸"}
+          </button>
+          {diskUsageOpen && (
+            <div className="disk-usage-body">
+              <p className="muted">
+                基于已探测的 session 源体积；OpenCode 行为未知（不按整库计）。最多统计当前列表前 200 条。
+              </p>
+              <div className="disk-usage-columns">
+                <div>
+                  <h4>按 CLI</h4>
+                  <ul>
+                    {aggregateDiskUsage(sessions, healthById, "cli").map((b) => (
+                      <li key={b.key}>
+                        <span>{b.label}</span>
+                        <span>
+                          {formatBytes(b.bytes)}
+                          {b.unknownCount > 0 ? ` · ${b.unknownCount} 未知` : ""}
+                          {b.sizeCapped ? " · 有截断" : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4>按项目</h4>
+                  <ul>
+                    {aggregateDiskUsage(sessions, healthById, "project")
+                      .slice(0, 12)
+                      .map((b) => (
+                        <li key={b.key} title={b.key}>
+                          <span>{b.label}</span>
+                          <span>
+                            {formatBytes(b.bytes)}
+                            {b.unknownCount > 0 ? ` · ${b.unknownCount} 未知` : ""}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTool === "sessions" && commandPreview && (
         <div className="command-preview" aria-label="命令预览">
           <code>
@@ -765,6 +825,7 @@ function App() {
             lastUpdated={portLastUpdated}
             diagnosticText={portDiagnostic}
             ignorePorts={portIgnorePorts}
+            protectPorts={portProtectPorts}
             projectPathPrefixes={portProjectPathPrefixes}
             onRefresh={() => void refreshPorts()}
             onTerminate={requestTerminatePorts}
@@ -772,6 +833,7 @@ function App() {
             onIgnorePortsChange={(ports) =>
               void handlePortIgnorePortsChange(ports).then(() => refreshPorts())
             }
+            onProtectPortsChange={(ports) => void handlePortProtectPortsChange(ports)}
             onProjectPathPrefixesChange={(prefixes) =>
               void handlePortProjectPathPrefixesChange(prefixes).then(() =>
                 refreshPorts(),
@@ -787,6 +849,7 @@ function App() {
             profiles={grokProfiles}
             status={grokStatus}
             backups={grokBackups}
+            health={grokHealth}
             layout={grokLayout}
             loading={grokLoading}
             busyId={grokBusyId}

@@ -11,6 +11,7 @@ const FAVORITE_PROJECT_DIRS_KEY: &str = "favorite_project_dirs";
 const FAVORITE_SESSION_IDS_KEY: &str = "favorite_session_ids";
 const PORT_AUTO_REFRESH_KEY: &str = "port_auto_refresh";
 const PORT_IGNORE_PORTS_KEY: &str = "port_ignore_ports";
+const PORT_PROTECT_PORTS_KEY: &str = "port_protect_ports";
 const PORT_PROJECT_PATH_PREFIXES_KEY: &str = "port_project_path_prefixes";
 const RECENT_LAUNCHES_KEY: &str = "recent_launches";
 const SESSION_LIST_MODE_KEY: &str = "session_list_mode";
@@ -67,6 +68,28 @@ pub fn save_port_ignore_ports(app: &AppHandle, ports: Vec<u16>) -> Result<(), St
         .store("preferences.json")
         .map_err(|err| err.to_string())?;
     store.set(PORT_IGNORE_PORTS_KEY, json!(normalize_ports(ports)));
+    store.save().map_err(|err| err.to_string())
+}
+
+pub fn load_port_protect_ports(app: &AppHandle) -> Result<Vec<u16>, String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    let value = store.get(PORT_PROTECT_PORTS_KEY);
+    if let Some(raw) = value {
+        serde_json::from_value(raw)
+            .map(normalize_ports)
+            .map_err(|err| err.to_string())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+pub fn save_port_protect_ports(app: &AppHandle, ports: Vec<u16>) -> Result<(), String> {
+    let store = app
+        .store("preferences.json")
+        .map_err(|err| err.to_string())?;
+    store.set(PORT_PROTECT_PORTS_KEY, json!(normalize_ports(ports)));
     store.save().map_err(|err| err.to_string())
 }
 

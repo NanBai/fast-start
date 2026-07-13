@@ -18,18 +18,18 @@ dod:
 steps:
   - action: "health 映射 + issues 生成 + 禁止字段单测"
     exit_signal: "无 secret/path 泄漏用例通过"
-    status: pending
+    status: done
   - action: "command + Grok UI 诊断面板"
     exit_signal: "pnpm build；面板可见 issues"
-    status: pending
+    status: done
 
 checks:
   - item: "验收以 issues[] 为准非再包 status"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "不写盘/不出站/不 log key"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "backups 仅 name+时间"
     source: 名词契约
-    status: pending
+    status: passed

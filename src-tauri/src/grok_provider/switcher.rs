@@ -214,6 +214,14 @@ impl GrokSwitcher {
         })
     }
 
+    /// 备份目录是否可读（不存在视为可读空目录）。
+    pub fn backups_dir_readable(&self) -> bool {
+        if !self.backups_dir.exists() {
+            return true;
+        }
+        fs::read_dir(&self.backups_dir).is_ok()
+    }
+
     pub fn list_backups(&self) -> Result<Vec<GrokBackupInfo>, String> {
         if !self.backups_dir.exists() {
             return Ok(Vec::new());

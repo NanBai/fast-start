@@ -18,21 +18,21 @@ dod:
 steps:
   - action: "全量 build/test 回归"
     exit_signal: "命令绿"
-    status: pending
+    status: done
   - action: "ARCHITECTURE + 用户文档 + AGENTS 偏好 key 同步"
     exit_signal: "diff 与代码一致"
-    status: pending
+    status: done
   - action: "残留风险清单 + smoke 证据归档"
     exit_signal: "acceptance 可核验"
-    status: pending
+    status: done
 
 checks:
   - item: "无新功能范围蔓延"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "port_protect_ports 等 key 已文档化"
     source: 挂载点
-    status: pending
+    status: passed
   - item: "核心完成信号有证据"
     source: 验收场景
-    status: pending
+    status: passed

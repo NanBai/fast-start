@@ -6,11 +6,13 @@
 //! - 官方 OAuth：`GROK_HOME/auth.json`（不受 `GROK_CONFIG` 影响）
 
 mod config;
+mod health;
 mod http;
 mod profile;
 mod store;
 mod switcher;
 
+pub use health::{build_health_report, GrokHealthReport};
 pub use http::{GrokFetchModelsResult, GrokTestConnectionResult};
 pub use profile::{
     GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile,
@@ -41,6 +43,26 @@ impl GrokProviderState {
 
     pub fn status(&self) -> Result<GrokProviderStatus, String> {
         self.with(|s| s.status())
+    }
+
+    /// 只读健康诊断：消毒字段 + issues，不写盘、不出站。
+    pub fn config_health(&self) -> Result<GrokHealthReport, String> {
+        self.with(|s| {
+            let status = s.status()?;
+            let profiles = s.list_profiles()?;
+            let backup_dir_readable = s.backups_dir_readable();
+            let backups = if backup_dir_readable {
+                s.list_backups().unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            Ok(build_health_report(
+                &status,
+                &profiles,
+                &backups,
+                backup_dir_readable,
+            ))
+        })
     }
 
     pub fn list_profiles(&self) -> Result<Vec<GrokProfile>, String> {

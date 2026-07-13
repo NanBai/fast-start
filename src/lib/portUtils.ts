@@ -33,6 +33,39 @@ export function groupPorts(ports: PortUsage[]): PortUsageGroup[] {
     .sort((left, right) => left.port - right.port);
 }
 
+export type PortProjectGroup = {
+  workingDirectory: string;
+  label: string;
+  /** 空 cwd → 未知目录，禁止默认一键关 */
+  isUnknown: boolean;
+  usages: PortUsage[];
+};
+
+/** 按 workingDirectory 分组；空目录归为「未知目录」。不改变 groupPorts 按端口号语义。 */
+export function groupPortsByWorkingDirectory(ports: PortUsage[]): PortProjectGroup[] {
+  const groups = new Map<string, PortUsage[]>();
+  for (const port of ports) {
+    const key = port.workingDirectory.trim();
+    const current = groups.get(key) ?? [];
+    current.push(port);
+    groups.set(key, current);
+  }
+  return Array.from(groups.entries())
+    .map(([workingDirectory, usages]) => {
+      const isUnknown = workingDirectory.length === 0;
+      return {
+        workingDirectory,
+        label: isUnknown ? "未知目录" : shortPath(workingDirectory),
+        isUnknown,
+        usages,
+      };
+    })
+    .sort((a, b) => {
+      if (a.isUnknown !== b.isUnknown) return a.isUnknown ? 1 : -1;
+      return a.workingDirectory.localeCompare(b.workingDirectory);
+    });
+}
+
 export function portProcessLabel(port: PortUsage) {
   if (
     port.isProjectService &&

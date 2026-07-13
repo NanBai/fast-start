@@ -18,21 +18,21 @@ dod:
 steps:
   - action: "preferences port_protect_ports + get/set"
     exit_signal: "重启可回读"
-    status: pending
+    status: done
   - action: "terminate 命中 protect 整批 Err + 单测"
     exit_signal: "cargo test 覆盖"
-    status: pending
+    status: done
   - action: "Port UI 编辑保护列表"
     exit_signal: "pnpm build"
-    status: pending
+    status: done
 
 checks:
   - item: "protect 优先于多选无 force"
     source: 流程级约束
-    status: pending
+    status: passed
   - item: "ignore 不改变终止语义"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "all-or-nothing 保持"
     source: 验收场景
-    status: pending
+    status: passed

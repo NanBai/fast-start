@@ -19,10 +19,11 @@ use scan_cache::{load_scan_cache, save_scan_cache, snapshot_from_sessions};
 
 pub use crate::preferences::{
     load_favorite_project_dirs, load_favorite_session_ids, load_launch_mode, load_port_auto_refresh,
-    load_port_ignore_ports, load_port_project_path_prefixes, load_preferred_terminal,
-    load_recent_launches, load_theme_mode, save_favorite_project_dirs, save_favorite_session_ids,
-    save_launch_mode, save_port_auto_refresh, save_port_ignore_ports,
-    save_port_project_path_prefixes, save_preferred_terminal, save_recent_launches, save_theme_mode,
+    load_port_ignore_ports, load_port_project_path_prefixes, load_port_protect_ports,
+    load_preferred_terminal, load_recent_launches, load_theme_mode, save_favorite_project_dirs,
+    save_favorite_session_ids, save_launch_mode, save_port_auto_refresh, save_port_ignore_ports,
+    save_port_project_path_prefixes, save_port_protect_ports, save_preferred_terminal,
+    save_recent_launches, save_theme_mode,
 };
 
 pub const RECENT_LAUNCHES_LIMIT: usize = 20;
@@ -52,6 +53,7 @@ pub(crate) struct AppStateInner {
     favorite_session_ids: Vec<String>,
     port_auto_refresh: bool,
     port_ignore_ports: Vec<u16>,
+    port_protect_ports: Vec<u16>,
     port_project_path_prefixes: Vec<String>,
     recent_launches: Vec<RecentLaunch>,
     /// 是否已有可展示的 sessions（磁盘缓存或 full scan）。
@@ -83,6 +85,7 @@ impl AppState {
                 favorite_session_ids: normalize_id_list(favorite_session_ids),
                 port_auto_refresh,
                 port_ignore_ports: Vec::new(),
+                port_protect_ports: Vec::new(),
                 port_project_path_prefixes: Vec::new(),
                 recent_launches: Vec::new(),
                 scanned: false,
@@ -547,6 +550,23 @@ impl AppState {
         Ok(())
     }
 
+    pub fn port_protect_ports(&self) -> Result<Vec<u16>, String> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(guard.port_protect_ports.clone())
+    }
+
+    pub fn set_port_protect_ports(&self, ports: Vec<u16>) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.port_protect_ports = ports;
+        Ok(())
+    }
+
     pub fn port_project_path_prefixes(&self) -> Result<Vec<String>, String> {
         let guard = self
             .inner
@@ -733,6 +753,7 @@ mod tests {
                 favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
                 port_ignore_ports: Vec::new(),
+                port_protect_ports: Vec::new(),
                 port_project_path_prefixes: Vec::new(),
                 recent_launches: Vec::new(),
                 scanned: true,
@@ -758,6 +779,7 @@ mod tests {
                 favorite_session_ids: Vec::new(),
                 port_auto_refresh: true,
                 port_ignore_ports: Vec::new(),
+                port_protect_ports: Vec::new(),
                 port_project_path_prefixes: Vec::new(),
                 recent_launches: Vec::new(),
                 scanned: true,

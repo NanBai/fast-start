@@ -6,7 +6,7 @@ use super::{
 };
 use crate::models::{CommandSpec, LaunchMode, TerminalType};
 use crate::security::{applescript_string, validate_command_spec};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub struct SystemTerminalLauncher;
@@ -92,6 +92,116 @@ impl TerminalLauncher for GhosttyLauncher {
 
         command_output_result(output, "open")
     }
+}
+
+pub struct WezTermLauncher;
+
+impl TerminalLauncher for WezTermLauncher {
+    fn terminal_type(&self) -> TerminalType {
+        TerminalType::WezTerm
+    }
+
+    fn is_available(&self) -> bool {
+        wezterm_available()
+    }
+
+    fn supports_tab(&self) -> bool {
+        true
+    }
+
+    fn launch(&self, spec: &CommandSpec, mode: LaunchMode) -> Result<(), LaunchError> {
+        let cwd = validate_command_spec(spec).map_err(LaunchError::Validation)?;
+        let wrapper = write_command_wrapper(spec, cwd.as_deref())?;
+        let wezterm = resolve_wezterm_bin().ok_or_else(|| {
+            LaunchError::Spawn("未找到 wezterm 可执行文件".to_string())
+        })?;
+
+        if mode == LaunchMode::NewTab && wezterm_mux_available(&wezterm) {
+            if wezterm_cli_spawn(&wezterm, &wrapper, cwd.as_deref()).is_ok() {
+                return Ok(());
+            }
+            // tab 失败回退新窗口
+        }
+
+        wezterm_start_window(&wezterm, &wrapper, cwd.as_deref())
+    }
+}
+
+fn wezterm_available() -> bool {
+    Path::new("/Applications/WezTerm.app").exists()
+        || Path::new("/Applications/WezTerm-macos-*.app").exists()
+        || resolve_wezterm_bin().is_some()
+}
+
+fn resolve_wezterm_bin() -> Option<PathBuf> {
+    let candidates = [
+        "/Applications/WezTerm.app/Contents/MacOS/wezterm",
+        "/opt/homebrew/bin/wezterm",
+        "/usr/local/bin/wezterm",
+    ];
+    for c in candidates {
+        let p = PathBuf::from(c);
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    // which wezterm
+    let output = Command::new("which").arg("wezterm").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if path.is_empty() {
+        return None;
+    }
+    let p = PathBuf::from(path);
+    if p.is_file() {
+        Some(p)
+    } else {
+        None
+    }
+}
+
+fn wezterm_mux_available(wezterm: &Path) -> bool {
+    Command::new(wezterm)
+        .args(["cli", "list"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+fn wezterm_cli_spawn(
+    wezterm: &Path,
+    wrapper: &Path,
+    cwd: Option<&Path>,
+) -> Result<(), LaunchError> {
+    let mut cmd = Command::new(wezterm);
+    cmd.args(["cli", "spawn"]);
+    if let Some(dir) = cwd {
+        cmd.arg("--cwd").arg(dir);
+    }
+    cmd.arg("--").arg(wrapper);
+    let output = cmd
+        .output()
+        .map_err(|err| LaunchError::Spawn(err.to_string()))?;
+    command_output_result(output, "wezterm cli spawn")
+}
+
+fn wezterm_start_window(
+    wezterm: &Path,
+    wrapper: &Path,
+    cwd: Option<&Path>,
+) -> Result<(), LaunchError> {
+    let mut cmd = Command::new(wezterm);
+    cmd.arg("start");
+    if let Some(dir) = cwd {
+        cmd.arg("--cwd").arg(dir);
+    }
+    cmd.arg("--").arg(wrapper);
+    let output = cmd
+        .output()
+        .map_err(|err| LaunchError::Spawn(err.to_string()))?;
+    command_output_result(output, "wezterm start")
 }
 
 /// Terminal.app 的 `do script` 无法干净开 tab；冷启动可能多一个空默认窗口（硬限制）。

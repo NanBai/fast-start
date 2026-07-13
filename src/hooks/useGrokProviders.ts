@@ -5,6 +5,7 @@ import {
   GrokActivateOfficialResult,
   GrokBackupInfo,
   GrokFetchModelsResult,
+  GrokHealthReport,
   GrokPrivacyResult,
   GrokProfile,
   GrokProviderLayout,
@@ -22,16 +23,19 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
   const [status, setStatus] = useState<GrokProviderStatus | null>(null);
   const [backups, setBackups] = useState<GrokBackupInfo[]>([]);
   const [layout, setLayout] = useState<GrokProviderLayout>(emptyLayout());
+  const [health, setHealth] = useState<GrokHealthReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function refreshAll(showStatus = true) {
     setLoading(true);
     try {
-      const [nextStatus, nextProfiles, nextBackups, layoutResult] = await Promise.all([
+      const [nextStatus, nextProfiles, nextBackups, nextHealth, layoutResult] =
+        await Promise.all([
         invoke<GrokProviderStatus>("grok_provider_status"),
         invoke<GrokProfile[]>("grok_list_profiles"),
         invoke<GrokBackupInfo[]>("grok_list_backups"),
+        invoke<GrokHealthReport>("grok_config_health").catch(() => null),
         invoke<GrokProviderLayout>("get_grok_provider_layout").then(
           (layout) => ({ ok: true as const, layout }),
           (error) => ({ ok: false as const, error }),
@@ -40,6 +44,7 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
       setStatus(nextStatus);
       setProfiles(nextProfiles);
       setBackups(nextBackups);
+      setHealth(nextHealth);
       if (layoutResult.ok) {
         setLayout(layoutResult.layout);
       } else {
@@ -235,6 +240,7 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
     profiles,
     status,
     backups,
+    health,
     layout,
     loading,
     busyId,

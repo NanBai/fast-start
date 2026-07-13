@@ -38,7 +38,7 @@ items:
     description: 按 CLI 与项目聚合 session 源载体近似体积并在 UI 展示
     depends_on:
       - session-health-inspect
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-disk-usage
     minimal_loop: false
     notes: "非核心；可 drop 时从 harden depends_on 移除；允许 null/size_capped"
@@ -46,7 +46,7 @@ items:
   - slug: port-protect-list
     description: preferences port_protect_ports；terminate 命中保护端口则整批失败
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-port-protect-list
     minimal_loop: false
     notes: "protect 优先于多选；无 force 绕过"
@@ -55,7 +55,7 @@ items:
     description: Port 列表按 working_directory 项目分组；组内多选后调用既有 terminate_port_processes（遵守 protect）
     depends_on:
       - port-protect-list
-    status: in-progress
+    status: done
     feature: 2026-07-13-port-group-and-terminate-by-project
     minimal_loop: false
     notes: "写死 UI-only；不新增 terminate_ports_for_project；未知目录组无一键关"
@@ -63,7 +63,7 @@ items:
   - slug: grok-config-health
     description: grok_config_health 产出可测 issues[] 诊断；聚合 status/backups 只读且无 secret/绝对路径
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-grok-config-health
     minimal_loop: false
     notes: "delta 于既有 status/list_backups；不写盘、不出站、不 log apiKey"
@@ -71,7 +71,7 @@ items:
   - slug: terminal-adapter-extend
     description: 至少一个新 macOS TerminalLauncher（Warp 或 WezTerm）；list_available_terminals 与偏好可选；wrapper+校验
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-terminal-adapter-extend
     minimal_loop: false
     notes: "trait 含 LaunchMode/supports_tab；本机均不可用可 drop 并从 harden depends 移除"
@@ -79,7 +79,7 @@ items:
   - slug: cli-extension-contract
     description: 为每个 CliType 增加注册完整性 cargo 测试、前端 labels 覆盖与 docs/dev CLI 扩展 checklist
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-cli-extension-contract
     minimal_loop: false
     notes: "编译期契约；无动态插件加载"
@@ -97,7 +97,7 @@ items:
       - grok-config-health
       - terminal-adapter-extend
       - cli-extension-contract
-    status: in-progress
+    status: done
     feature: 2026-07-13-power-extend-harden-and-docs
     minimal_loop: false
     notes: "若 drop 非核心 item 须同步改 depends_on"

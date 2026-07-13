@@ -226,6 +226,69 @@ export function sessionHealthBadge(health: SessionHealth | undefined): string | 
   return parts.join("·");
 }
 
+export type DiskUsageBucket = {
+  key: string;
+  label: string;
+  bytes: number | null;
+  knownCount: number;
+  unknownCount: number;
+  sizeCapped: boolean;
+};
+
+/** 按 CLI / 项目聚合 inspect 的 approxBytes；null 不计入合计。 */
+export function aggregateDiskUsage(
+  sessions: SessionData[],
+  healthById: Map<string, SessionHealth>,
+  mode: "cli" | "project",
+): DiskUsageBucket[] {
+  type Acc = {
+    label: string;
+    bytes: number;
+    knownCount: number;
+    unknownCount: number;
+    sizeCapped: boolean;
+  };
+  const map = new Map<string, Acc>();
+  for (const session of sessions) {
+    const key = mode === "cli" ? session.cliType : session.projectDir;
+    const label =
+      mode === "cli" ? CLI_LABELS[session.cliType] : session.projectName || session.projectDir;
+    const acc = map.get(key) ?? {
+      label,
+      bytes: 0,
+      knownCount: 0,
+      unknownCount: 0,
+      sizeCapped: false,
+    };
+    const health = healthById.get(session.id);
+    if (health?.flags.includes("size_capped")) acc.sizeCapped = true;
+    if (health && typeof health.approxBytes === "number") {
+      acc.bytes += health.approxBytes;
+      acc.knownCount += 1;
+    } else {
+      acc.unknownCount += 1;
+    }
+    map.set(key, acc);
+  }
+  return Array.from(map.entries())
+    .map(([key, acc]) => ({
+      key,
+      label: acc.label,
+      bytes: acc.knownCount > 0 ? acc.bytes : null,
+      knownCount: acc.knownCount,
+      unknownCount: acc.unknownCount,
+      sizeCapped: acc.sizeCapped,
+    }))
+    .sort((a, b) => (b.bytes ?? -1) - (a.bytes ?? -1));
+}
+
+export function formatBytes(bytes: number | null): string {
+  if (bytes == null) return "未知";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function sanitizeFavoriteProjectDirs(
   projectDirs: string[],
   sessions: SessionData[],

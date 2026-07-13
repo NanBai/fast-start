@@ -26,6 +26,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
   const [favoriteSessionIds, setFavoriteSessionIds] = useState<string[]>([]);
   const [portAutoRefresh, setPortAutoRefresh] = useState(true);
   const [portIgnorePorts, setPortIgnorePorts] = useState<number[]>([]);
+  const [portProtectPorts, setPortProtectPorts] = useState<number[]>([]);
   const [portProjectPathPrefixes, setPortProjectPathPrefixes] = useState<
     string[]
   >([]);
@@ -42,6 +43,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
       sessionFavorites,
       autoRefresh,
       ignorePorts,
+      protectPorts,
       pathPrefixes,
       listMode,
     ] = await Promise.all([
@@ -53,6 +55,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
       invoke<string[]>("get_favorite_session_ids"),
       invoke<boolean>("get_port_auto_refresh"),
       invoke<number[]>("get_port_ignore_ports"),
+      invoke<number[]>("get_port_protect_ports"),
       invoke<string[]>("get_port_project_path_prefixes"),
       invoke<SessionListMode>("get_session_list_mode"),
     ]);
@@ -70,6 +73,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     setFavoriteSessionIds(sessionFavorites);
     setPortAutoRefresh(autoRefresh);
     setPortIgnorePorts(ignorePorts);
+    setPortProtectPorts(protectPorts);
     setPortProjectPathPrefixes(pathPrefixes);
     setSessionListMode(listMode);
   }
@@ -146,6 +150,26 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     }
   }
 
+  async function handlePortProtectPortsChange(ports: number[]) {
+    const normalized = [...ports].sort((a, b) => a - b);
+    const previousSorted = [...portProtectPorts].sort((a, b) => a - b);
+    if (
+      normalized.length === previousSorted.length &&
+      normalized.every((port, index) => port === previousSorted[index])
+    ) {
+      return;
+    }
+    const previous = portProtectPorts;
+    setPortProtectPorts(normalized);
+    try {
+      await invoke("set_port_protect_ports", { ports: normalized });
+      notifyStatus("已更新保护端口列表", "info");
+    } catch (error) {
+      setPortProtectPorts(previous);
+      notifyStatus(`保护端口保存失败：${String(error)}`, "error");
+    }
+  }
+
   async function handlePortProjectPathPrefixesChange(prefixes: string[]) {
     if (
       prefixes.length === portProjectPathPrefixes.length &&
@@ -185,6 +209,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     favoriteSessionIds,
     portAutoRefresh,
     portIgnorePorts,
+    portProtectPorts,
     portProjectPathPrefixes,
     sessionListMode,
     loadPreferences,
@@ -195,6 +220,7 @@ export function usePreferences(notifyStatus: NotifyStatus) {
     handleFavoriteSessionIdsChange,
     handlePortAutoRefreshChange,
     handlePortIgnorePortsChange,
+    handlePortProtectPortsChange,
     handlePortProjectPathPrefixesChange,
     handleSessionListModeChange,
   };

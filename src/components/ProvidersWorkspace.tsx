@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import {
   emptyGrokProfile,
   GrokBackupInfo,
+  GrokHealthReport,
   GrokProfile,
   GrokProviderLayout,
   GrokProviderStatus,
@@ -23,6 +24,7 @@ export function ProvidersWorkspace({
   profiles,
   status,
   backups,
+  health,
   layout,
   loading,
   busyId,
@@ -42,6 +44,7 @@ export function ProvidersWorkspace({
   profiles: GrokProfile[];
   status: GrokProviderStatus | null;
   backups: GrokBackupInfo[];
+  health: GrokHealthReport | null;
   layout: GrokProviderLayout;
   loading: boolean;
   busyId: string | null;
@@ -143,6 +146,22 @@ export function ProvidersWorkspace({
               重新启用
             </button>
           )}
+        </div>
+      )}
+
+      {health && health.issues.length > 0 && (
+        <div className="providers-health" aria-label="Grok 配置诊断">
+          <strong>
+            健康诊断 · {health.activeMode}
+            {health.activeProfileId ? ` · ${health.activeProfileId}` : ""}
+          </strong>
+          <ul>
+            {health.issues.map((issue) => (
+              <li key={issue.code} data-severity={issue.severity}>
+                [{issue.severity}] {issue.message}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

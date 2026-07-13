@@ -1,11 +1,11 @@
 roadmap: "session-launcher-power-extend"
-status: running
+status: complete
 baseline_ref: "bb5bec084d708d05cfd3303ebe095b2b9cb87d8f"
 driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 4
+current_feature_index: 11
 features:
   - slug: launch-preflight
     roadmap_item: launch-preflight
@@ -51,7 +51,7 @@ features:
     review: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-review.md"
     qa: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-disk-usage/session-disk-usage-acceptance.md"
-    status: pending
+    status: accepted
   - slug: port-protect-list
     roadmap_item: port-protect-list
     feature_dir: ".codestable/features/2026-07-13-port-protect-list"
@@ -60,7 +60,7 @@ features:
     review: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-review.md"
     qa: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-qa.md"
     acceptance: ".codestable/features/2026-07-13-port-protect-list/port-protect-list-acceptance.md"
-    status: pending
+    status: accepted
   - slug: port-group-and-terminate-by-project
     roadmap_item: port-group-and-terminate-by-project
     feature_dir: ".codestable/features/2026-07-13-port-group-and-terminate-by-project"
@@ -69,7 +69,7 @@ features:
     review: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-review.md"
     qa: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-qa.md"
     acceptance: ".codestable/features/2026-07-13-port-group-and-terminate-by-project/port-group-and-terminate-by-project-acceptance.md"
-    status: pending
+    status: accepted
   - slug: grok-config-health
     roadmap_item: grok-config-health
     feature_dir: ".codestable/features/2026-07-13-grok-config-health"
@@ -78,7 +78,7 @@ features:
     review: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-review.md"
     qa: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-qa.md"
     acceptance: ".codestable/features/2026-07-13-grok-config-health/grok-config-health-acceptance.md"
-    status: pending
+    status: accepted
   - slug: terminal-adapter-extend
     roadmap_item: terminal-adapter-extend
     feature_dir: ".codestable/features/2026-07-13-terminal-adapter-extend"
@@ -87,7 +87,7 @@ features:
     review: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-review.md"
     qa: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-qa.md"
     acceptance: ".codestable/features/2026-07-13-terminal-adapter-extend/terminal-adapter-extend-acceptance.md"
-    status: pending
+    status: accepted
   - slug: cli-extension-contract
     roadmap_item: cli-extension-contract
     feature_dir: ".codestable/features/2026-07-13-cli-extension-contract"
@@ -96,7 +96,7 @@ features:
     review: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-review.md"
     qa: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-qa.md"
     acceptance: ".codestable/features/2026-07-13-cli-extension-contract/cli-extension-contract-acceptance.md"
-    status: pending
+    status: accepted
   - slug: power-extend-harden-and-docs
     roadmap_item: power-extend-harden-and-docs
     feature_dir: ".codestable/features/2026-07-13-power-extend-harden-and-docs"
@@ -105,4 +105,4 @@ features:
     review: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-review.md"
     qa: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-qa.md"
     acceptance: ".codestable/features/2026-07-13-power-extend-harden-and-docs/power-extend-harden-and-docs-acceptance.md"
-    status: pending
+    status: accepted

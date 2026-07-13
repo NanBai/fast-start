@@ -18,6 +18,7 @@ pub enum TerminalType {
     System,
     ITerm2,
     Ghostty,
+    WezTerm,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

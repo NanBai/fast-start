@@ -18,19 +18,19 @@ dod:
 steps:
   - action: "TerminalType::WezTerm + WezTermLauncher（tab/window 表 + is_available 探测）"
     exit_signal: "未装时 is_available=false 单测绿；supports_tab=true 与回退文档一致"
-    status: pending
+    status: done
   - action: "wrapper+validate 启动路径 + 偏好 UI labels"
     exit_signal: "pnpm build；禁止直注业务命令"
-    status: pending
+    status: done
 
 checks:
   - item: "trait 含 LaunchMode/supports_tab；NewTab 失败回退窗口"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "仅 wrapper 注入"
     source: 流程级约束
-    status: pending
+    status: passed
   - item: "本机探测结论已记录；可 drop"
     source: 范围守护
-    status: pending
+    status: passed
 

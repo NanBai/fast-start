@@ -21,7 +21,7 @@
 |Launcher:src-tauri/src/launcher.rs|Terminal.app cannot open tabs|iTerm AppleScript app name=iTerm|Ghostty must run wrapper path, never direct multi-word command
 |Launch Safety:src-tauri/src/security.rs|allowed programs={codex,claude,cursor-agent,grok,opencode}|validate cwd/session id before wrapper|avoid sh -c from session data
 |Delete Safety:src-tauri/src/session_delete.rs|frontend passes only Session.id|delete_target skipped from JSON|canonicalize root/path|reject root itself and root-outside paths|OpenCode deletes SQLite row not db file
-|Persistence:preferences.json via tauri-plugin-store|keys={preferred_terminal,launch_mode,theme_mode,favorite_project_dirs,favorite_session_ids,session_list_mode,port_auto_refresh,port_ignore_ports,port_project_path_prefixes,recent_launches,grok_provider_order,grok_pinned_provider_ids}|sanitize favorites/history against scanned sessions
+|Persistence:preferences.json via tauri-plugin-store|keys={preferred_terminal,launch_mode,theme_mode,favorite_project_dirs,favorite_session_ids,session_list_mode,port_auto_refresh,port_ignore_ports,port_protect_ports,port_project_path_prefixes,recent_launches,grok_provider_order,grok_pinned_provider_ids}|sanitize favorites/history against scanned sessions
 |Security:src-tauri/tauri.conf.json CSP must stay non-null|src-tauri/capabilities/default.json currently core/opener/store only|no network/cloud sync/account system
 |CodeStable:.codestable/attention.md startup notes|architecture records current system only|requirements describe capability intent|feature docs follow design/checklist/acceptance
 |Docs:README.md quick start|docs/user/session-launcher.md user contract|docs/dev/release-readiness.md verification and smoke checklist

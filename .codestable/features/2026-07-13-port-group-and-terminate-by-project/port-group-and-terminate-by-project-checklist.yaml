@@ -18,18 +18,18 @@ dod:
 steps:
   - action: "portUtils 按 workingDirectory 分组"
     exit_signal: "纯函数可单测或稳定行为"
-    status: pending
+    status: done
   - action: "PortWorkspace 分组 UI + 项目级关闭走既有 terminate"
     exit_signal: "pnpm build；未知目录无一键关"
-    status: pending
+    status: done
 
 checks:
   - item: "无 terminate_ports_for_project"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "遵守 protect"
     source: 流程级约束
-    status: pending
+    status: passed
   - item: "未知目录无一键关"
     source: 验收场景
-    status: pending
+    status: passed

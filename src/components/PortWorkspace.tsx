@@ -3,6 +3,7 @@ import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Icon } from "./icons/Icon";
 import {
   groupPorts,
+  groupPortsByWorkingDirectory,
   groupSummary,
   loopbackBrowserUrl,
   portMetrics,
@@ -23,11 +24,13 @@ export function PortWorkspace({
   lastUpdated,
   diagnosticText,
   ignorePorts,
+  protectPorts,
   projectPathPrefixes,
   onRefresh,
   onTerminate,
   onNotify,
   onIgnorePortsChange,
+  onProtectPortsChange,
   onProjectPathPrefixesChange,
 }: {
   ports: PortUsage[];
@@ -39,25 +42,34 @@ export function PortWorkspace({
   lastUpdated: string;
   diagnosticText: string;
   ignorePorts: number[];
+  protectPorts: number[];
   projectPathPrefixes: string[];
   onRefresh: () => void;
   onTerminate: (ports: PortUsage[]) => void;
   onNotify: (message: string, type: "info" | "success" | "error") => void;
   onIgnorePortsChange: (ports: number[]) => void;
+  onProtectPortsChange: (ports: number[]) => void;
   onProjectPathPrefixesChange: (prefixes: string[]) => void;
 }) {
   const [expandedPorts, setExpandedPorts] = useState<Set<number>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [ignoreDraft, setIgnoreDraft] = useState(ignorePorts.join(", "));
+  const [protectDraft, setProtectDraft] = useState(protectPorts.join(", "));
   const [prefixDraft, setPrefixDraft] = useState(projectPathPrefixes.join("\n"));
+  const [listMode, setListMode] = useState<"port" | "project">("port");
   const metrics = portMetrics(ports);
   const groups = groupPorts(visiblePorts);
+  const projectGroups = groupPortsByWorkingDirectory(visiblePorts);
   const busy = loading || refreshing;
 
   // 偏好异步加载后同步 draft，避免 blur 把空值写回。
   useEffect(() => {
     setIgnoreDraft(ignorePorts.join(", "));
   }, [ignorePorts]);
+
+  useEffect(() => {
+    setProtectDraft(protectPorts.join(", "));
+  }, [protectPorts]);
 
   useEffect(() => {
     setPrefixDraft(projectPathPrefixes.join("\n"));
@@ -191,6 +203,22 @@ export function PortWorkspace({
           />
         </label>
         <label>
+          保护端口（逗号分隔，终止时整批拦截）
+          <input
+            value={protectDraft}
+            placeholder="例如 3000, 5432"
+            onChange={(e) => setProtectDraft(e.target.value)}
+            onBlur={() => {
+              const ports = protectDraft
+                .split(/[,，\s]+/)
+                .map((part) => Number(part.trim()))
+                .filter((n) => Number.isFinite(n) && n > 0 && n <= 65535);
+              setProtectDraft(ports.join(", "));
+              onProtectPortsChange(ports);
+            }}
+          />
+        </label>
+        <label>
           项目路径前缀（每行一个，扩大「项目服务」）
           <textarea
             rows={2}
@@ -208,6 +236,58 @@ export function PortWorkspace({
           />
         </label>
       </div>
+
+      <div className="port-list-mode" aria-label="列表分组">
+        <button
+          type="button"
+          className="btn"
+          data-active={listMode === "port"}
+          onClick={() => setListMode("port")}
+        >
+          按端口
+        </button>
+        <button
+          type="button"
+          className="btn"
+          data-active={listMode === "project"}
+          onClick={() => setListMode("project")}
+        >
+          按项目目录
+        </button>
+      </div>
+
+      {listMode === "project" && projectGroups.length > 0 && (
+        <div className="port-project-groups" aria-label="按项目分组">
+          {projectGroups.map((group) => {
+            const closable = group.usages.filter((u) => u.userOwned);
+            return (
+              <div className="port-project-group" key={group.workingDirectory || "__unknown__"}>
+                <div className="port-project-group-head">
+                  <div>
+                    <strong title={group.workingDirectory || undefined}>
+                      {group.label}
+                    </strong>
+                    <span className="muted"> · {group.usages.length} 端口</span>
+                  </div>
+                  {!group.isUnknown && closable.length > 0 && (
+                    <button
+                      type="button"
+                      className="port-close-btn"
+                      disabled={busy}
+                      onClick={() => onTerminate(closable)}
+                    >
+                      关闭此项目端口（{closable.length}）
+                    </button>
+                  )}
+                  {group.isUnknown && (
+                    <span className="muted">未知目录无一键关闭</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {groups.length === 0 && !busy ? (
         <p className="state-line">

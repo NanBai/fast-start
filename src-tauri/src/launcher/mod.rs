@@ -9,7 +9,7 @@ use crate::security::shell_escape;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use terminals::{GhosttyLauncher, ITerm2Launcher, SystemTerminalLauncher};
+use terminals::{GhosttyLauncher, ITerm2Launcher, SystemTerminalLauncher, WezTermLauncher};
 
 #[derive(Debug)]
 pub enum LaunchError {
@@ -44,6 +44,7 @@ pub fn launchers() -> Vec<Box<dyn TerminalLauncher + Send + Sync>> {
         Box::new(SystemTerminalLauncher),
         Box::new(ITerm2Launcher),
         Box::new(GhosttyLauncher),
+        Box::new(WezTermLauncher),
     ]
 }
 
@@ -252,9 +253,9 @@ fn fallback_path_string() -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        is_plausible_path, wrapper_shell_command, write_command_wrapper,
+        is_plausible_path, launcher_for, wrapper_shell_command, write_command_wrapper,
     };
-    use crate::models::CommandSpec;
+    use crate::models::{CommandSpec, TerminalType};
     use crate::security::validate_command_spec;
     use std::path::PathBuf;
 
@@ -273,6 +274,15 @@ mod tests {
         assert!(!is_plausible_path("hello world from zsh"));
         assert!(!is_plausible_path(""));
         assert!(!is_plausible_path("nopath"));
+    }
+
+    #[test]
+    fn wezterm_launcher_is_registered_and_reports_availability_safely() {
+        let launcher = launcher_for(TerminalType::WezTerm).expect("WezTerm launcher registered");
+        assert_eq!(launcher.terminal_type(), TerminalType::WezTerm);
+        assert!(launcher.supports_tab());
+        // 本机未装时 false，不 panic
+        let _ = launcher.is_available();
     }
 
     #[test]

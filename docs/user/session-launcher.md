@@ -18,7 +18,7 @@ Session Launcher 会扫描本机 Codex、Claude Code、Cursor、Grok Build 和 O
 
 - 当前版本面向 macOS。
 - 本机需要安装并使用过 Codex、Claude Code、Cursor Agent、Grok Build 或 OpenCode 中至少一种 CLI。
-- 启动 session 前，需要安装至少一个可用终端：Terminal.app、iTerm2 或 Ghostty。
+- 启动 session 前，需要安装至少一个可用终端：Terminal.app、iTerm2、Ghostty 或 WezTerm（若已安装）。
 - 恢复 session 时，目标 CLI 命令需要能在终端里正常执行。
 - Port 工具页依赖 macOS 自带的 `/usr/sbin/lsof`、`/bin/ps` 和 `/bin/kill`。
 
@@ -52,6 +52,18 @@ pnpm tauri dev
 - **按项目**：同一 `projectDir` 下的多 CLI session 归到同一项目组；行内显示 Agent 标签。
 
 视图偏好保存在本机，重启后保留。
+
+### 启动前预检与陈旧筛选
+
+- 启动前会只读检查工作目录、CLI 程序是否在终端 PATH 上、以及会话源是否仍存在。失败时状态栏显示中文原因，不会拉起终端。
+- 筛选区可按「缺工作目录 / 缺会话源 / 陈旧」过滤列表；行上可能显示「缺目录·缺源」角标。
+- 「磁盘占用」折叠区按 CLI / 项目汇总源载体近似体积（OpenCode 不按整库计）。
+
+### 批量删除
+
+1. 勾选多条 session（单次最多 50）。
+2. 点「批量删除」并二次确认数量。
+3. 允许部分成功：成功项从列表消失，失败项在状态栏展示原因。不可撤销。
 
 ### 查找 session
 

@@ -1,6 +1,6 @@
 use crate::grok_provider::{
-    GrokActivateOfficialResult, GrokBackupInfo, GrokFetchModelsResult, GrokPrivacyResult,
-    GrokProfile, GrokProviderLayout, GrokProviderState, GrokProviderStatus,
+    GrokActivateOfficialResult, GrokBackupInfo, GrokFetchModelsResult, GrokHealthReport,
+    GrokPrivacyResult, GrokProfile, GrokProviderLayout, GrokProviderState, GrokProviderStatus,
     GrokTestConnectionResult,
 };
 use crate::launch_preflight::PreflightResult;
@@ -15,8 +15,8 @@ use crate::preferences::{
 };
 use crate::state::{
     save_favorite_project_dirs, save_favorite_session_ids, save_launch_mode, save_port_auto_refresh,
-    save_port_ignore_ports, save_port_project_path_prefixes, save_preferred_terminal,
-    save_recent_launches, save_theme_mode, AppState,
+    save_port_ignore_ports, save_port_project_path_prefixes, save_port_protect_ports,
+    save_preferred_terminal, save_recent_launches, save_theme_mode, AppState,
 };
 use tauri::State;
 
@@ -266,6 +266,22 @@ pub fn set_port_ignore_ports(
 }
 
 #[tauri::command]
+pub fn get_port_protect_ports(state: State<'_, AppState>) -> Result<Vec<u16>, String> {
+    state.port_protect_ports()
+}
+
+#[tauri::command]
+pub fn set_port_protect_ports(
+    ports: Vec<u16>,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    save_port_protect_ports(&app, ports.clone())?;
+    state.set_port_protect_ports(ports)?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_port_project_path_prefixes(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     state.port_project_path_prefixes()
 }
@@ -302,6 +318,14 @@ pub fn grok_provider_status(
     state: State<'_, GrokProviderState>,
 ) -> Result<GrokProviderStatus, String> {
     state.status()
+}
+
+/// 只读 Grok 健康诊断（issues[]）；无 secret / 绝对路径。
+#[tauri::command]
+pub fn grok_config_health(
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokHealthReport, String> {
+    state.config_health()
 }
 
 #[tauri::command]

@@ -1,5 +1,5 @@
 export type CliType = "codex" | "claude-code" | "cursor" | "grok-build" | "opencode";
-export type TerminalType = "system" | "iterm2" | "ghostty";
+export type TerminalType = "system" | "iterm2" | "ghostty" | "wezterm";
 export type LaunchMode = "new-tab" | "new-window";
 export type SessionListMode = "by-agent" | "by-project";
 export type ThemeMode = "dark" | "light" | "system";
@@ -151,7 +151,30 @@ export const TERMINAL_LABELS: Record<TerminalType, string> = {
   system: "Terminal.app",
   iterm2: "iTerm2",
   ghostty: "Ghostty",
+  wezterm: "WezTerm",
 };
+
+export interface GrokHealthIssue {
+  code: string;
+  severity: "info" | "warn" | "error" | string;
+  message: string;
+}
+
+export interface GrokHealthBackup {
+  name: string;
+  modifiedAt: string;
+}
+
+export interface GrokHealthReport {
+  configPresent: boolean;
+  authPresent: boolean;
+  profilesCount: number;
+  activeMode: string;
+  activeProfileId: string | null;
+  configMatchesActive: boolean;
+  backups: GrokHealthBackup[];
+  issues: GrokHealthIssue[];
+}
 
 export const LAUNCH_MODE_LABELS: Record<LaunchMode, string> = {
   "new-tab": "新标签页",
