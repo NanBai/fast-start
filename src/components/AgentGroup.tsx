@@ -74,6 +74,7 @@ export function AgentGroup({
   const [expanded, setExpanded] = useState(false);
   const projectGroups = groupByProjectDir(sessions);
   const open = forceOpen || expanded;
+  const panelId = `cli-group-${cliType}`;
 
   return (
     <section className="cli-group" data-cli={cliType} data-open={open}>
@@ -82,6 +83,7 @@ export function AgentGroup({
         className="cli-group-header"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={open}
+        aria-controls={panelId}
       >
         <span className="cli-mark" data-cli={cliType} aria-hidden="true">
           <BrandMark cliType={cliType} />
@@ -105,38 +107,47 @@ export function AgentGroup({
           <Icon.Chevron />
         </span>
       </button>
-      {open && (
-        <div className="cli-group-card">
-          <div className="cli-group-body">
-            {projectGroups.length === 0 ? (
-              <p className="state-line">
-                {scanError
-                  ? `扫描失败：${scanError}。可点右上角刷新重试。`
-                  : `暂无 ${CLI_LABELS[cliType]} session。在本机使用该 CLI 后刷新即可出现。`}
-              </p>
-            ) : (
-              projectGroups.map((group) => (
-                <ProjectBucket
-                  key={group.projectDir}
-                  projectDir={group.projectDir}
-                  projectName={group.projectName}
-                  sessions={group.sessions}
-                  favorite={favoriteProjectDirs.has(group.projectDir)}
-                  forceOpen={forceOpen}
-                  favoriteSessionIds={favoriteSessionIds}
-                  activeSessionId={activeSessionId}
-                  launchingId={launchingId}
-                  deletingId={deletingId}
-                  onLaunch={onLaunch}
-                  onToggleFavorite={onToggleFavoriteProject}
-                  onToggleSessionFavorite={onToggleSessionFavorite}
-                  onSessionContextMenu={onSessionContextMenu}
-                />
-              ))
-            )}
+      <div
+        id={panelId}
+        className="cli-group-collapse"
+        role="region"
+        aria-label={`${CLI_LABELS[cliType]} sessions`}
+        aria-hidden={!open}
+        inert={!open ? true : undefined}
+      >
+        <div className="cli-group-collapse-inner">
+          <div className="cli-group-card">
+            <div className="cli-group-body">
+              {projectGroups.length === 0 ? (
+                <p className="state-line">
+                  {scanError
+                    ? `扫描失败：${scanError}。可点右上角刷新重试。`
+                    : `暂无 ${CLI_LABELS[cliType]} session。在本机使用该 CLI 后刷新即可出现。`}
+                </p>
+              ) : (
+                projectGroups.map((group) => (
+                  <ProjectBucket
+                    key={group.projectDir}
+                    projectDir={group.projectDir}
+                    projectName={group.projectName}
+                    sessions={group.sessions}
+                    favorite={favoriteProjectDirs.has(group.projectDir)}
+                    forceOpen={forceOpen}
+                    favoriteSessionIds={favoriteSessionIds}
+                    activeSessionId={activeSessionId}
+                    launchingId={launchingId}
+                    deletingId={deletingId}
+                    onLaunch={onLaunch}
+                    onToggleFavorite={onToggleFavoriteProject}
+                    onToggleSessionFavorite={onToggleSessionFavorite}
+                    onSessionContextMenu={onSessionContextMenu}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </section>
   );
 }

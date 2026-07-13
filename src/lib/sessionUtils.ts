@@ -45,6 +45,99 @@ export function formatRelative(iso: string) {
   return date.toLocaleDateString();
 }
 
+const SHORT_ID_MIN = 7;
+const SHORT_ID_MAX = 12;
+
+/** 列表展示用的短 id：取 native sessionId 末尾 N 位可打印字符 */
+export function shortSessionId(sessionId: string, length = SHORT_ID_MIN): string {
+  const clean = sessionId.replace(/[^a-zA-Z0-9]/g, "");
+  const n = Math.max(1, Math.min(length, SHORT_ID_MAX));
+  if (!clean) return sessionId.slice(0, n);
+  if (clean.length <= n) return clean;
+  return clean.slice(-n);
+}
+
+/**
+ * 在同一批 session 内生成互不撞车的短 id（session.sessionId → short）。
+ * 从 7 位起加长，直到组内唯一；仍撞车则加序号后缀。
+ */
+export function uniqueShortSessionIds(
+  sessions: SessionData[],
+): Map<string, string> {
+  const result = new Map<string, string>();
+  if (sessions.length === 0) return result;
+
+  for (let length = SHORT_ID_MIN; length <= SHORT_ID_MAX; length += 1) {
+    const used = new Map<string, string>();
+    const attempt = new Map<string, string>();
+    let collision = false;
+    for (const session of sessions) {
+      const short = shortSessionId(session.sessionId, length);
+      const owner = used.get(short);
+      if (owner !== undefined && owner !== session.sessionId) {
+        collision = true;
+        break;
+      }
+      used.set(short, session.sessionId);
+      attempt.set(session.sessionId, short);
+    }
+    if (!collision) return attempt;
+  }
+
+  // 极端回退：同前缀加序号，保证组内唯一
+  const seen = new Map<string, number>();
+  for (const session of sessions) {
+    const base = shortSessionId(session.sessionId, SHORT_ID_MAX);
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    result.set(session.sessionId, n === 1 ? base : `${base}${n}`);
+  }
+  return result;
+}
+
+/** 具体时刻，便于同简介 session 区分（相对时间太粗） */
+export function formatSessionClock(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const time = `${hh}:${mm}`;
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  if (sameDay) return time;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${month}/${day} ${time}`;
+  }
+  return `${date.getFullYear()}/${month}/${day} ${time}`;
+}
+
+export function sessionTitle(session: SessionData): string {
+  const summary = session.summary?.trim();
+  return summary && summary.length > 0 ? summary : session.projectName;
+}
+
+/**
+ * 同一批 session 里标题重复的 key 集合（小写）。
+ * 用于列表副行强化短 id，避免同名简介无法区分。
+ */
+export function ambiguousSessionTitleKeys(sessions: SessionData[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const session of sessions) {
+    const key = sessionTitle(session).toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const ambiguous = new Set<string>();
+  for (const [key, count] of counts) {
+    if (count > 1) ambiguous.add(key);
+  }
+  return ambiguous;
+}
+
 export function recentDaysLabel(value: RecentDaysFilter) {
   return RECENT_DAY_OPTIONS.find((option) => option.value === value)?.label ?? "最近 7 天";
 }
@@ -169,12 +262,16 @@ function sortSessionsByFavorites(
 }
 
 function sessionMatchesQuery(session: SessionData, normalizedQuery: string) {
+  const shortId = shortSessionId(session.sessionId);
   return [
     session.cliType,
     CLI_LABELS[session.cliType],
     session.projectName,
     session.projectDir,
     session.summary ?? "",
+    session.sessionId,
+    shortId,
+    `#${shortId}`,
   ]
     .join(" ")
     .toLowerCase()
@@ -182,5 +279,6 @@ function sessionMatchesQuery(session: SessionData, normalizedQuery: string) {
 }
 
 function normalizeQuery(query: string) {
-  return query.trim().toLowerCase();
+  // 支持粘贴 UI 上的 `#a1b2c3d` 短 id
+  return query.trim().toLowerCase().replace(/^#+/, "");
 }

@@ -405,7 +405,7 @@ function App() {
           </span>
           <div className="app-titles">
             <h1>Session Launcher</h1>
-            <p className="app-subtitle">
+            <p className="app-subtitle" key={activeTool}>
               {activeTool === "ports"
                 ? "监控本机开发端口，一键关闭残留服务"
                 : activeTool === "providers"
@@ -414,7 +414,12 @@ function App() {
             </p>
           </div>
         </div>
-        <div className="tool-switcher" role="tablist" aria-label="工具切换">
+        <div
+          className="tool-switcher"
+          role="tablist"
+          aria-label="工具切换"
+          data-tool={activeTool}
+        >
           {(["sessions", "ports", "providers"] as AppTool[]).map((tool) => (
             <button
               key={tool}
@@ -425,6 +430,13 @@ function App() {
               data-active={activeTool === tool}
               onClick={() => setActiveTool(tool)}
             >
+              {tool === "sessions" ? (
+                <Icon.Sessions />
+              ) : tool === "ports" ? (
+                <Icon.Port />
+              ) : (
+                <Icon.Grok />
+              )}
               {APP_TOOL_LABELS[tool]}
             </button>
           ))}
@@ -469,58 +481,130 @@ function App() {
       </header>
 
       <div className="control-bar">
-        {activeTool === "ports" ? (
-          <>
-            <SearchBox
-              value={portSearchQuery}
-              onChange={setPortSearchQuery}
-              inputRef={portSearchInputRef}
-              placeholder="搜索端口、进程、PID 或路径"
-              ariaLabel="搜索端口"
-            />
-            <PortScopeSegmented value={portScope} onChange={setPortScope} />
-            <ProtocolMenu value={portProtocol} onChange={setPortProtocol} />
-            <AutoRefreshToggle
-              enabled={portAutoRefresh}
-              onChange={handlePortAutoRefreshChange}
-            />
-          </>
-        ) : activeTool === "providers" ? (
-          <p className="providers-control-hint muted">
-            切换后<strong>新开</strong> Grok 会话才会读取新 config；不会结束已运行的会话。
-          </p>
-        ) : (
-          <>
-            <SearchBox
-              value={searchQuery}
-              onChange={handleSearchQueryChange}
-              inputRef={searchInputRef}
-              onKeyDown={handleSearchKeyDown}
-            />
-            <RecentDaysMenu
-              value={recentDays}
-              onChange={handleRecentDaysChange}
-              visibleCount={visibleSessions.length}
-              totalCount={sessions.length}
-            />
-            <SessionListModeSegmented
-              value={sessionListMode}
-              onChange={handleSessionListModeChange}
-            />
-            <LaunchSegmented value={launchMode} onChange={handleLaunchModeChange} />
-            <TerminalMenu
-              value={preferredTerminal}
-              available={availableTerminals}
-              onChange={handleTerminalChange}
-            />
-          </>
-        )}
-        <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
+        <div className="control-bar-main" key={activeTool}>
+          {activeTool === "ports" ? (
+            <>
+              <SearchBox
+                value={portSearchQuery}
+                onChange={setPortSearchQuery}
+                inputRef={portSearchInputRef}
+                placeholder="搜索端口、进程、PID 或路径"
+                ariaLabel="搜索端口"
+              />
+              <div className="control-groups">
+                <section className="control-group" aria-label="筛选">
+                  <div className="control-group-label">
+                    <Icon.Filter />
+                    筛选
+                  </div>
+                  <div className="control-group-body">
+                    <PortScopeSegmented value={portScope} onChange={setPortScope} />
+                    <ProtocolMenu value={portProtocol} onChange={setPortProtocol} />
+                  </div>
+                </section>
+                <section className="control-group" aria-label="刷新">
+                  <div className="control-group-label">
+                    <Icon.Refresh />
+                    刷新
+                  </div>
+                  <div className="control-group-body">
+                    <AutoRefreshToggle
+                      enabled={portAutoRefresh}
+                      onChange={handlePortAutoRefreshChange}
+                    />
+                  </div>
+                </section>
+                <section className="control-group" aria-label="外观">
+                  <div className="control-group-label">
+                    <Icon.Appearance />
+                    外观
+                  </div>
+                  <div className="control-group-body">
+                    <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
+                  </div>
+                </section>
+              </div>
+            </>
+          ) : activeTool === "providers" ? (
+            <div className="control-groups control-groups-providers">
+              <section className="control-group control-group-hint" aria-label="说明">
+                <div className="control-group-label">说明</div>
+                <div className="control-group-body">
+                  <p className="providers-control-hint muted">
+                    切换后<strong>新开</strong> Grok 会话才会读取新 config；不会结束已运行的会话。
+                  </p>
+                </div>
+              </section>
+              <section className="control-group" aria-label="外观">
+                <div className="control-group-label">
+                  <Icon.Appearance />
+                  外观
+                </div>
+                <div className="control-group-body">
+                  <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
+                </div>
+              </section>
+            </div>
+          ) : (
+            <>
+              <SearchBox
+                value={searchQuery}
+                onChange={handleSearchQueryChange}
+                inputRef={searchInputRef}
+                onKeyDown={handleSearchKeyDown}
+              />
+              <div className="control-groups">
+                <section className="control-group" aria-label="筛选">
+                  <div className="control-group-label">
+                    <Icon.Filter />
+                    筛选
+                  </div>
+                  <div className="control-group-body">
+                    <RecentDaysMenu
+                      value={recentDays}
+                      onChange={handleRecentDaysChange}
+                      visibleCount={visibleSessions.length}
+                      totalCount={sessions.length}
+                    />
+                    <SessionListModeSegmented
+                      value={sessionListMode}
+                      onChange={handleSessionListModeChange}
+                    />
+                  </div>
+                </section>
+                <section className="control-group" aria-label="启动">
+                  <div className="control-group-label">
+                    <Icon.Launch />
+                    启动
+                  </div>
+                  <div className="control-group-body">
+                    <LaunchSegmented value={launchMode} onChange={handleLaunchModeChange} />
+                    <TerminalMenu
+                      value={preferredTerminal}
+                      available={availableTerminals}
+                      onChange={handleTerminalChange}
+                    />
+                  </div>
+                </section>
+                <section className="control-group" aria-label="外观">
+                  <div className="control-group-label">
+                    <Icon.Appearance />
+                    外观
+                  </div>
+                  <div className="control-group-body">
+                    <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
+                  </div>
+                </section>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="status-line">
         {statusMessage && (
           <span
+            key={`${statusType}:${statusMessage}`}
             className="status-pill"
             data-type={statusType}
             data-pulse={
@@ -617,6 +701,7 @@ function App() {
         </div>
       )}
 
+      <div className="workspace-panel" key={activeTool}>
       {activeTool === "ports" ? (
         portLoading ? (
           <Skeleton />
@@ -675,7 +760,7 @@ function App() {
       ) : hasSearchQuery && quickAccess.matchCount === 0 ? (
         <p className="state-line">没有匹配的 session</p>
       ) : (
-        <div className="session-list" data-list-mode={sessionListMode}>
+        <div className="session-list" data-list-mode={sessionListMode} key={sessionListMode}>
           {sessionListMode === "by-project" ? (
             projectGroups.length === 0 ? (
               <p className="state-line">暂无 session</p>
@@ -722,6 +807,7 @@ function App() {
           )}
         </div>
       )}
+      </div>
 
       {sessionMenu && (
         <SessionContextMenu

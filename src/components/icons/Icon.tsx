@@ -142,4 +142,148 @@ export const Icon = {
       />
     </svg>
   ),
+  /** tool: sessions list */
+  Sessions: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 7h14M5 12h14M5 17h9"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  /** tool: port monitor */
+  Port: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 4v2.5M12 17.5V20M4 12h2.5M17.5 12H20M6.4 6.4l1.8 1.8M15.8 15.8l1.8 1.8M17.6 6.4l-1.8 1.8M8.2 15.8l-1.8 1.8"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  /** tool: grok providers */
+  Grok: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M8 8.5a4 4 0 017.5-1.8M16 15.5a4 4 0 01-7.5 1.8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="16" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  ),
+  Agent: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="6"
+        y="7"
+        width="12"
+        height="11"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 4v3M9.5 12h.01M14.5 12h.01M9.8 15.2c.7.7 1.5 1 2.2 1s1.5-.3 2.2-1"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Project: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3.8 8.2A1.8 1.8 0 015.6 6.4h3.7a1.2 1.2 0 01.9.4l1 1.1c.2.2.5.4.8.4h6.4a1.8 1.8 0 011.8 1.8v7.1a1.8 1.8 0 01-1.8 1.8H5.6a1.8 1.8 0 01-1.8-1.8V8.2z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Clock: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 8v4.2l2.8 1.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Theme: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5a8.5 8.5 0 108.5 8.5A6.2 6.2 0 0112 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Network: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="6" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="18" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="18" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M8.1 11.2l7.5-3.3M8.1 12.8l7.5 3.3"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  Globe: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M4.5 12h15M12 4.5c2.2 2.4 3.3 4.8 3.3 7.5S14.2 17.1 12 19.5C9.8 17.1 8.7 14.7 8.7 12S9.8 6.9 12 4.5z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Filter: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 6h16l-6.2 7.2V18l-3.6 2v-6.8L4 6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Launch: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 12h14M13 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  Appearance: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
 };

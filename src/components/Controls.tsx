@@ -76,6 +76,7 @@ export function PortScopeSegmented({
           data-active={value === scope}
           onClick={() => onChange(scope)}
         >
+          {scope === "project" ? <Icon.Project /> : <Icon.Globe />}
           {PORT_SCOPE_LABELS[scope]}
         </button>
       ))}
@@ -100,6 +101,7 @@ export function SessionListModeSegmented({
           data-active={value === mode}
           onClick={() => void onChange(mode)}
         >
+          {mode === "by-agent" ? <Icon.Agent /> : <Icon.Project />}
           {SESSION_LIST_MODE_LABELS[mode]}
         </button>
       ))}
@@ -117,7 +119,7 @@ export function ProtocolMenu({
   return (
     <label className="menu protocol-menu">
       <span className="menu-value">
-        <span className="menu-dot protocol-dot" />
+        <Icon.Network />
         {value === "all" ? "全部协议" : PORT_PROTOCOL_LABELS[value]}
         <Icon.Chevron />
       </span>
@@ -161,6 +163,7 @@ export function AutoRefreshToggle({
       onClick={() => void handleClick()}
       aria-pressed={enabled}
     >
+      <Icon.Refresh />
       <span className="toggle-track" />
       自动刷新
     </button>
@@ -181,7 +184,7 @@ export function RecentDaysMenu({
   return (
     <label className="menu range-menu">
       <span className="menu-value">
-        <span className="menu-dot range-dot" />
+        <Icon.Clock />
         {recentDaysLabel(value)}
         <span className="menu-count">{visibleCount}/{totalCount}</span>
         <Icon.Chevron />
@@ -223,15 +226,16 @@ export function TerminalMenu({
   }
 
   return (
-    <label className="menu">
+    <label className="menu terminal-menu">
       <span className="menu-value">
-        <span className="menu-dot" />
+        <Icon.Terminal />
         {TERMINAL_LABELS[value]}
         <Icon.Chevron />
       </span>
       <select
         value={value}
         disabled={saving}
+        aria-label="选择终端"
         onChange={(event) => void handleChange(event.target.value as TerminalType)}
       >
         {(Object.keys(TERMINAL_LABELS) as TerminalType[]).map((terminal) => {
@@ -270,6 +274,7 @@ export function ThemeMenu({
   return (
     <label className="menu theme-menu">
       <span className="menu-value">
+        <Icon.Theme />
         <span className="menu-dot theme-dot" data-theme-mode={value} />
         {THEME_MODE_LABELS[value]}
         <Icon.Chevron />

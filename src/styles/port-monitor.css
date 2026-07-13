@@ -2,7 +2,7 @@
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  border-radius: 18px;
+  border-radius: var(--radius-xl);
   background: var(--group-bg);
   box-shadow: var(--shadow-card);
   outline: 0.5px solid var(--group-stroke);
@@ -71,7 +71,7 @@
   display: grid;
   overflow: hidden;
   border-radius: var(--radius-md);
-  background: rgba(120, 120, 128, 0.07);
+  background: var(--inset-bg);
   box-shadow: inset 0 0 0 0.5px var(--divider);
 }
 
@@ -130,7 +130,7 @@
   min-height: 34px;
   color: var(--text-tertiary);
   font-size: 0.68rem;
-  font-weight: 750;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: var(--control-bg);
@@ -138,7 +138,8 @@
 }
 
 .port-row-detail {
-  background: rgba(120, 120, 128, 0.06);
+  background: var(--inset-bg);
+  animation: panel-in var(--dur-fast) var(--ease-emphasized) both;
 }
 
 .port-disclosure {
@@ -158,7 +159,7 @@
 
 .port-disclosure svg {
   transform: rotate(-90deg);
-  transition: transform var(--dur-fast) var(--ease-standard);
+  transition: transform var(--dur-base) var(--ease-spring);
 }
 
 .port-disclosure[data-open="true"] svg {
@@ -172,13 +173,13 @@
 }
 
 .port-number {
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .port-protocol {
   color: var(--green);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .port-process,
@@ -221,11 +222,11 @@
 .port-path-action {
   flex: 0 0 auto;
   padding: 3px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-tertiary);
   background: var(--control-bg);
   font-size: 0.68rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .port-path-action:hover {
