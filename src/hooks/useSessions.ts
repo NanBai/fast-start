@@ -7,6 +7,8 @@ import {
   RecentLaunch,
   ScanResponse,
   SessionData,
+  SessionHealth,
+  SessionHealthReport,
   StatusType,
 } from "../types";
 
@@ -44,12 +46,37 @@ export function useSessions(notifyStatus: NotifyStatus) {
   const [commandPreview, setCommandPreview] = useState<LaunchCommandPreview | null>(
     null,
   );
+  const [healthById, setHealthById] = useState<Map<string, SessionHealth>>(
+    () => new Map(),
+  );
 
   function applyScanResult(result: ScanResponse) {
     setSessions(result.sessions);
     setScanErrors(result.scanErrors);
     const status = formatScanStatus(result);
     notifyStatus(status.message, status.type);
+    // 扫描后异步探测可见量（≤200）；失败不阻断列表
+    void inspectHealthForSessions(result.sessions);
+  }
+
+  async function inspectHealthForSessions(list: SessionData[]) {
+    if (list.length === 0) {
+      setHealthById(new Map());
+      return;
+    }
+    const ids = list.slice(0, 200).map((s) => s.id);
+    try {
+      const report = await invoke<SessionHealthReport>("inspect_session_health", {
+        sessionListIds: ids,
+      });
+      const next = new Map<string, SessionHealth>();
+      for (const item of report.items) {
+        next.set(item.sessionListId, item);
+      }
+      setHealthById(next);
+    } catch {
+      // 非关键路径
+    }
   }
 
   async function loadSessions() {
@@ -225,6 +252,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
     pendingDelete,
     recentLaunches,
     commandPreview,
+    healthById,
     loadSessions,
     refreshSessions,
     launchSession,
@@ -235,5 +263,6 @@ export function useSessions(notifyStatus: NotifyStatus) {
     requestDeleteSession,
     cancelDeleteSession,
     confirmDeleteSession,
+    inspectHealthForSessions,
   };
 }

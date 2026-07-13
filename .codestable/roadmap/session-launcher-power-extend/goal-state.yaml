@@ -5,7 +5,7 @@ driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 1
+current_feature_index: 2
 features:
   - slug: launch-preflight
     roadmap_item: launch-preflight
@@ -24,7 +24,7 @@ features:
     review: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-review.md"
     qa: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-health-inspect/session-health-inspect-acceptance.md"
-    status: pending
+    status: accepted
   - slug: session-summary-enrichment
     roadmap_item: session-summary-enrichment
     feature_dir: ".codestable/features/2026-07-13-session-summary-enrichment"

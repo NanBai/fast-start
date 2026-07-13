@@ -11,6 +11,9 @@ use crate::models::{
 };
 use crate::scanner::{command_spec_for_session, scanners};
 use crate::session_delete::delete_session_target;
+use crate::session_health::{
+    inspect_one, SessionHealthReport, INSPECT_SESSION_HEALTH_LIMIT,
+};
 use chrono::Utc;
 use scan_cache::{load_scan_cache, save_scan_cache, snapshot_from_sessions};
 
@@ -394,6 +397,31 @@ impl AppState {
             guard.ops_ready,
             &LoginPathProgramResolver,
         ))
+    }
+
+    /// 只读健康探测。超过 200 ids → Err；未知 id 跳过。
+    pub fn inspect_session_health(
+        &self,
+        session_list_ids: &[String],
+    ) -> Result<SessionHealthReport, String> {
+        if session_list_ids.len() > INSPECT_SESSION_HEALTH_LIMIT {
+            return Err(format!(
+                "单次健康探测最多 {} 条，当前 {}",
+                INSPECT_SESSION_HEALTH_LIMIT,
+                session_list_ids.len()
+            ));
+        }
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        let mut items = Vec::with_capacity(session_list_ids.len());
+        for id in session_list_ids {
+            if let Some(session) = guard.sessions.iter().find(|s| s.id == *id) {
+                items.push(inspect_one(session, guard.ops_ready));
+            }
+        }
+        Ok(SessionHealthReport { items })
     }
 
     /// `session_list_id` = `Session.id`（列表稳定 id）。成功时返回 session 供写入最近记录。

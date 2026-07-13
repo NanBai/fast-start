@@ -13,7 +13,7 @@ items:
   - slug: session-health-inspect
     description: inspect_session_health 返回 cwd/源/flags/approxBytes；列表可筛 missing_cwd 与 missing_source
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-health-inspect
     minimal_loop: false
     notes: "≤200 ids；OpenCode source=行存在 approxBytes=null；目录有界 du；不暴露路径"

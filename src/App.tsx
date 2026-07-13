@@ -26,11 +26,13 @@ import { usePreferences } from "./hooks/usePreferences";
 import { useSessions } from "./hooks/useSessions";
 import { filterPorts } from "./lib/portUtils";
 import {
+  filterSessionsByHealth,
   filterSessionsForQuickAccess,
   groupSessionsByProject,
   RecentDaysFilter,
   sanitizeFavoriteProjectDirs,
   sanitizeFavoriteSessionIds,
+  sessionHealthBadge,
 } from "./lib/sessionUtils";
 import {
   APP_TOOL_LABELS,
@@ -41,6 +43,7 @@ import {
   PortProtocol,
   PortScope,
   SessionData,
+  SessionHealthFilter,
   StatusType,
   ThemeMode,
 } from "./types";
@@ -64,6 +67,7 @@ function applyThemeMode(mode: ThemeMode) {
 function App() {
   const [activeTool, setActiveTool] = useState<AppTool>("sessions");
   const [recentDays, setRecentDays] = useState<RecentDaysFilter>("7");
+  const [healthFilter, setHealthFilter] = useState<SessionHealthFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [portSearchQuery, setPortSearchQuery] = useState("");
   const [portScope, setPortScope] = useState<PortScope>("project");
@@ -113,6 +117,7 @@ function App() {
     pendingDelete,
     recentLaunches,
     commandPreview,
+    healthById,
     loadSessions,
     refreshSessions,
     launchSession,
@@ -315,7 +320,11 @@ function App() {
     favoriteSessionIds: favoriteSessionIdSet,
     activeSessionId,
   });
-  const visibleSessions = quickAccess.sessions;
+  const visibleSessions = filterSessionsByHealth(
+    quickAccess.sessions,
+    healthById,
+    healthFilter,
+  );
   const hasSearchQuery = searchQuery.trim().length > 0;
   const activeQuickSessionId = hasSearchQuery ? quickAccess.activeSessionId : null;
   const sessionsByCli = new Map<CliType, SessionData[]>();
@@ -566,6 +575,21 @@ function App() {
                       visibleCount={visibleSessions.length}
                       totalCount={sessions.length}
                     />
+                    <label className="health-filter">
+                      <span className="sr-only">健康筛选</span>
+                      <select
+                        value={healthFilter}
+                        onChange={(e) =>
+                          setHealthFilter(e.target.value as SessionHealthFilter)
+                        }
+                        aria-label="按健康状态筛选"
+                      >
+                        <option value="all">全部状态</option>
+                        <option value="stale">陈旧（缺目录/源）</option>
+                        <option value="missing_cwd">缺工作目录</option>
+                        <option value="missing_source">缺会话源</option>
+                      </select>
+                    </label>
                     <SessionListModeSegmented
                       value={sessionListMode}
                       onChange={handleSessionListModeChange}
@@ -778,6 +802,7 @@ function App() {
                   activeSessionId={activeQuickSessionId}
                   launchingId={launchingId}
                   deletingId={deletingId}
+                  healthBadgeFor={(id) => sessionHealthBadge(healthById.get(id))}
                   onLaunch={handleLaunch}
                   onToggleFavorite={toggleFavoriteProject}
                   onToggleSessionFavorite={toggleFavoriteSession}
@@ -798,6 +823,7 @@ function App() {
                 activeSessionId={activeQuickSessionId}
                 launchingId={launchingId}
                 deletingId={deletingId}
+                healthBadgeFor={(id) => sessionHealthBadge(healthById.get(id))}
                 onLaunch={handleLaunch}
                 onToggleFavoriteProject={toggleFavoriteProject}
                 onToggleSessionFavorite={toggleFavoriteSession}

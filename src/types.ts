@@ -96,6 +96,27 @@ export interface PreflightResult {
   preview: LaunchCommandPreview | null;
 }
 
+export type SessionHealthFlag =
+  | "missing_cwd"
+  | "missing_source"
+  | "empty_summary"
+  | "cache_limited"
+  | "size_capped";
+
+export interface SessionHealth {
+  sessionListId: string;
+  cwdExists: boolean;
+  sourceExists: boolean | null;
+  approxBytes: number | null;
+  flags: SessionHealthFlag[] | string[];
+}
+
+export interface SessionHealthReport {
+  items: SessionHealth[];
+}
+
+export type SessionHealthFilter = "all" | "missing_cwd" | "missing_source" | "stale";
+
 export const CLI_ORDER: CliType[] = [
   "codex",
   "claude-code",

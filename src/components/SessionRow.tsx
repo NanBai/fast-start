@@ -18,6 +18,7 @@ export function SessionRow({
   favorite = false,
   titleAmbiguous = false,
   displayShortId,
+  healthBadge = null,
   onLaunch,
   onToggleFavorite,
   onContextMenu,
@@ -32,6 +33,8 @@ export function SessionRow({
   titleAmbiguous?: boolean;
   /** 组内已消歧的短 id；缺省时回退 shortSessionId */
   displayShortId?: string;
+  /** 健康探测角标（缺目录/缺源），不含路径 */
+  healthBadge?: string | null;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavorite?: (sessionId: string) => void;
   onContextMenu: (session: SessionData, event: MouseEvent<HTMLDivElement>) => void;
@@ -75,6 +78,11 @@ export function SessionRow({
               #{shortId}
             </span>
             {clock && <span className="session-clock">{clock}</span>}
+            {healthBadge && (
+              <span className="session-health-badge" title={healthBadge}>
+                {healthBadge}
+              </span>
+            )}
           </span>
         </div>
         <span className="session-time">{formatRelative(session.lastActiveAt)}</span>

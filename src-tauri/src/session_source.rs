@@ -7,8 +7,10 @@ use rusqlite::Connection;
 use std::fs;
 use std::path::Path;
 
-/// 目录体积估算上限：超过则 `size_capped=true` 并停止深入累加。
-const DIR_SIZE_CAP_BYTES: u64 = 64 * 1024 * 1024;
+/// 目录有界 du（与 health design / roadmap §4.2 对齐）。
+const DIR_MAX_DEPTH: u32 = 3;
+const DIR_MAX_FILES: u32 = 2000;
+const DIR_BUDGET_MS: u128 = 50;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceCheck {
@@ -56,9 +58,9 @@ fn check_path_target(target: &SessionDeleteTarget) -> SourceCheck {
             if !path.is_dir() {
                 return SourceCheck::Missing;
             }
-            let (approx_bytes, size_capped) = approx_dir_size(path, DIR_SIZE_CAP_BYTES);
+            let (approx_bytes, size_capped) = approx_dir_size(path);
             SourceCheck::Present {
-                approx_bytes: Some(approx_bytes),
+                approx_bytes,
                 size_capped,
             }
         }
@@ -99,31 +101,50 @@ fn opencode_session_row_exists(db_path: &Path, session_id: &str) -> Result<bool,
     Ok(rows.next().map_err(|err| err.to_string())?.is_some())
 }
 
-fn approx_dir_size(root: &Path, cap: u64) -> (u64, bool) {
+/// 返回 `(approx_bytes, size_capped)`；超限时 `approx_bytes=None` 且 `size_capped=true`。
+fn approx_dir_size(root: &Path) -> (Option<u64>, bool) {
+    use std::time::Instant;
+    let started = Instant::now();
     let mut total = 0u64;
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(dir) = stack.pop() {
+    let mut files = 0u32;
+    // (path, depth from root children = 1)
+    let mut stack = vec![(root.to_path_buf(), 0u32)];
+    while let Some((dir, depth)) = stack.pop() {
+        if started.elapsed().as_millis() > DIR_BUDGET_MS {
+            return (None, true);
+        }
+        if depth > DIR_MAX_DEPTH {
+            return (None, true);
+        }
         let entries = match fs::read_dir(&dir) {
             Ok(e) => e,
             Err(_) => continue,
         };
         for entry in entries.flatten() {
+            if started.elapsed().as_millis() > DIR_BUDGET_MS {
+                return (None, true);
+            }
             let path = entry.path();
             let meta = match entry.metadata() {
                 Ok(m) => m,
                 Err(_) => continue,
             };
             if meta.is_dir() {
-                stack.push(path);
-            } else if meta.is_file() {
-                total = total.saturating_add(meta.len());
-                if total >= cap {
-                    return (cap, true);
+                let next_depth = depth + 1;
+                if next_depth > DIR_MAX_DEPTH {
+                    return (None, true);
                 }
+                stack.push((path, next_depth));
+            } else if meta.is_file() {
+                files = files.saturating_add(1);
+                if files > DIR_MAX_FILES {
+                    return (None, true);
+                }
+                total = total.saturating_add(meta.len());
             }
         }
     }
-    (total, false)
+    (Some(total), false)
 }
 
 #[cfg(test)]

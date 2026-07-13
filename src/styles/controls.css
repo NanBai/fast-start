@@ -16,6 +16,30 @@
   animation: panel-in var(--dur-base) var(--ease-emphasized) both;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.health-filter select {
+  appearance: none;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.35));
+  background: var(--control-bg, transparent);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  min-height: 32px;
+  cursor: pointer;
+}
+
 /* functional groups: 筛选 | 启动 | 外观 */
 .control-groups {
   display: grid;

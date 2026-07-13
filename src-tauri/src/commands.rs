@@ -8,6 +8,7 @@ use crate::models::{
     LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch, ScanResponse,
     SessionListMode, TerminalType, ThemeMode,
 };
+use crate::session_health::SessionHealthReport;
 use crate::preferences::{
     load_grok_provider_layout, load_session_list_mode, save_grok_provider_layout,
     save_session_list_mode,
@@ -66,6 +67,15 @@ pub fn preflight_launch(
     state: State<'_, AppState>,
 ) -> Result<PreflightResult, String> {
     state.preflight_launch(&session_list_id)
+}
+
+/// 只读健康探测。单次 id 上限 200；未知 id 省略；不返回源路径。
+#[tauri::command]
+pub fn inspect_session_health(
+    session_list_ids: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<SessionHealthReport, String> {
+    state.inspect_session_health(&session_list_ids)
 }
 
 #[tauri::command]

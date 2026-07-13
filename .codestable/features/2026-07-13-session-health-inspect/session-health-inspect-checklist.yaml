@@ -18,30 +18,30 @@ dod:
 steps:
   - action: "复用 session_source::check_session_source（无第二套源 IO）+ inspect 映射 flags"
     exit_signal: "import 共享函数；OpenCode 行探测单测绿"
-    status: pending
+    status: done
   - action: "inspect_session_health command 与 200 上限 Err"
     exit_signal: "超限返回错误；缓存窗 cache_limited"
-    status: pending
+    status: done
   - action: "前端陈旧筛选/角标"
     exit_signal: "pnpm build；可筛 missing_cwd/source"
-    status: pending
+    status: done
 
 checks:
   - item: "不暴露 delete_target 路径"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "OpenCode 源=行 approxBytes=null；禁止 kind=File 误判"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "复用 check_session_source 无第二套 IO"
     source: 挂载点
-    status: pending
+    status: passed
   - item: "empty_summary 定义：summary None 或 trim 空"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "目录有界 du + size_capped"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "≤200 ids"
     source: 流程级约束
-    status: pending
+    status: passed

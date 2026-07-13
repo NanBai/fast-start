@@ -1,4 +1,9 @@
-import { CLI_LABELS, SessionData } from "../types";
+import {
+  CLI_LABELS,
+  SessionData,
+  SessionHealth,
+  SessionHealthFilter,
+} from "../types";
 
 export type RecentDaysFilter = "1" | "3" | "7" | "14" | "30" | "all";
 
@@ -182,6 +187,43 @@ export function filterSessionsForQuickAccess(
     activeSessionId,
     matchCount: sortedSessions.length,
   };
+}
+
+/** 基于 inspect_session_health 报告筛选陈旧 session（不读路径）。 */
+export function filterSessionsByHealth(
+  sessions: SessionData[],
+  healthById: Map<string, SessionHealth>,
+  filter: SessionHealthFilter,
+): SessionData[] {
+  if (filter === "all") return sessions;
+  return sessions.filter((session) => {
+    const health = healthById.get(session.id);
+    if (!health) return false;
+    if (filter === "missing_cwd") {
+      return health.flags.includes("missing_cwd") || !health.cwdExists;
+    }
+    if (filter === "missing_source") {
+      return health.flags.includes("missing_source") || health.sourceExists === false;
+    }
+    // stale：缺 cwd 或缺源
+    return (
+      health.flags.includes("missing_cwd") ||
+      health.flags.includes("missing_source") ||
+      !health.cwdExists ||
+      health.sourceExists === false
+    );
+  });
+}
+
+export function sessionHealthBadge(health: SessionHealth | undefined): string | null {
+  if (!health) return null;
+  const parts: string[] = [];
+  if (health.flags.includes("missing_cwd") || !health.cwdExists) parts.push("缺目录");
+  if (health.flags.includes("missing_source") || health.sourceExists === false) {
+    parts.push("缺源");
+  }
+  if (parts.length === 0) return null;
+  return parts.join("·");
 }
 
 export function sanitizeFavoriteProjectDirs(
