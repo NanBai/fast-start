@@ -35,6 +35,9 @@ export function ProvidersWorkspace({
   onSave,
   onDelete,
   onRestore,
+  onFetchModels,
+  onTestConnection,
+  onPreviewApply,
 }: {
   profiles: GrokProfile[];
   status: GrokProviderStatus | null;
@@ -51,10 +54,15 @@ export function ProvidersWorkspace({
   onSave: (profile: GrokProfile, activateAfter: boolean) => Promise<GrokProfile | null>;
   onDelete: (id: string) => void;
   onRestore: (file: string) => void;
+  onFetchModels: (profile: GrokProfile) => Promise<string[] | null>;
+  onTestConnection: (profile: GrokProfile) => Promise<unknown>;
+  onPreviewApply: (profile: GrokProfile) => Promise<string | null>;
 }) {
   const [editing, setEditing] = useState<GrokProfile | null>(null);
   const [query, setQuery] = useState("");
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
+  const [previewText, setPreviewText] = useState<string | null>(null);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
 
   const cards = useMemo(
     () => buildProviderCards(profiles, status, layout),
@@ -311,8 +319,93 @@ export function ProvidersWorkspace({
                 }
               />
             </label>
+            <div className="providers-form-actions providers-form-tools">
+              <button
+                type="button"
+                className="btn"
+                disabled={!!busyId || !editing.baseUrl.trim()}
+                onClick={() =>
+                  void (async () => {
+                    const models = await onFetchModels(editing);
+                    if (!models) return;
+                    setFetchedModels(models);
+                    if (models.length > 0 && !editing.defaultModel) {
+                      setEditing({
+                        ...editing,
+                        defaultModel: models[0],
+                        webSearchModel: editing.webSearchModel || models[0],
+                        subagentsDefaultModel: editing.subagentsDefaultModel || models[0],
+                        availableModels: models,
+                      });
+                    } else {
+                      setEditing({ ...editing, availableModels: models });
+                    }
+                  })()
+                }
+              >
+                拉取模型
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!!busyId || !editing.baseUrl.trim()}
+                onClick={() => void onTestConnection(editing)}
+              >
+                连通测试
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!!busyId}
+                onClick={() =>
+                  void (async () => {
+                    const text = await onPreviewApply(editing);
+                    if (text != null) setPreviewText(text);
+                  })()
+                }
+              >
+                预览 config
+              </button>
+            </div>
+            {fetchedModels.length > 0 && (
+              <label>
+                已拉取模型（点击填入默认）
+                <select
+                  value={editing.defaultModel}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      defaultModel: e.target.value,
+                      webSearchModel: editing.webSearchModel || e.target.value,
+                      subagentsDefaultModel: editing.subagentsDefaultModel || e.target.value,
+                    })
+                  }
+                >
+                  <option value="">选择模型…</option>
+                  {fetchedModels.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {previewText != null && (
+              <label className="providers-preview">
+                config.toml 预览（未写入）
+                <textarea readOnly rows={10} value={previewText} spellCheck={false} />
+              </label>
+            )}
             <div className="providers-form-actions">
-              <button type="button" className="btn" onClick={() => setEditing(null)}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setEditing(null);
+                  setPreviewText(null);
+                  setFetchedModels([]);
+                }}
+              >
                 取消
               </button>
               <button type="submit" className="btn" disabled={!!busyId}>

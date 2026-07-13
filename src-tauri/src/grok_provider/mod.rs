@@ -6,10 +6,12 @@
 //! - 官方 OAuth：`GROK_HOME/auth.json`（不受 `GROK_CONFIG` 影响）
 
 mod config;
+mod http;
 mod profile;
 mod store;
 mod switcher;
 
+pub use http::{GrokFetchModelsResult, GrokTestConnectionResult};
 pub use profile::{
     GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile,
     GrokProviderLayout, GrokProviderStatus,
@@ -79,5 +81,31 @@ impl GrokProviderState {
 
     pub fn restore_backup(&self, file: &str) -> Result<(), String> {
         self.with(|s| s.restore_backup(file))
+    }
+
+    /// 用户触发：拉取上游模型列表（不写盘）。
+    pub fn fetch_models(
+        &self,
+        base_url: String,
+        api_key: String,
+        upstream_format: String,
+    ) -> Result<GrokFetchModelsResult, String> {
+        // 不持锁做网络 IO，避免阻塞其它 Grok 命令。
+        http::fetch_models(&base_url, &api_key, &upstream_format)
+    }
+
+    /// 用户触发：连通测试（不写盘）。
+    pub fn test_connection(
+        &self,
+        base_url: String,
+        api_key: String,
+        upstream_format: String,
+    ) -> Result<GrokTestConnectionResult, String> {
+        http::test_connection(&base_url, &api_key, &upstream_format)
+    }
+
+    /// 预览启用后将写入的 config.toml 文本（不写盘）。
+    pub fn preview_apply(&self, profile: GrokProfile) -> Result<String, String> {
+        self.with(|s| s.preview_apply(&profile))
     }
 }

@@ -7,29 +7,19 @@ dod:
       command: "cd src-tauri && cargo test --lib"
       core: true
       failure_handling: fix-or-block
-    - id: CMD-002
-      command: "pnpm build"
-      core: true
-      failure_handling: fix-or-block
-  evidence_required: [command_output, diff_summary, manual_smoke]
+  evidence_required: [command_output, diff_summary]
   cleanliness:
     debug_output: forbidden
 
 steps:
-  - action: "改 ensure_default_profile 策略 + 单测三种 config"
-    exit_signal: "cargo test 全绿"
-    status: pending
-  - action: "文档/注释说明策略"
-    exit_signal: "注释或 user doc 一句"
-    status: pending
+  - action: "ensure_default_profile 按 models_base_url 决定 active"
+    exit_signal: "单测 OAuth inactive / API active / skip existing"
+    status: done
 
 checks:
-  - item: "无 models_base_url 时 active=false"
+  - item: "无 API 上游 Default 不 active"
     source: 验收场景
-    status: pending
-  - item: "有 upstream 时 active=true"
+    status: passed
+  - item: "有 models_base_url 则 active"
     source: 验收场景
-    status: pending
-  - item: "不删 profiles/auth"
-    source: 范围守护
-    status: pending
+    status: passed

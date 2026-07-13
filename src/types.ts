@@ -156,6 +156,16 @@ export interface GrokPrivacyResult {
   message: string;
 }
 
+export interface GrokFetchModelsResult {
+  models: string[];
+}
+
+export interface GrokTestConnectionResult {
+  ok: boolean;
+  latencyMs: number;
+  message: string;
+}
+
 export interface GrokProviderLayout {
   order: string[];
   pinnedIds: string[];

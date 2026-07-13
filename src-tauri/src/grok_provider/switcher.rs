@@ -1,6 +1,6 @@
 use super::config::{
-    apply_privacy_protection_to_file, apply_profile_to_file, current_matches, import_profile,
-    use_official_auth_to_file,
+    apply_privacy_protection_to_file, apply_profile_text, apply_profile_to_file, current_matches,
+    import_profile, use_official_auth_to_file,
 };
 use super::profile::{
     GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile, GrokProviderStatus,
@@ -155,8 +155,22 @@ impl GrokSwitcher {
         if !self.config_path.exists() {
             return Ok(());
         }
-        let _ = self.import_current("Default", true)?;
+        // 有 models_base_url（API 上游）才 active；纯 OAuth 配置保持官方模式。
+        let imported = import_profile(&self.config_path, "Default")?;
+        let active = !imported.base_url.trim().is_empty();
+        let _ = self.import_current("Default", active)?;
         Ok(())
+    }
+
+    /// 预览 apply 结果文本；读取现有 config 但不写盘。
+    pub fn preview_apply(&self, profile: &GrokProfile) -> Result<String, String> {
+        let data = if self.config_path.exists() {
+            fs::read(&self.config_path).map_err(|e| e.to_string())?
+        } else {
+            Vec::new()
+        };
+        let next = apply_profile_text(&data, profile)?;
+        String::from_utf8(next).map_err(|e| format!("预览编码失败: {e}"))
     }
 
     pub fn status(&self) -> Result<GrokProviderStatus, String> {
@@ -335,6 +349,86 @@ mod tests {
             updated_at: None,
             is_active: false,
         }
+    }
+
+    #[test]
+    fn ensure_default_oauth_only_imports_inactive() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(
+            &config,
+            r#"[cli]
+show_tips = false
+
+[models]
+default = "grok-3"
+"#,
+        )
+        .unwrap();
+        // open_with 不自动 ensure；手动调用
+        let sw = GrokSwitcher::open_with(config, data).unwrap();
+        sw.ensure_default_profile().unwrap();
+        let profiles = sw.list_profiles().unwrap();
+        assert_eq!(profiles.len(), 1);
+        assert!(!profiles[0].is_active);
+        assert!(sw.status().unwrap().official_active);
+    }
+
+    #[test]
+    fn ensure_default_with_api_upstream_imports_active() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(
+            &config,
+            r#"[endpoints]
+models_base_url = "https://api.example.com/v1"
+
+[models]
+default = "m"
+"#,
+        )
+        .unwrap();
+        let sw = GrokSwitcher::open_with(config, data).unwrap();
+        sw.ensure_default_profile().unwrap();
+        let profiles = sw.list_profiles().unwrap();
+        assert_eq!(profiles.len(), 1);
+        assert!(profiles[0].is_active);
+        assert!(!sw.status().unwrap().official_active);
+    }
+
+    #[test]
+    fn ensure_default_skips_when_profiles_exist() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(
+            &config,
+            r#"[endpoints]
+models_base_url = "https://api.example.com/v1"
+"#,
+        )
+        .unwrap();
+        let sw = GrokSwitcher::open_with(config, data).unwrap();
+        sw.create_profile(sample_profile("Existing")).unwrap();
+        sw.ensure_default_profile().unwrap();
+        assert_eq!(sw.list_profiles().unwrap().len(), 1);
+        assert_eq!(sw.list_profiles().unwrap()[0].name, "Existing");
+    }
+
+    #[test]
+    fn preview_apply_contains_keys_without_writing() {
+        let temp = tempfile::tempdir().unwrap();
+        let config = temp.path().join("config.toml");
+        let data = temp.path().join("data");
+        fs::write(&config, "[cli]\nshow_tips = false\n").unwrap();
+        let before = fs::read_to_string(&config).unwrap();
+        let sw = GrokSwitcher::open_with(config.clone(), data).unwrap();
+        let text = sw.preview_apply(&sample_profile("P")).unwrap();
+        assert!(text.contains("models_base_url"));
+        assert!(text.contains("default = \"m\""));
+        assert_eq!(fs::read_to_string(&config).unwrap(), before);
     }
 
     #[test]

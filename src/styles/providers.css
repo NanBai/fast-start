@@ -246,6 +246,33 @@
   color: var(--text-primary);
 }
 
+.providers-form select,
+.providers-form textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, var(--divider-soft));
+  background: var(--surface, transparent);
+  color: inherit;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.providers-form textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.providers-form-tools {
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.providers-preview {
+  grid-column: 1 / -1;
+}
+
 .providers-form-actions {
   display: flex;
   justify-content: flex-end;

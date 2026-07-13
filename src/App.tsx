@@ -145,6 +145,9 @@ function App() {
     saveProfile: saveGrokProfile,
     removeProfile: removeGrokProfile,
     restoreBackup: restoreGrokBackup,
+    fetchModels: fetchGrokModels,
+    testConnection: testGrokConnection,
+    previewApply: previewGrokApply,
   } = useGrokProviders(notifyStatus);
 
   async function handleLaunch(sessionId: string) {
@@ -588,6 +591,9 @@ function App() {
             onSave={(profile, activateAfter) => saveGrokProfile(profile, activateAfter)}
             onDelete={(id) => void removeGrokProfile(id)}
             onRestore={(file) => void restoreGrokBackup(file)}
+            onFetchModels={fetchGrokModels}
+            onTestConnection={testGrokConnection}
+            onPreviewApply={previewGrokApply}
           />
         )
       ) : loading ? (

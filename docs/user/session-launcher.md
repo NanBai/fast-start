@@ -40,6 +40,7 @@ pnpm tauri dev
 
 - **官方账号**：清除 `config.toml` 中由 API 供应商写入的上游覆盖，回退使用 `grok login` 的 OAuth（`~/.grok/auth.json`）。切换后需新开 Grok 会话才生效。
 - **API 供应商**：保存 Base URL / API Key / 模型档案到 `~/.grok_switch/profiles.json`，启用时写入 `~/.grok/config.toml` 并自动备份。
+- **拉取模型 / 连通测试 / config 预览**：仅在编辑页由你点击触发，请求由应用后端发出（不会在启动时自动访问上游）。
 - **隐私保护**：一键合并本地遥测相关开关（不替代 Grok 账号侧 Coding data sharing 或 `/privacy`）。
 - **置顶与排序**：卡片可置顶、可拖动调整顺序，偏好保存在本机 app 设置中。
 

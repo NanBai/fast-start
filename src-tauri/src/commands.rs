@@ -1,6 +1,7 @@
 use crate::grok_provider::{
-    GrokActivateOfficialResult, GrokBackupInfo, GrokPrivacyResult, GrokProfile,
-    GrokProviderLayout, GrokProviderState, GrokProviderStatus,
+    GrokActivateOfficialResult, GrokBackupInfo, GrokFetchModelsResult, GrokPrivacyResult,
+    GrokProfile, GrokProviderLayout, GrokProviderState, GrokProviderStatus,
+    GrokTestConnectionResult,
 };
 use crate::preferences::{load_grok_provider_layout, save_grok_provider_layout};
 use crate::models::{
@@ -249,6 +250,42 @@ pub fn grok_apply_privacy_protection(
     state: State<'_, GrokProviderState>,
 ) -> Result<GrokPrivacyResult, String> {
     state.apply_privacy_protection()
+}
+
+#[tauri::command]
+pub fn grok_fetch_models(
+    base_url: String,
+    api_key: String,
+    upstream_format: Option<String>,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokFetchModelsResult, String> {
+    state.fetch_models(
+        base_url,
+        api_key,
+        upstream_format.unwrap_or_else(|| "openai_chat".into()),
+    )
+}
+
+#[tauri::command]
+pub fn grok_test_connection(
+    base_url: String,
+    api_key: String,
+    upstream_format: Option<String>,
+    state: State<'_, GrokProviderState>,
+) -> Result<GrokTestConnectionResult, String> {
+    state.test_connection(
+        base_url,
+        api_key,
+        upstream_format.unwrap_or_else(|| "openai_chat".into()),
+    )
+}
+
+#[tauri::command]
+pub fn grok_preview_apply(
+    profile: GrokProfile,
+    state: State<'_, GrokProviderState>,
+) -> Result<String, String> {
+    state.preview_apply(profile)
 }
 
 #[tauri::command]

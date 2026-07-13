@@ -29,7 +29,7 @@ items:
   - slug: grok-models-and-preview
     description: Grok 供应商编辑支持拉取模型列表与连通测试，启用前可预览将写入的 config.toml 文本
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-grok-models-and-preview
     minimal_loop: false
     notes: "出站请求仅用户触发，Rust 侧发起"
@@ -37,7 +37,7 @@ items:
   - slug: grok-default-profile-policy
     description: 调整 ensure_default_profile，使无 API 上游配置时不强制 Default 为 active，与官方账号模式一致
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-grok-default-profile-policy
     minimal_loop: false
     notes: "排程建议在 grok-models-and-preview 之后实现，避免并发改 switcher；非数据硬依赖"

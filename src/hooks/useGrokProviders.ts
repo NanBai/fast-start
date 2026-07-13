@@ -4,10 +4,12 @@ import {
   emptyGrokProfile,
   GrokActivateOfficialResult,
   GrokBackupInfo,
+  GrokFetchModelsResult,
   GrokPrivacyResult,
   GrokProfile,
   GrokProviderLayout,
   GrokProviderStatus,
+  GrokTestConnectionResult,
   StatusType,
 } from "../types";
 
@@ -176,6 +178,59 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
     }
   }
 
+  /** 用户触发：从 Base URL 拉模型列表（Rust 侧出站）。 */
+  async function fetchModels(profile: GrokProfile): Promise<string[] | null> {
+    setBusyId("fetch-models");
+    try {
+      const result = await invoke<GrokFetchModelsResult>("grok_fetch_models", {
+        baseUrl: profile.baseUrl,
+        apiKey: profile.apiKey,
+        upstreamFormat: profile.upstreamFormat || "openai_chat",
+      });
+      notifyStatus(`已拉取 ${result.models.length} 个模型`, "success");
+      return result.models;
+    } catch (error) {
+      notifyStatus(`拉取模型失败：${String(error)}`, "error");
+      return null;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function testConnection(
+    profile: GrokProfile,
+  ): Promise<GrokTestConnectionResult | null> {
+    setBusyId("test-connection");
+    try {
+      const result = await invoke<GrokTestConnectionResult>("grok_test_connection", {
+        baseUrl: profile.baseUrl,
+        apiKey: profile.apiKey,
+        upstreamFormat: profile.upstreamFormat || "openai_chat",
+      });
+      notifyStatus(result.message, "success");
+      return result;
+    } catch (error) {
+      notifyStatus(String(error), "error");
+      return null;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function previewApply(profile: GrokProfile): Promise<string | null> {
+    setBusyId("preview-apply");
+    try {
+      const text = await invoke<string>("grok_preview_apply", { profile });
+      notifyStatus("已生成 config 预览（未写入磁盘）", "info");
+      return text;
+    } catch (error) {
+      notifyStatus(`预览失败：${String(error)}`, "error");
+      return null;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return {
     profiles,
     status,
@@ -192,6 +247,9 @@ export function useGrokProviders(notifyStatus: NotifyStatus) {
     saveProfile,
     removeProfile,
     restoreBackup,
+    fetchModels,
+    testConnection,
+    previewApply,
     emptyGrokProfile,
   };
 }

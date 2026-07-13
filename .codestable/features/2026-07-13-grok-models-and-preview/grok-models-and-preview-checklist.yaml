@@ -18,24 +18,24 @@ dod:
 steps:
   - action: "Rust HTTP 客户端 + fetch/test 命令与单测 mock"
     exit_signal: "cargo test 覆盖成功/错误路径"
-    status: pending
+    status: done
   - action: "preview_apply 不写盘"
     exit_signal: "单测字符串含关键键"
-    status: pending
+    status: done
   - action: "前端编辑页接入三操作"
     exit_signal: "pnpm build"
-    status: pending
+    status: done
   - action: "用户文档安全说明一句"
     exit_signal: "docs 提及用户触发网络"
-    status: pending
+    status: done
 
 checks:
   - item: "三 Tauri 命令存在且 camelCase"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "出站仅用户触发、Rust 侧、不 log key"
     source: 流程级约束
-    status: pending
+    status: passed
   - item: "预览不写 config.toml"
     source: 验收场景
-    status: pending
+    status: passed
