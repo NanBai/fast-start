@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { BULK_SELECT_LIMIT, takeBulkSelectIds } from "../lib/sessionUtils";
 import {
   BulkDeleteResult,
   CliScanError,
@@ -86,26 +87,22 @@ export function useSessions(notifyStatus: NotifyStatus) {
   }
 
   /**
-   * 批量勾选给定 id。超过单次删除上限（50）时截断并提示。
-   * @returns 实际勾选数量
+   * 批量勾选给定 id。超过单次删除上限时截断。
+   * 调用方应对「按时间清理」场景先按最旧排序再传入。
+   * @returns 实际勾选数量与是否截断（由调用方统一发 status，避免连闪）
    */
-  function selectSessionIds(ids: string[]): number {
-    const unique = Array.from(new Set(ids.filter(Boolean)));
-    const limit = 50;
-    if (unique.length === 0) {
+  function selectSessionIds(ids: string[]): {
+    count: number;
+    total: number;
+    truncated: boolean;
+  } {
+    const { selected, total, truncated } = takeBulkSelectIds(ids, BULK_SELECT_LIMIT);
+    if (selected.length === 0) {
       setSelectedIds(new Set());
-      return 0;
+      return { count: 0, total: 0, truncated: false };
     }
-    if (unique.length > limit) {
-      setSelectedIds(new Set(unique.slice(0, limit)));
-      notifyStatus(
-        `符合 ${unique.length} 条，已勾选前 ${limit} 条（单次删除上限）`,
-        "info",
-      );
-      return limit;
-    }
-    setSelectedIds(new Set(unique));
-    return unique.length;
+    setSelectedIds(new Set(selected));
+    return { count: selected.length, total, truncated };
   }
 
   function requestBulkDelete() {
@@ -113,8 +110,8 @@ export function useSessions(notifyStatus: NotifyStatus) {
       notifyStatus("请先勾选要删除的 session", "error");
       return;
     }
-    if (selectedIds.size > 50) {
-      notifyStatus("单次最多删除 50 条", "error");
+    if (selectedIds.size > BULK_SELECT_LIMIT) {
+      notifyStatus(`单次最多删除 ${BULK_SELECT_LIMIT} 条`, "error");
       return;
     }
     setPendingBulkDelete(true);

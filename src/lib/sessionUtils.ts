@@ -163,23 +163,51 @@ export function filterSessionsByRecentDays(
   });
 }
 
+/** 与后端 `BULK_DELETE_LIMIT` 对齐：单次勾选/删除上限。 */
+export const BULK_SELECT_LIMIT = 50;
+
 /**
  * 最后活跃早于「现在 − days 天」的 session（用于批量勾选清理）。
  * 无效时间戳的条目不入选。
+ * 返回按 lastActiveAt **升序**（最旧在前），便于截断时优先勾选最旧。
  */
 export function sessionsOlderThanDays(
   sessions: SessionData[],
   days: number,
+  nowMs: number = Date.now(),
 ): SessionData[] {
   if (days <= 0) return [];
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  return sessions.filter((session) => {
-    const activeAt = new Date(session.lastActiveAt).getTime();
-    if (Number.isNaN(activeAt)) {
-      return false;
-    }
-    return activeAt < cutoff;
-  });
+  const cutoff = nowMs - days * 24 * 60 * 60 * 1000;
+  return sessions
+    .filter((session) => {
+      const activeAt = new Date(session.lastActiveAt).getTime();
+      if (Number.isNaN(activeAt)) {
+        return false;
+      }
+      return activeAt < cutoff;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.lastActiveAt).getTime() - new Date(b.lastActiveAt).getTime(),
+    );
+}
+
+/**
+ * 批量勾选 id 列表：去重；超过 limit 时保留最前 limit 条（调用方应先按最旧排序）。
+ */
+export function takeBulkSelectIds(
+  ids: string[],
+  limit: number = BULK_SELECT_LIMIT,
+): { selected: string[]; total: number; truncated: boolean } {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length <= limit) {
+    return { selected: unique, total: unique.length, truncated: false };
+  }
+  return {
+    selected: unique.slice(0, limit),
+    total: unique.length,
+    truncated: true,
+  };
 }
 
 export function filterSessionsForQuickAccess(

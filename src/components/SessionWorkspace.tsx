@@ -84,7 +84,11 @@ export type SessionWorkspaceProps = {
   confirmDeleteSession: () => Promise<void>;
   toggleSessionSelected: (sessionId: string) => void;
   clearSessionSelection: () => void;
-  selectSessionIds: (ids: string[]) => number;
+  selectSessionIds: (ids: string[]) => {
+    count: number;
+    total: number;
+    truncated: boolean;
+  };
   requestBulkDelete: () => void;
   cancelBulkDelete: () => void;
   confirmBulkDelete: () => Promise<void>;
@@ -269,22 +273,51 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
     preferredTerminal === "system" && launchMode === "new-tab";
 
   function selectOlderThan(days: number) {
-    // 基于已加载的全部 session，不限当前「最近 N 天」筛选
+    // 基于已加载的全部 session（sessionsOlderThanDays 已按最旧优先排序）
     const matches = sessionsOlderThanDays(sessions, days);
-    const n = selectSessionIds(matches.map((s) => s.id));
-    if (n === 0) {
-      notifyStatus(`没有「${days} 天前」的 session`, "info");
-    } else if (matches.length <= 50) {
-      notifyStatus(`已勾选 ${n} 条（${days} 天前）`, "info");
+    const { count, total, truncated } = selectSessionIds(
+      matches.map((s) => s.id),
+    );
+    if (count === 0) {
+      notifyStatus(`没有「早于 ${days} 天」的 session`, "info");
+      return;
+    }
+    // 勾选的是全库老 session，切换到「全部」才能在列表里看到勾选态
+    const switched = recentDays !== "all";
+    if (switched) {
+      setRecentDays("all");
+    }
+    const switchHint = switched ? " · 已切换时间筛选为「全部」" : "";
+    if (truncated) {
+      notifyStatus(
+        `符合 ${total} 条，已勾选最旧 ${count} 条（早于 ${days} 天，单次上限）${switchHint}`,
+        "info",
+      );
+    } else {
+      notifyStatus(`已勾选 ${count} 条（早于 ${days} 天）${switchHint}`, "info");
     }
   }
 
   function selectVisibleAll() {
-    const n = selectSessionIds(visibleSessions.map((s) => s.id));
-    if (n === 0) {
+    // 当前列表顺序未必最旧优先；按时间升序再勾选，截断时仍优先最旧
+    const ordered = [...visibleSessions].sort(
+      (a, b) =>
+        new Date(a.lastActiveAt).getTime() - new Date(b.lastActiveAt).getTime(),
+    );
+    const { count, total, truncated } = selectSessionIds(
+      ordered.map((s) => s.id),
+    );
+    if (count === 0) {
       notifyStatus("当前列表没有可勾选的 session", "info");
-    } else if (visibleSessions.length <= 50) {
-      notifyStatus(`已勾选当前列表 ${n} 条`, "info");
+      return;
+    }
+    if (truncated) {
+      notifyStatus(
+        `当前列表 ${total} 条，已勾选最旧 ${count} 条（单次上限）`,
+        "info",
+      );
+    } else {
+      notifyStatus(`已勾选当前列表 ${count} 条`, "info");
     }
   }
 
@@ -445,16 +478,16 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
                 key={days}
                 type="button"
                 className="btn bulk-quick-btn"
-                title={`勾选最后活跃早于 ${days} 天的全部 session（最多 50）`}
+                title={`勾选最后活跃早于 ${days} 天的 session（优先最旧，最多 50）`}
                 onClick={() => selectOlderThan(days)}
               >
-                {days} 天前
+                早于 {days} 天
               </button>
             ))}
             <button
               type="button"
               className="btn bulk-quick-btn"
-              title="勾选当前筛选结果中的全部（最多 50）"
+              title="勾选当前筛选结果（优先最旧，最多 50）"
               onClick={selectVisibleAll}
             >
               当前列表
