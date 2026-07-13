@@ -1,0 +1,35 @@
+feature: 2026-07-13-grok-default-profile-policy
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "改 ensure_default_profile 策略 + 单测三种 config"
+    exit_signal: "cargo test 全绿"
+    status: pending
+  - action: "文档/注释说明策略"
+    exit_signal: "注释或 user doc 一句"
+    status: pending
+
+checks:
+  - item: "无 models_base_url 时 active=false"
+    source: 验收场景
+    status: pending
+  - item: "有 upstream 时 active=true"
+    source: 验收场景
+    status: pending
+  - item: "不删 profiles/auth"
+    source: 范围守护
+    status: pending

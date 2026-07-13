@@ -1,0 +1,41 @@
+feature: 2026-07-13-session-mixed-project-view
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "sessionUtils.groupSessionsByProject + 模式类型"
+    exit_signal: "可静态核验排序/分组规则；pnpm build"
+    status: pending
+  - action: "preferences load/save session_list_mode"
+    exit_signal: "保存后再 load 一致"
+    status: pending
+  - action: "UI 切换与列表渲染"
+    exit_signal: "手工切换两种视图正确"
+    status: pending
+  - action: "用户文档短补"
+    exit_signal: "docs 含按项目视图"
+    status: pending
+
+checks:
+  - item: "session_list_mode 偏好存在"
+    source: 挂载点
+    status: pending
+  - item: "by-project 跨 CLI 聚合"
+    source: 验收场景
+    status: pending
+  - item: "不改 ScanResponse/scanner"
+    source: 范围守护
+    status: pending

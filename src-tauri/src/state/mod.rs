@@ -1,4 +1,5 @@
 mod ports;
+mod scan_cache;
 
 use crate::launcher::{launcher_for, launchers, LaunchError};
 use crate::models::{
@@ -7,6 +8,7 @@ use crate::models::{
 };
 use crate::scanner::{command_spec_for_session, scanners};
 use crate::session_delete::delete_session_target;
+use scan_cache::{load_scan_cache, save_scan_cache, snapshot_from_sessions};
 
 pub use crate::preferences::{
     load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
@@ -15,11 +17,16 @@ pub use crate::preferences::{
 };
 
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-
+use std::time::Instant;
 
 pub struct AppState {
     pub(crate) inner: Mutex<AppStateInner>,
+    /// 全量扫描 single-flight：并发 refresh 串行，后到者可复用刚完成的结果。
+    scan_lock: Mutex<()>,
+    scan_generation: AtomicU64,
 }
 
 pub(crate) struct AppStateInner {
@@ -31,7 +38,12 @@ pub(crate) struct AppStateInner {
     theme_mode: ThemeMode,
     favorite_project_dirs: Vec<String>,
     port_auto_refresh: bool,
+    /// 是否已有可展示的 sessions（磁盘缓存或 full scan）。
     scanned: bool,
+    /// full scan 完成：sessions 含 delete_target，可安全删除文件型 CLI。
+    ops_ready: bool,
+    scan_cache_path: Option<PathBuf>,
+    last_scan_duration_ms: Option<u64>,
 }
 
 impl AppState {
@@ -53,11 +65,45 @@ impl AppState {
                 favorite_project_dirs: normalize_project_dirs(favorite_project_dirs),
                 port_auto_refresh,
                 scanned: false,
+                ops_ready: false,
+                scan_cache_path: None,
+                last_scan_duration_ms: None,
             }),
+            scan_lock: Mutex::new(()),
+            scan_generation: AtomicU64::new(0),
         }
     }
 
+    /// 由 Tauri setup 注入 app_data/scan-cache-v1.json。
+    pub fn set_scan_cache_path(&self, path: PathBuf) -> Result<(), String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        guard.scan_cache_path = Some(path);
+        Ok(())
+    }
+
     pub fn scan_all(&self) -> Result<ScanResponse, String> {
+        let gen_before = self.scan_generation.load(Ordering::SeqCst);
+        let _flight = self
+            .scan_lock
+            .lock()
+            .map_err(|_| "无法获取扫描锁".to_string())?;
+
+        // 等待期间若已有完整扫描完成，直接返回同一次结果（single-flight）。
+        let gen_after = self.scan_generation.load(Ordering::SeqCst);
+        if gen_after > gen_before {
+            let guard = self
+                .inner
+                .lock()
+                .map_err(|_| "无法获取应用状态".to_string())?;
+            if guard.ops_ready {
+                return Ok(self.response_from_guard(&guard, false));
+            }
+        }
+
+        let started = Instant::now();
         let scanners = scanners();
         let mut handles = Vec::with_capacity(scanners.len());
 
@@ -86,6 +132,7 @@ impl AppState {
         }
 
         sessions.sort_by(|a, b| b.last_active_at.cmp(&a.last_active_at));
+        let total_ms = started.elapsed().as_millis() as u64;
 
         let mut guard = self
             .inner
@@ -97,24 +144,82 @@ impl AppState {
             .map(|err| (err.cli_type, err.message.clone()))
             .collect();
         guard.scanned = true;
+        guard.ops_ready = true;
+        guard.last_scan_duration_ms = Some(total_ms);
+
+        if let Some(path) = guard.scan_cache_path.clone() {
+            let snapshot = snapshot_from_sessions(&sessions, &scan_errors, total_ms);
+            // 写盘失败不阻断扫描结果返回，仅日志化到 stderr。
+            if let Err(err) = save_scan_cache(&path, &snapshot) {
+                eprintln!("scan-cache write failed: {err}");
+            }
+        }
+
+        self.scan_generation.fetch_add(1, Ordering::SeqCst);
 
         Ok(ScanResponse {
             sessions,
             scan_errors,
+            from_cache: Some(false),
+            scan_duration_ms: Some(total_ms),
         })
     }
 
     pub fn cached_scan(&self) -> Result<ScanResponse, String> {
-        let guard = self
+        {
+            let guard = self
+                .inner
+                .lock()
+                .map_err(|_| "无法获取应用状态".to_string())?;
+            if guard.scanned {
+                return Ok(self.response_from_guard(&guard, !guard.ops_ready));
+            }
+
+            // 冷启动：优先读磁盘 snapshot，秒开列表（delete_target 全无）。
+            if let Some(path) = guard.scan_cache_path.clone() {
+                if let Some(snapshot) = load_scan_cache(&path) {
+                    drop(guard);
+                    return self.apply_disk_cache(snapshot);
+                }
+            }
+        }
+
+        self.scan_all()
+    }
+
+    fn apply_disk_cache(
+        &self,
+        snapshot: scan_cache::ScanCacheSnapshot,
+    ) -> Result<ScanResponse, String> {
+        let mut guard = self
             .inner
             .lock()
             .map_err(|_| "无法获取应用状态".to_string())?;
-        if !guard.scanned {
-            drop(guard);
-            return self.scan_all();
+        // 二次检查：并发 scan 可能已完成。
+        if guard.scanned {
+            return Ok(self.response_from_guard(&guard, !guard.ops_ready));
         }
 
+        guard.sessions = snapshot.sessions.clone();
+        guard.scan_errors = snapshot
+            .scan_errors
+            .iter()
+            .map(|err| (err.cli_type, err.message.clone()))
+            .collect();
+        guard.scanned = true;
+        guard.ops_ready = false;
+        guard.last_scan_duration_ms = Some(snapshot.total_ms);
+
         Ok(ScanResponse {
+            sessions: snapshot.sessions,
+            scan_errors: snapshot.scan_errors,
+            from_cache: Some(true),
+            scan_duration_ms: Some(snapshot.total_ms),
+        })
+    }
+
+    fn response_from_guard(&self, guard: &AppStateInner, from_cache: bool) -> ScanResponse {
+        ScanResponse {
             sessions: guard.sessions.clone(),
             scan_errors: guard
                 .scan_errors
@@ -124,7 +229,9 @@ impl AppState {
                     message: message.clone(),
                 })
                 .collect(),
-        })
+            from_cache: Some(from_cache),
+            scan_duration_ms: guard.last_scan_duration_ms,
+        }
     }
 
     /// 按列表稳定 id（`Session.id`）查找，**不是** CLI 原始 `session_id`。
@@ -251,6 +358,7 @@ impl AppState {
     pub fn delete_session(&self, session_list_id: &str) -> Result<ScanResponse, String> {
         let session = self.find_session(session_list_id)?;
         // OpenCode 会话在 SQLite 行里，不删 db 文件；其余 CLI 走文件/目录删除。
+        // 缓存窗（ops_ready=false）下 delete_target 为 None → 明确失败「请刷新」。
         match session.cli_type {
             crate::models::CliType::OpenCode => {
                 crate::scanner::opencode::delete_session_by_id(&session.session_id)?;
@@ -267,17 +375,24 @@ impl AppState {
             .map_err(|_| "无法获取应用状态".to_string())?;
         guard.sessions.retain(|item| item.id != session_list_id);
 
-        Ok(ScanResponse {
-            sessions: guard.sessions.clone(),
-            scan_errors: guard
+        // 同步磁盘 snapshot，避免冷启动把已删 session 带回。
+        if let Some(path) = guard.scan_cache_path.clone() {
+            let errors: Vec<CliScanError> = guard
                 .scan_errors
                 .iter()
                 .map(|(cli_type, message)| CliScanError {
                     cli_type: *cli_type,
                     message: message.clone(),
                 })
-                .collect(),
-        })
+                .collect();
+            let total_ms = guard.last_scan_duration_ms.unwrap_or(0);
+            let snapshot = snapshot_from_sessions(&guard.sessions, &errors, total_ms);
+            if let Err(err) = save_scan_cache(&path, &snapshot) {
+                eprintln!("scan-cache write after delete failed: {err}");
+            }
+        }
+
+        Ok(self.response_from_guard(&guard, false))
     }
 
     pub fn list_available_terminals(&self) -> Vec<TerminalType> {
@@ -317,7 +432,7 @@ fn normalize_project_dirs_for_sessions(
 
 #[cfg(test)]
 mod tests {
-    use super::{AppState, AppStateInner};
+    use super::{scan_cache, AppState, AppStateInner};
     use crate::models::{
         CliType, LaunchMode, Session, SessionDeleteKind, SessionDeleteTarget, TerminalType,
         ThemeMode,
@@ -327,6 +442,7 @@ mod tests {
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::atomic::AtomicU64;
     use std::sync::Mutex;
 
     fn state_with_sessions(sessions: Vec<Session>) -> AppState {
@@ -341,7 +457,33 @@ mod tests {
                 favorite_project_dirs: Vec::new(),
                 port_auto_refresh: true,
                 scanned: true,
+                ops_ready: true,
+                scan_cache_path: None,
+                last_scan_duration_ms: Some(10),
             }),
+            scan_lock: Mutex::new(()),
+            scan_generation: AtomicU64::new(1),
+        }
+    }
+
+    fn state_from_cache_window(sessions: Vec<Session>, cache_path: PathBuf) -> AppState {
+        AppState {
+            inner: Mutex::new(AppStateInner {
+                sessions,
+                scan_errors: HashMap::new(),
+                port_scan: None,
+                preferred_terminal: TerminalType::System,
+                launch_mode: LaunchMode::NewTab,
+                theme_mode: ThemeMode::System,
+                favorite_project_dirs: Vec::new(),
+                port_auto_refresh: true,
+                scanned: true,
+                ops_ready: false,
+                scan_cache_path: Some(cache_path),
+                last_scan_duration_ms: Some(99),
+            }),
+            scan_lock: Mutex::new(()),
+            scan_generation: AtomicU64::new(0),
         }
     }
 
@@ -459,5 +601,79 @@ mod tests {
         assert!(response.sessions.is_empty());
         assert!(refreshed.is_empty());
         assert!(!session_file.exists());
+    }
+
+    #[test]
+    fn cached_scan_returns_from_disk_without_delete_target() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("scan-cache-v1.json");
+        let mut session = test_session(
+            "cached-1",
+            Some(SessionDeleteTarget {
+                root: PathBuf::from("/tmp"),
+                path: PathBuf::from("/tmp/x.jsonl"),
+                kind: SessionDeleteKind::File,
+            }),
+        );
+        let snapshot = scan_cache::snapshot_from_sessions(std::slice::from_ref(&session), &[], 77);
+        scan_cache::save_scan_cache(&cache_path, &snapshot).unwrap();
+        // 确认落盘后无 delete_target
+        session.delete_target = None;
+
+        let state = AppState::new(
+            TerminalType::System,
+            LaunchMode::NewTab,
+            ThemeMode::System,
+            Vec::new(),
+            true,
+        );
+        state.set_scan_cache_path(cache_path).unwrap();
+
+        let response = state.cached_scan().unwrap();
+        assert_eq!(response.from_cache, Some(true));
+        assert_eq!(response.scan_duration_ms, Some(77));
+        assert_eq!(response.sessions.len(), 1);
+        assert!(response.sessions[0].delete_target.is_none());
+        assert_eq!(response.sessions[0].id, "cached-1");
+
+        // 再次 cached_scan 走内存，仍标记为缓存展示态（ops 未就绪）
+        let again = state.cached_scan().unwrap();
+        assert_eq!(again.from_cache, Some(true));
+    }
+
+    #[test]
+    fn cache_window_delete_fails_for_file_cli() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("scan-cache-v1.json");
+        let session = test_session("need-refresh", None);
+        let state = state_from_cache_window(vec![session], cache_path);
+
+        let err = state.delete_session("need-refresh").unwrap_err();
+        assert!(
+            err.contains("刷新"),
+            "expected refresh guidance in error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn full_scan_write_cache_and_delete_succeeds() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_path = temp.path().join("scan-cache-v1.json");
+        let session_file = temp.path().join("session.jsonl");
+        fs::write(&session_file, "{}").unwrap();
+        let target = SessionDeleteTarget {
+            root: temp.path().to_path_buf(),
+            path: session_file.clone(),
+            kind: SessionDeleteKind::File,
+        };
+        let state = state_with_sessions(vec![test_session("full-ops", Some(target))]);
+        state.set_scan_cache_path(cache_path.clone()).unwrap();
+
+        let response = state.delete_session("full-ops").unwrap();
+        assert!(response.sessions.is_empty());
+        assert!(!session_file.exists());
+        assert!(cache_path.exists());
+        let loaded = scan_cache::load_scan_cache(&cache_path).unwrap();
+        assert!(loaded.sessions.is_empty());
     }
 }

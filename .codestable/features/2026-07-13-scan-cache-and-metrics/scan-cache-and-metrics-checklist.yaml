@@ -1,0 +1,47 @@
+feature: 2026-07-13-scan-cache-and-metrics
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "后端：ScanResponse 扩展 + snapshot 读写 + cached_scan/scan_all 契约"
+    exit_signal: "单测覆盖 fromCache 路径与写回；cargo test 相关通过"
+    status: done
+  - action: "后端：缓存窗 delete 失败与 full scan 后成功"
+    exit_signal: "单测断言 Err 文案/成功路径"
+    status: done
+  - action: "前端：fromCache 立即 refresh + 状态栏"
+    exit_signal: "pnpm build；逻辑可读核验"
+    status: done
+  - action: "ARCHITECTURE 短补 cache 说明"
+    exit_signal: "文档含 scan-cache 关键词"
+    status: done
+
+checks:
+  - item: "ScanResponse 含 fromCache/scanDurationMs"
+    source: 名词契约
+    status: passed
+  - item: "缓存路径 app_data/scan-cache-v1.json；不含 delete_target"
+    source: 名词契约
+    status: passed
+  - item: "fromCache 后前端立即 refresh_sessions"
+    source: 编排骨架
+    status: passed
+  - item: "缓存窗 delete 明确失败；full scan 后可删"
+    source: 验收场景
+    status: passed
+  - item: "无 fs watcher / 独立 background worker"
+    source: 范围守护
+    status: passed

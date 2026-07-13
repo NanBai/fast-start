@@ -88,6 +88,12 @@ pub struct CommandSpec {
 pub struct ScanResponse {
     pub sessions: Vec<Session>,
     pub scan_errors: Vec<CliScanError>,
+    /// 本次结果是否来自磁盘 scan-cache（冷启动秒开）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_cache: Option<bool>,
+    /// 完整扫描耗时（毫秒）；缓存命中时为 snapshot 内记录的上次耗时。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scan_duration_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

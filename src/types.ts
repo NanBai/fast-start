@@ -25,6 +25,10 @@ export interface CliScanError {
 export interface ScanResponse {
   sessions: SessionData[];
   scanErrors: CliScanError[];
+  /** 本次结果是否来自磁盘 scan-cache（冷启动秒开） */
+  fromCache?: boolean;
+  /** 完整扫描耗时（毫秒）；缓存命中时为上次 full scan 记录 */
+  scanDurationMs?: number;
 }
 
 export interface PortUsage {

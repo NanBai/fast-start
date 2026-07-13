@@ -24,7 +24,7 @@ use state::{
     load_favorite_project_dirs, load_launch_mode, load_port_auto_refresh, load_preferred_terminal,
     load_theme_mode, save_preferred_terminal, AppState,
 };
-use tauri::Manager;
+use tauri::{Manager, path::BaseDirectory};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -54,6 +54,13 @@ pub fn run() {
                     .unwrap_or(models::TerminalType::System);
                 save_preferred_terminal(app.handle(), preferred)?;
                 state.set_preferred_terminal(preferred)?;
+            }
+            // 扫描磁盘缓存：{app_data}/scan-cache-v1.json（不含 delete_target）
+            if let Ok(app_data) = app.path().resolve("", BaseDirectory::AppData) {
+                let cache_path = app_data.join("scan-cache-v1.json");
+                if let Err(err) = state.set_scan_cache_path(cache_path) {
+                    eprintln!("scan-cache path setup failed: {err}");
+                }
             }
             app.manage(state);
             let grok = GrokProviderState::new().unwrap_or_else(|err| {

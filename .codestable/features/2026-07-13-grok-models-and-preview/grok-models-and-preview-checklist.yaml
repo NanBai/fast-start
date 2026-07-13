@@ -1,0 +1,41 @@
+feature: 2026-07-13-grok-models-and-preview
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "Rust HTTP 客户端 + fetch/test 命令与单测 mock"
+    exit_signal: "cargo test 覆盖成功/错误路径"
+    status: pending
+  - action: "preview_apply 不写盘"
+    exit_signal: "单测字符串含关键键"
+    status: pending
+  - action: "前端编辑页接入三操作"
+    exit_signal: "pnpm build"
+    status: pending
+  - action: "用户文档安全说明一句"
+    exit_signal: "docs 提及用户触发网络"
+    status: pending
+
+checks:
+  - item: "三 Tauri 命令存在且 camelCase"
+    source: 名词契约
+    status: pending
+  - item: "出站仅用户触发、Rust 侧、不 log key"
+    source: 流程级约束
+    status: pending
+  - item: "预览不写 config.toml"
+    source: 验收场景
+    status: pending

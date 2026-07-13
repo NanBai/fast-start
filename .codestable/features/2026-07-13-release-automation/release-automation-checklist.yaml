@@ -1,0 +1,32 @@
+feature: 2026-07-13-release-automation
+created: 2026-07-13
+
+dod:
+  commands:
+    - id: CMD-001
+      command: "cd src-tauri && cargo test --lib"
+      core: true
+      failure_handling: fix-or-block
+    - id: CMD-002
+      command: "pnpm build"
+      core: true
+      failure_handling: fix-or-block
+  evidence_required: [command_output, diff_summary, manual_smoke]
+  cleanliness:
+    debug_output: forbidden
+
+steps:
+  - action: "编写 release 脚本与版本校验"
+    exit_signal: "dry-run 可执行退出 0"
+    status: pending
+  - action: "文档接入 release-readiness"
+    exit_signal: "文档含脚本路径"
+    status: pending
+
+checks:
+  - item: "版本三处一致校验"
+    source: 验收场景
+    status: pending
+  - item: "dry-run 不破坏远程"
+    source: 流程级约束
+    status: pending

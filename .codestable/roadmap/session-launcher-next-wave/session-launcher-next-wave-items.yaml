@@ -1,0 +1,83 @@
+roadmap: session-launcher-next-wave
+created: 2026-07-13
+
+items:
+  - slug: scan-cache-and-metrics
+    description: 扫描结果本地缓存与耗时指标；缓存命中 fromCache 秒开列表，前端立即 refresh 全量扫描并回写缓存；缓存窗内 delete 明确失败
+    depends_on: []
+    status: done
+    feature: 2026-07-13-scan-cache-and-metrics
+    minimal_loop: true
+    notes: "最小闭环；无独立 background worker；路径 {app_data}/scan-cache-v1.json"
+
+  - slug: session-mixed-project-view
+    description: Session 列表增加按 projectDir 聚合多 CLI 的视图，可与按 Agent 视图切换
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-session-mixed-project-view
+    minimal_loop: false
+    notes: null
+
+  - slug: session-favorites-and-empty-states
+    description: 支持 session 级收藏置顶，并完善 CLI 空数据与扫描失败的空态/错误引导
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-session-favorites-and-empty-states
+    minimal_loop: false
+    notes: "preferences key favorite_session_ids；sanitize 对齐 favorite_project_dirs"
+
+  - slug: grok-models-and-preview
+    description: Grok 供应商编辑支持拉取模型列表与连通测试，启用前可预览将写入的 config.toml 文本
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-grok-models-and-preview
+    minimal_loop: false
+    notes: "出站请求仅用户触发，Rust 侧发起"
+
+  - slug: grok-default-profile-policy
+    description: 调整 ensure_default_profile，使无 API 上游配置时不强制 Default 为 active，与官方账号模式一致
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-grok-default-profile-policy
+    minimal_loop: false
+    notes: "排程建议在 grok-models-and-preview 之后实现，避免并发改 switcher；非数据硬依赖"
+
+  - slug: port-power-ops
+    description: 在现有多 id terminate 之上增加 loopback 打开浏览器与可配置项目路径/忽略端口规则，必要时补跨组多选 UI
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-port-power-ops
+    minimal_loop: false
+    notes: "terminate 已支持 Vec id 且 all-or-nothing；本条不重写 kill 语义"
+
+  - slug: launch-history-and-preview
+    description: 成功启动写入最近记录并支持快捷再启动；可选预览 resume 命令（program/args/cwd）
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-launch-history-and-preview
+    minimal_loop: false
+    notes: null
+
+  - slug: release-automation
+    description: 提供 release 脚本/文档：校验版本号一致、构建 dmg、创建 GitHub Release
+    depends_on: []
+    status: in-progress
+    feature: 2026-07-13-release-automation
+    minimal_loop: false
+    notes: "不替代人工确认签名与推送策略时可 dry-run"
+
+  - slug: wave-harden-and-docs
+    description: 本 epic 收口：交叉回归、ARCHITECTURE（含缓存/出站 delta 与 state 路径）/用户文档/AGENTS 偏好 key 同步、残留风险清单
+    depends_on:
+      - scan-cache-and-metrics
+      - session-mixed-project-view
+      - session-favorites-and-empty-states
+      - grok-models-and-preview
+      - grok-default-profile-policy
+      - port-power-ops
+      - launch-history-and-preview
+      - release-automation
+    status: in-progress
+    feature: 2026-07-13-wave-harden-and-docs
+    minimal_loop: false
+    notes: "polish/harden/文档扫尾；前置均可 done 或用户决定 drop 后调整 depends"

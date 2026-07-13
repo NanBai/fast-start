@@ -9,6 +9,26 @@ import {
 
 type NotifyStatus = (message: string, type: StatusType) => void;
 
+function formatScanStatus(result: ScanResponse): { message: string; type: StatusType } {
+  const base =
+    result.scanErrors.length > 0
+      ? `已加载 ${result.sessions.length} 个 session · ${result.scanErrors.length} 个 CLI 扫描失败`
+      : `已加载 ${result.sessions.length} 个 session`;
+
+  const parts: string[] = [base];
+  if (result.fromCache === true) {
+    parts.push("缓存");
+  }
+  if (typeof result.scanDurationMs === "number") {
+    parts.push(`${result.scanDurationMs}ms`);
+  }
+
+  return {
+    message: parts.join(" · "),
+    type: result.scanErrors.length > 0 ? "error" : "success",
+  };
+}
+
 export function useSessions(notifyStatus: NotifyStatus) {
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [scanErrors, setScanErrors] = useState<CliScanError[]>([]);
@@ -21,12 +41,8 @@ export function useSessions(notifyStatus: NotifyStatus) {
   function applyScanResult(result: ScanResponse) {
     setSessions(result.sessions);
     setScanErrors(result.scanErrors);
-    notifyStatus(
-      result.scanErrors.length > 0
-        ? `已加载 ${result.sessions.length} 个 session · ${result.scanErrors.length} 个 CLI 扫描失败`
-        : `已加载 ${result.sessions.length} 个 session`,
-      result.scanErrors.length > 0 ? "error" : "success",
-    );
+    const status = formatScanStatus(result);
+    notifyStatus(status.message, status.type);
   }
 
   async function loadSessions() {
@@ -34,6 +50,12 @@ export function useSessions(notifyStatus: NotifyStatus) {
     try {
       const result = await invoke<ScanResponse>("scan_sessions");
       applyScanResult(result);
+      // 缓存秒开后立即全量 refresh，补齐 delete_target 并写回 snapshot
+      if (result.fromCache === true) {
+        setLoading(false);
+        await refreshSessions();
+        return;
+      }
     } catch (error) {
       notifyStatus(String(error), "error");
     } finally {
