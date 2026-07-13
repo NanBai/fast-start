@@ -207,10 +207,11 @@ button {
    HEADER
    ======================================================================= */
 .app-header {
-  display: flex;
+  /* 三栏网格：左右 1fr 对称，中间 tab 始终居中，不因副标题长短位移 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-bottom: var(--space-3);
   animation: fade-rise var(--dur-slow) var(--ease-emphasized) both;
 }
@@ -219,6 +220,15 @@ button {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
+  justify-self: start;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
   min-width: 0;
 }
 

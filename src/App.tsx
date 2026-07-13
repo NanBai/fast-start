@@ -186,13 +186,13 @@ function App() {
   }
 
   useEffect(() => {
+    // 偏好与 session 扫描互不依赖：并行启动，缩短首屏等待。
     void (async () => {
-      try {
-        await loadPreferences();
-      } catch (error) {
+      const prefs = loadPreferences().catch((error) => {
         notifyStatus(`偏好加载失败：${String(error)}`, "error");
-      }
-      await loadSessions();
+      });
+      const sessions = loadSessions();
+      await Promise.all([prefs, sessions]);
     })();
   }, []);
 
@@ -388,41 +388,43 @@ function App() {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="icon-btn"
-          data-spin={
-            activeTool === "ports"
-              ? portRefreshing
-              : activeTool === "providers"
-                ? grokLoading
-                : refreshing
-          }
-          disabled={
-            activeTool === "ports"
-              ? portRefreshing
-              : activeTool === "providers"
-                ? grokLoading
-                : refreshing
-          }
-          onClick={() =>
-            void (activeTool === "ports"
-              ? refreshPorts()
-              : activeTool === "providers"
-                ? refreshGrokProviders()
-                : refreshSessions())
-          }
-          aria-label="刷新"
-          title={
-            activeTool === "ports"
-              ? "刷新端口"
-              : activeTool === "providers"
-                ? "刷新供应商"
-                : "刷新 session"
-          }
-        >
-          <Icon.Refresh />
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            data-spin={
+              activeTool === "ports"
+                ? portRefreshing
+                : activeTool === "providers"
+                  ? grokLoading
+                  : refreshing
+            }
+            disabled={
+              activeTool === "ports"
+                ? portRefreshing
+                : activeTool === "providers"
+                  ? grokLoading
+                  : refreshing
+            }
+            onClick={() =>
+              void (activeTool === "ports"
+                ? refreshPorts()
+                : activeTool === "providers"
+                  ? refreshGrokProviders()
+                  : refreshSessions())
+            }
+            aria-label="刷新"
+            title={
+              activeTool === "ports"
+                ? "刷新端口"
+                : activeTool === "providers"
+                  ? "刷新供应商"
+                  : "刷新 session"
+            }
+          >
+            <Icon.Refresh />
+          </button>
+        </div>
       </header>
 
       <div className="control-bar">

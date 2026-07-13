@@ -48,13 +48,29 @@
     min-width: 0;
   }
 
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "tabs tabs";
+  }
+
   .app-header h1 {
     font-size: 1.18rem;
   }
 
+  .brand {
+    grid-area: brand;
+  }
+
+  .header-actions {
+    grid-area: actions;
+  }
+
   .tool-switcher {
-    order: 3;
+    grid-area: tabs;
     width: 100%;
+    justify-self: stretch;
   }
 
   .tool-tab {

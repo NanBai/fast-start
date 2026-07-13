@@ -308,6 +308,7 @@
 .tool-switcher {
   flex: 0 0 auto;
   display: inline-flex;
+  justify-self: center;
   padding: 2px;
   gap: 2px;
   border-radius: var(--radius-md);
@@ -317,11 +318,13 @@
 
 .tool-tab {
   min-height: 34px;
+  min-width: 4.5em;
   padding: 6px 12px;
   border-radius: calc(var(--radius-md) - 4px);
   color: var(--text-secondary);
   font-size: 0.84rem;
   font-weight: 650;
+  text-align: center;
 }
 
 .tool-tab:hover {

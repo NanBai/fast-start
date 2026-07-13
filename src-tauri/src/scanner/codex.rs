@@ -30,7 +30,9 @@ impl CodexScanner {
 
 #[derive(Debug, Deserialize)]
 struct CodexLine {
+    /// 保留字段供反序列化；last_active 用文件 mtime，不再逐行解析时间戳。
     #[serde(default)]
+    #[allow(dead_code)]
     timestamp: Option<String>,
     #[serde(rename = "type")]
     line_type: Option<String>,
@@ -89,14 +91,21 @@ fn collect_jsonl_files(
     Ok(())
 }
 
+/// 扫描预算：拿齐 id/cwd 后最多再扫这么多行找真实用户简介。
+/// 无预算时会把无真实 user message 的大 jsonl 读完（本机可达 GB 级），拖垮启动。
+const CODEX_SUMMARY_SCAN_MAX_LINES: usize = 400;
+
 fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanError> {
     // 流式按行读，避免大 jsonl 整文件进内存。
     let file = fs::File::open(path)?;
     let reader = BufReader::new(file);
     let mut session_id = None;
     let mut cwd = None;
-    let mut last_active_at = file_mtime(path)?;
+    // 用文件 mtime 作 last_active：足够支撑最近天数排序，避免为时间戳扫完全文。
+    let last_active_at = file_mtime(path)?;
     let mut summary = None;
+    let mut lines_after_meta = 0usize;
+    let mut have_meta = false;
 
     for line in reader.lines() {
         let line = line?;
@@ -108,15 +117,6 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
             Ok(value) => value,
             Err(_) => continue,
         };
-
-        if let Some(ts) = parsed.timestamp.as_deref() {
-            if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
-                let utc = parsed_ts.with_timezone(&Utc);
-                if utc > last_active_at {
-                    last_active_at = utc;
-                }
-            }
-        }
 
         let Some(payload) = &parsed.payload else {
             continue;
@@ -136,6 +136,9 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
                     .and_then(|value| value.as_str())
                     .map(PathBuf::from);
             }
+            if session_id.is_some() && cwd.is_some() {
+                have_meta = true;
+            }
             continue;
         }
 
@@ -150,6 +153,14 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
 
         if session_id.is_some() && cwd.is_some() && summary.is_some() {
             break;
+        }
+
+        // 已有 id/cwd 但简介仍未命中：限制扫描深度，避免读完整 10MB+ 历史。
+        if have_meta {
+            lines_after_meta += 1;
+            if lines_after_meta >= CODEX_SUMMARY_SCAN_MAX_LINES {
+                break;
+            }
         }
     }
 

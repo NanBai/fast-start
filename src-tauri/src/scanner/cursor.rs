@@ -58,11 +58,15 @@ impl SessionScanner for CursorScanner {
         let mut sessions = Vec::new();
 
         // 目录结构：~/.cursor/chats/<workspace-hash>/<chat-uuid>/{meta.json, store.db}
+        // 同一 hash 下 chat 共享 workspace：cwd 每个 hash 最多成功解析一次 store.db；
+        // 有 meta.title 时不为每条 chat 再开 SQLite（启动扫描主瓶颈）。
         for hash_entry in fs::read_dir(&root)? {
             let hash_entry = hash_entry?;
             if !hash_entry.file_type()?.is_dir() {
                 continue;
             }
+            let mut workspace_cwd: Option<PathBuf> = None;
+
             for chat_entry in fs::read_dir(hash_entry.path())? {
                 let chat_entry = chat_entry?;
                 let chat_dir = chat_entry.path();
@@ -78,13 +82,6 @@ impl SessionScanner for CursorScanner {
                     continue;
                 };
 
-                // cursor resume 必须在正确 workspace（cwd）下才能恢复指定 chat。
-                // cwd 来自 chat 自己 store.db 里 cursor 注入的 "Workspace Path: <路径>"。
-                // 拿不到的 chat 跳过（resume 会失败）。
-                let Some(store_info) = extract_store_info(&chat_dir.join("store.db")) else {
-                    continue;
-                };
-
                 let meta_path = chat_dir.join("meta.json");
                 let Ok(meta_content) = fs::read_to_string(&meta_path) else {
                     continue;
@@ -92,33 +89,49 @@ impl SessionScanner for CursorScanner {
                 let Ok(meta) = serde_json::from_str::<CursorMeta>(&meta_content) else {
                     continue;
                 };
+                let meta_summary = crate::scanner::clean_summary(meta.title.as_deref());
+                let store_path = chat_dir.join("store.db");
 
-                let summary = store_info
-                    .first_user_query
-                    .as_deref()
-                    .and_then(|query| crate::scanner::clean_summary(Some(query)))
-                    .or_else(|| crate::scanner::clean_summary(meta.title.as_deref()));
-                let Some(summary) = summary else {
-                    // 既没有真实 user query，也没有 meta title 时无可展示简介，跳过。
+                // 解析 cwd：优先 hash 缓存；未命中则打开本 chat 的 store.db。
+                let mut store_query: Option<String> = None;
+                if workspace_cwd.is_none() {
+                    match extract_store_info(&store_path) {
+                        Some(info) => {
+                            workspace_cwd = Some(info.cwd);
+                            store_query = info.first_user_query;
+                        }
+                        None => continue,
+                    }
+                }
+
+                let Some(cwd) = workspace_cwd.clone() else {
                     continue;
                 };
 
-                // 缺时间戳时用 meta / chat 目录 mtime，禁止 now()——否则每次扫描
-                // 都变成「刚刚」，绕过最近天数过滤并扰乱排序。
-                let last_active_at = meta
-                    .updated_at_ms
-                    .or(meta.created_at_ms)
-                    .and_then(ms_to_datetime)
-                    .or_else(|| path_mtime(&meta_path))
-                    .or_else(|| path_mtime(&chat_dir))
-                    .unwrap_or_else(|| DateTime::<Utc>::from(SystemTime::UNIX_EPOCH));
+                // 简介：若本轮已打开 store（解析 cwd），优先 user query；
+                // 否则有 meta.title 直接用，避免再开 SQLite；无 title 才补查 store。
+                let summary = if let Some(q) = store_query.as_deref() {
+                    crate::scanner::clean_summary(Some(q)).or(meta_summary)
+                } else if let Some(s) = meta_summary {
+                    Some(s)
+                } else if let Some(info) = extract_store_info(&store_path) {
+                    info.first_user_query
+                        .as_deref()
+                        .and_then(|query| crate::scanner::clean_summary(Some(query)))
+                } else {
+                    None
+                };
+                let Some(summary) = summary else {
+                    continue;
+                };
 
+                let last_active_at = meta_last_active(&meta, &meta_path, &chat_dir);
                 sessions.push(Session {
-                    id: Session::stable_id(CliType::Cursor, &session_id, &store_info.cwd),
+                    id: Session::stable_id(CliType::Cursor, &session_id, &cwd),
                     cli_type: CliType::Cursor,
                     session_id,
-                    project_name: Session::project_name_from_dir(&store_info.cwd),
-                    project_dir: store_info.cwd,
+                    project_name: Session::project_name_from_dir(&cwd),
+                    project_dir: cwd,
                     last_active_at,
                     summary: Some(summary),
                     delete_target: Some(SessionDeleteTarget {
@@ -133,6 +146,17 @@ impl SessionScanner for CursorScanner {
         sessions.sort_by(|a, b| b.last_active_at.cmp(&a.last_active_at));
         Ok(sessions)
     }
+}
+
+fn meta_last_active(meta: &CursorMeta, meta_path: &Path, chat_dir: &Path) -> DateTime<Utc> {
+    // 缺时间戳时用 meta / chat 目录 mtime，禁止 now()——否则每次扫描
+    // 都变成「刚刚」，绕过最近天数过滤并扰乱排序。
+    meta.updated_at_ms
+        .or(meta.created_at_ms)
+        .and_then(ms_to_datetime)
+        .or_else(|| path_mtime(meta_path))
+        .or_else(|| path_mtime(chat_dir))
+        .unwrap_or_else(|| DateTime::<Utc>::from(SystemTime::UNIX_EPOCH))
 }
 
 /// 从 chat 的 store.db 提取 cursor 注入的 "Workspace Path: <真实路径>"。
