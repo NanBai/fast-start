@@ -1,7 +1,7 @@
 ---
 doc_type: roadmap
 slug: session-launcher-ux-perf
-status: active
+status: completed
 created: 2026-07-13
 last_reviewed: 2026-07-13
 tags: [session-launcher, performance, ux, refactor, polish]
