@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  BulkDeleteResult,
   CliScanError,
   LaunchCommandPreview,
   PreflightResult,
@@ -49,14 +50,94 @@ export function useSessions(notifyStatus: NotifyStatus) {
   const [healthById, setHealthById] = useState<Map<string, SessionHealth>>(
     () => new Map(),
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   function applyScanResult(result: ScanResponse) {
     setSessions(result.sessions);
     setScanErrors(result.scanErrors);
+    // 列表变化后丢掉已不存在的选中 id
+    setSelectedIds((prev) => {
+      const allowed = new Set(result.sessions.map((s) => s.id));
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (allowed.has(id)) next.add(id);
+      }
+      return next;
+    });
     const status = formatScanStatus(result);
     notifyStatus(status.message, status.type);
     // 扫描后异步探测可见量（≤200）；失败不阻断列表
     void inspectHealthForSessions(result.sessions);
+  }
+
+  function toggleSessionSelected(sessionId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
+      return next;
+    });
+  }
+
+  function clearSessionSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function requestBulkDelete() {
+    if (selectedIds.size === 0) {
+      notifyStatus("请先勾选要删除的 session", "error");
+      return;
+    }
+    if (selectedIds.size > 50) {
+      notifyStatus("单次最多删除 50 条", "error");
+      return;
+    }
+    setPendingBulkDelete(true);
+  }
+
+  function cancelBulkDelete() {
+    setPendingBulkDelete(false);
+  }
+
+  async function confirmBulkDelete() {
+    if (selectedIds.size === 0) {
+      setPendingBulkDelete(false);
+      return;
+    }
+    setBulkDeleting(true);
+    notifyStatus(`正在批量删除 ${selectedIds.size} 条…`, "info");
+    try {
+      const result = await invoke<BulkDeleteResult>("delete_sessions", {
+        sessionListIds: Array.from(selectedIds),
+      });
+      applyScanResult({
+        sessions: result.sessions,
+        scanErrors: result.scanErrors,
+        fromCache: result.fromCache ?? undefined,
+        scanDurationMs: result.scanDurationMs ?? undefined,
+      });
+      await loadRecentLaunches();
+      clearSessionSelection();
+      setPendingBulkDelete(false);
+      if (result.failures.length === 0) {
+        notifyStatus(`全部成功：已删除 ${result.deletedIds.length} 条`, "success");
+      } else {
+        const failText = result.failures
+          .map((f) => f.message)
+          .slice(0, 3)
+          .join("；");
+        notifyStatus(
+          `已删 ${result.deletedIds.length} 条，失败 ${result.failures.length} 条：${failText}`,
+          "error",
+        );
+      }
+    } catch (error) {
+      notifyStatus(`批量删除失败：${String(error)}`, "error");
+    } finally {
+      setBulkDeleting(false);
+    }
   }
 
   async function inspectHealthForSessions(list: SessionData[]) {
@@ -253,6 +334,9 @@ export function useSessions(notifyStatus: NotifyStatus) {
     recentLaunches,
     commandPreview,
     healthById,
+    selectedIds,
+    pendingBulkDelete,
+    bulkDeleting,
     loadSessions,
     refreshSessions,
     launchSession,
@@ -264,5 +348,10 @@ export function useSessions(notifyStatus: NotifyStatus) {
     cancelDeleteSession,
     confirmDeleteSession,
     inspectHealthForSessions,
+    toggleSessionSelected,
+    clearSessionSelection,
+    requestBulkDelete,
+    cancelBulkDelete,
+    confirmBulkDelete,
   };
 }

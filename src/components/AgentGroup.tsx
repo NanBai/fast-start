@@ -50,6 +50,8 @@ export function AgentGroup({
   launchingId,
   deletingId,
   healthBadgeFor,
+  selectedIds,
+  onToggleSelected,
   onLaunch,
   onToggleFavoriteProject,
   onToggleSessionFavorite,
@@ -65,6 +67,8 @@ export function AgentGroup({
   launchingId: string | null;
   deletingId: string | null;
   healthBadgeFor?: (sessionId: string) => string | null;
+  selectedIds?: Set<string>;
+  onToggleSelected?: (sessionId: string) => void;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavoriteProject: (projectDir: string) => void;
   onToggleSessionFavorite: (sessionId: string) => void;
@@ -140,6 +144,8 @@ export function AgentGroup({
                     launchingId={launchingId}
                     deletingId={deletingId}
                     healthBadgeFor={healthBadgeFor}
+                    selectedIds={selectedIds}
+                    onToggleSelected={onToggleSelected}
                     onLaunch={onLaunch}
                     onToggleFavorite={onToggleFavoriteProject}
                     onToggleSessionFavorite={onToggleSessionFavorite}

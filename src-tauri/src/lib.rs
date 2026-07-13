@@ -13,7 +13,8 @@ mod session_source;
 mod state;
 
 use commands::{
-    delete_session, get_favorite_project_dirs, get_favorite_session_ids, get_grok_provider_layout,
+    delete_session, delete_sessions, get_favorite_project_dirs, get_favorite_session_ids,
+    get_grok_provider_layout,
     get_launch_mode, get_port_auto_refresh, get_port_ignore_ports, get_port_project_path_prefixes,
     get_preferred_terminal, get_recent_launches, get_session_list_mode, get_theme_mode,
     grok_activate_official, grok_activate_profile, grok_apply_privacy_protection,
@@ -100,6 +101,7 @@ pub fn run() {
             inspect_session_health,
             get_recent_launches,
             delete_session,
+            delete_sessions,
             scan_ports,
             refresh_ports,
             terminate_port_processes,

@@ -21,6 +21,8 @@ export function ProjectBucket({
   launchingId,
   deletingId,
   healthBadgeFor,
+  selectedIds,
+  onToggleSelected,
   onLaunch,
   onToggleFavorite,
   onToggleSessionFavorite,
@@ -37,6 +39,8 @@ export function ProjectBucket({
   launchingId: string | null;
   deletingId: string | null;
   healthBadgeFor?: (sessionId: string) => string | null;
+  selectedIds?: Set<string>;
+  onToggleSelected?: (sessionId: string) => void;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavorite: (projectDir: string) => void;
   onToggleSessionFavorite: (sessionId: string) => void;
@@ -111,6 +115,8 @@ export function ProjectBucket({
                 )}
                 displayShortId={shortIds.get(session.sessionId)}
                 healthBadge={healthBadgeFor?.(session.id) ?? null}
+                selected={selectedIds?.has(session.id) ?? false}
+                onToggleSelected={onToggleSelected}
                 onLaunch={onLaunch}
                 onToggleFavorite={onToggleSessionFavorite}
                 onContextMenu={onSessionContextMenu}

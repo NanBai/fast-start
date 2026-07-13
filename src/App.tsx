@@ -118,6 +118,9 @@ function App() {
     recentLaunches,
     commandPreview,
     healthById,
+    selectedIds,
+    pendingBulkDelete,
+    bulkDeleting,
     loadSessions,
     refreshSessions,
     launchSession,
@@ -126,6 +129,11 @@ function App() {
     requestDeleteSession: requestDelete,
     cancelDeleteSession,
     confirmDeleteSession,
+    toggleSessionSelected,
+    clearSessionSelection,
+    requestBulkDelete,
+    cancelBulkDelete,
+    confirmBulkDelete,
   } = useSessions(notifyStatus);
 
   const {
@@ -703,6 +711,23 @@ function App() {
         </div>
       )}
 
+      {activeTool === "sessions" && selectedIds.size > 0 && (
+        <div className="bulk-select-bar" aria-label="批量选择">
+          <span>已选 {selectedIds.size} 条</span>
+          <button type="button" className="btn" onClick={clearSessionSelection}>
+            取消选择
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={bulkDeleting}
+            onClick={requestBulkDelete}
+          >
+            批量删除
+          </button>
+        </div>
+      )}
+
       {activeTool === "sessions" && commandPreview && (
         <div className="command-preview" aria-label="命令预览">
           <code>
@@ -803,6 +828,8 @@ function App() {
                   launchingId={launchingId}
                   deletingId={deletingId}
                   healthBadgeFor={(id) => sessionHealthBadge(healthById.get(id))}
+                  selectedIds={selectedIds}
+                  onToggleSelected={toggleSessionSelected}
                   onLaunch={handleLaunch}
                   onToggleFavorite={toggleFavoriteProject}
                   onToggleSessionFavorite={toggleFavoriteSession}
@@ -824,6 +851,8 @@ function App() {
                 launchingId={launchingId}
                 deletingId={deletingId}
                 healthBadgeFor={(id) => sessionHealthBadge(healthById.get(id))}
+                selectedIds={selectedIds}
+                onToggleSelected={toggleSessionSelected}
                 onLaunch={handleLaunch}
                 onToggleFavoriteProject={toggleFavoriteProject}
                 onToggleSessionFavorite={toggleFavoriteSession}
@@ -852,6 +881,43 @@ function App() {
           onCancel={cancelDeleteSession}
           onConfirm={() => void confirmDeleteSession()}
         />
+      )}
+
+      {pendingBulkDelete && (
+        <div className="dialog-backdrop" role="presentation">
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-delete-title"
+          >
+            <div className="confirm-copy">
+              <h2 id="bulk-delete-title">批量删除 session？</h2>
+              <p>
+                将删除已选中的 <strong>{selectedIds.size}</strong>{" "}
+                条（不可撤销，单次上限 50）。部分失败时会保留失败项并展示原因。
+              </p>
+            </div>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="confirm-btn"
+                disabled={bulkDeleting}
+                onClick={cancelBulkDelete}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="confirm-btn danger"
+                disabled={bulkDeleting}
+                onClick={() => void confirmBulkDelete()}
+              >
+                {bulkDeleting ? "删除中" : `删除 ${selectedIds.size} 条`}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       {pendingTerminate && (

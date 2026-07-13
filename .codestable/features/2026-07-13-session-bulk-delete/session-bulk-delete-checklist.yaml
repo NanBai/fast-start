@@ -18,30 +18,30 @@ dod:
 steps:
   - action: "cs-req 修订 delete-session-context-menu 允许批量"
     exit_signal: "requirement 文案含批量+确认+partial"
-    status: pending
+    status: done
   - action: "delete_sessions 全路径 + 单测（OpenCode/上限/缓存窗）"
     exit_signal: "cargo test 绿"
-    status: pending
+    status: done
   - action: "整批 sanitize_recent_launches + 写盘"
     exit_signal: "删后 recent 无幽灵 id"
-    status: pending
+    status: done
   - action: "多选 UI + 确认 + failures 展示"
     exit_signal: "pnpm build；手工可丢弃 smoke"
-    status: pending
+    status: done
 
 checks:
   - item: "禁止只调 delete_session_target"
     source: 流程级约束
-    status: pending
+    status: passed
   - item: "上限 50 / 空数组 Err"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "UI 展示 failures"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "无回收站 / 不传路径"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "req 已允许批量"
     source: 挂载点
-    status: pending
+    status: passed

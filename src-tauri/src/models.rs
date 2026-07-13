@@ -154,6 +154,28 @@ pub struct LaunchCommandPreview {
     pub cd: bool,
 }
 
+/// 批量删除单条失败项（仅 id + 中文 message，无路径）。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkDeleteFailure {
+    pub session_list_id: String,
+    pub message: String,
+}
+
+/// 批量删除结果：partial success + 当前列表视图字段。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkDeleteResult {
+    pub deleted_ids: Vec<String>,
+    pub failures: Vec<BulkDeleteFailure>,
+    pub sessions: Vec<Session>,
+    pub scan_errors: Vec<CliScanError>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_cache: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scan_duration_ms: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliScanError {

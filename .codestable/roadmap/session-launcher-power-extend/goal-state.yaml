@@ -5,7 +5,7 @@ driver_kind: none
 driver_id: ""
 handoff_reason: ""
 handoff_next: ""
-current_feature_index: 3
+current_feature_index: 4
 features:
   - slug: launch-preflight
     roadmap_item: launch-preflight
@@ -42,7 +42,7 @@ features:
     review: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-review.md"
     qa: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-qa.md"
     acceptance: ".codestable/features/2026-07-13-session-bulk-delete/session-bulk-delete-acceptance.md"
-    status: pending
+    status: accepted
   - slug: session-disk-usage
     roadmap_item: session-disk-usage
     feature_dir: ".codestable/features/2026-07-13-session-disk-usage"

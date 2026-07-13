@@ -117,6 +117,20 @@ export interface SessionHealthReport {
 
 export type SessionHealthFilter = "all" | "missing_cwd" | "missing_source" | "stale";
 
+export interface BulkDeleteFailure {
+  sessionListId: string;
+  message: string;
+}
+
+export interface BulkDeleteResult {
+  deletedIds: string[];
+  failures: BulkDeleteFailure[];
+  sessions: SessionData[];
+  scanErrors: CliScanError[];
+  fromCache?: boolean | null;
+  scanDurationMs?: number | null;
+}
+
 export const CLI_ORDER: CliType[] = [
   "codex",
   "claude-code",

@@ -5,8 +5,8 @@ use crate::grok_provider::{
 };
 use crate::launch_preflight::PreflightResult;
 use crate::models::{
-    LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch, ScanResponse,
-    SessionListMode, TerminalType, ThemeMode,
+    BulkDeleteResult, LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch,
+    ScanResponse, SessionListMode, TerminalType, ThemeMode,
 };
 use crate::session_health::SessionHealthReport;
 use crate::preferences::{
@@ -111,6 +111,26 @@ pub fn delete_session(
         Err(err) => eprintln!("recent_launches sanitize after delete failed: {err}"),
     }
     Ok(response)
+}
+
+/// 批量删除：循环与单条同一全路径；partial success；批末 sanitize recent。
+#[tauri::command]
+pub fn delete_sessions(
+    session_list_ids: Vec<String>,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<BulkDeleteResult, String> {
+    let result = state.delete_sessions(&session_list_ids)?;
+    match state.sanitize_recent_launches() {
+        Ok((launches, changed)) if changed => {
+            if let Err(err) = save_recent_launches(&app, launches) {
+                eprintln!("recent_launches save after bulk delete failed: {err}");
+            }
+        }
+        Ok(_) => {}
+        Err(err) => eprintln!("recent_launches sanitize after bulk delete failed: {err}"),
+    }
+    Ok(result)
 }
 
 #[tauri::command]

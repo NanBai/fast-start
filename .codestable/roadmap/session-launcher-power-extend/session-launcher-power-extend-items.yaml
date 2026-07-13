@@ -29,7 +29,7 @@ items:
   - slug: session-bulk-delete
     description: 多选 session 后 delete_sessions 批量删除；返回 deletedIds 与 failures；复用单条删除全路径
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-bulk-delete
     minimal_loop: false
     notes: "上限50；走 AppState::delete_session 含 OpenCode；sanitize recent+cache；先 cs-req 修订批量边界；UI 必展示 failures"

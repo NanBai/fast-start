@@ -6,8 +6,8 @@ use crate::launch_preflight::{
 };
 use crate::launcher::{launcher_for, launchers, LaunchError};
 use crate::models::{
-    CliScanError, CliType, LaunchCommandPreview, LaunchMode, PortScanResponse, RecentLaunch,
-    ScanResponse, Session, TerminalType, ThemeMode,
+    BulkDeleteFailure, BulkDeleteResult, CliScanError, CliType, LaunchCommandPreview, LaunchMode,
+    PortScanResponse, RecentLaunch, ScanResponse, Session, TerminalType, ThemeMode,
 };
 use crate::scanner::{command_spec_for_session, scanners};
 use crate::session_delete::delete_session_target;
@@ -26,6 +26,7 @@ pub use crate::preferences::{
 };
 
 pub const RECENT_LAUNCHES_LIMIT: usize = 20;
+pub const BULK_DELETE_LIMIT: usize = 50;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -565,6 +566,59 @@ impl AppState {
 
     /// `session_list_id` = `Session.id`（列表稳定 id）。
     pub fn delete_session(&self, session_list_id: &str) -> Result<ScanResponse, String> {
+        self.delete_session_inner(session_list_id)?;
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        Ok(self.response_from_guard(&guard, false))
+    }
+
+    /// 批量删除：循环与单条同一全路径；partial success；上限 50。
+    pub fn delete_sessions(
+        &self,
+        session_list_ids: &[String],
+    ) -> Result<BulkDeleteResult, String> {
+        if session_list_ids.is_empty() {
+            return Err("请至少选择一条 session".to_string());
+        }
+        if session_list_ids.len() > BULK_DELETE_LIMIT {
+            return Err(format!(
+                "单次最多删除 {} 条，当前 {}",
+                BULK_DELETE_LIMIT,
+                session_list_ids.len()
+            ));
+        }
+
+        let mut deleted_ids = Vec::new();
+        let mut failures = Vec::new();
+        for id in session_list_ids {
+            match self.delete_session_inner(id) {
+                Ok(()) => deleted_ids.push(id.clone()),
+                Err(message) => failures.push(BulkDeleteFailure {
+                    session_list_id: id.clone(),
+                    message,
+                }),
+            }
+        }
+
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| "无法获取应用状态".to_string())?;
+        let response = self.response_from_guard(&guard, false);
+        Ok(BulkDeleteResult {
+            deleted_ids,
+            failures,
+            sessions: response.sessions,
+            scan_errors: response.scan_errors,
+            from_cache: response.from_cache,
+            scan_duration_ms: response.scan_duration_ms,
+        })
+    }
+
+    /// 单条删除核心：OpenCode 行 / 文件目录 + 缓存更新。bulk 与 command 共用。
+    fn delete_session_inner(&self, session_list_id: &str) -> Result<(), String> {
         let session = self.find_session(session_list_id)?;
         // OpenCode 会话在 SQLite 行里，不删 db 文件；其余 CLI 走文件/目录删除。
         // 缓存窗（ops_ready=false）下 delete_target 为 None → 明确失败「请刷新」。
@@ -601,7 +655,7 @@ impl AppState {
             }
         }
 
-        Ok(self.response_from_guard(&guard, false))
+        Ok(())
     }
 
     pub fn list_available_terminals(&self) -> Vec<TerminalType> {
@@ -960,5 +1014,55 @@ mod tests {
         assert!(cache_path.exists());
         let loaded = scan_cache::load_scan_cache(&cache_path).unwrap();
         assert!(loaded.sessions.is_empty());
+    }
+
+    #[test]
+    fn bulk_delete_rejects_empty_and_over_limit() {
+        let state = state_with_sessions(vec![]);
+        assert!(state.delete_sessions(&[]).is_err());
+        let too_many: Vec<String> = (0..51).map(|i| format!("id-{i}")).collect();
+        let err = state.delete_sessions(&too_many).unwrap_err();
+        assert!(err.contains("50"));
+    }
+
+    #[test]
+    fn bulk_delete_partial_success_via_full_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let file_a = temp.path().join("a.jsonl");
+        let file_b = temp.path().join("b.jsonl");
+        fs::write(&file_a, "{}").unwrap();
+        fs::write(&file_b, "{}").unwrap();
+        let state = state_with_sessions(vec![
+            test_session(
+                "ok-a",
+                Some(SessionDeleteTarget {
+                    root: temp.path().to_path_buf(),
+                    path: file_a.clone(),
+                    kind: SessionDeleteKind::File,
+                }),
+            ),
+            test_session(
+                "ok-b",
+                Some(SessionDeleteTarget {
+                    root: temp.path().to_path_buf(),
+                    path: file_b.clone(),
+                    kind: SessionDeleteKind::File,
+                }),
+            ),
+        ]);
+
+        let result = state
+            .delete_sessions(&["ok-a".into(), "missing".into(), "ok-b".into()])
+            .unwrap();
+        assert_eq!(result.deleted_ids, vec!["ok-a", "ok-b"]);
+        assert_eq!(result.failures.len(), 1);
+        assert_eq!(result.failures[0].session_list_id, "missing");
+        assert!(result.sessions.is_empty());
+        assert!(!file_a.exists());
+        assert!(!file_b.exists());
+        // 响应不得含路径字段名以外的 delete 源路径（Session 无 delete_target 序列化）
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(!json.contains("delete_target"));
+        assert!(!json.contains(file_a.to_string_lossy().as_ref()));
     }
 }

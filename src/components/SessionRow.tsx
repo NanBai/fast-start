@@ -19,6 +19,8 @@ export function SessionRow({
   titleAmbiguous = false,
   displayShortId,
   healthBadge = null,
+  selected = false,
+  onToggleSelected,
   onLaunch,
   onToggleFavorite,
   onContextMenu,
@@ -35,6 +37,8 @@ export function SessionRow({
   displayShortId?: string;
   /** 健康探测角标（缺目录/缺源），不含路径 */
   healthBadge?: string | null;
+  selected?: boolean;
+  onToggleSelected?: (sessionId: string) => void;
   onLaunch: (sessionId: string) => Promise<void>;
   onToggleFavorite?: (sessionId: string) => void;
   onContextMenu: (session: SessionData, event: MouseEvent<HTMLDivElement>) => void;
@@ -59,6 +63,16 @@ export function SessionRow({
       onContextMenu={(event) => onContextMenu(session, event)}
     >
       <div className="session-main">
+        {onToggleSelected && (
+          <label className="session-select" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelected(session.id)}
+              aria-label={`选择 ${title}`}
+            />
+          </label>
+        )}
         {showCliLabel && (
           <span
             className="session-cli-label"
