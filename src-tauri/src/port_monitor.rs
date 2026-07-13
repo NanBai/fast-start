@@ -8,11 +8,8 @@ use std::collections::{HashMap, HashSet};
 
 const SCAN_COMMAND_DESCRIPTION: &str = "/usr/sbin/lsof -nP -F pcunPTn -iTCP -sTCP:LISTEN -iUDP";
 
-pub fn scan_ports() -> Result<PortScanResponse, String> {
-    scan_ports_with_rules(&[], &[])
-}
-
 /// 扫描并应用偏好规则：ignore 端口剔除；path prefixes 扩大 is_project_service。
+/// 无规则时传入空切片即可。
 pub fn scan_ports_with_rules(
     ignore_ports: &[u16],
     project_path_prefixes: &[String],

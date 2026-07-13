@@ -415,14 +415,6 @@ impl AppState {
         })
     }
 
-    pub fn recent_launches(&self) -> Result<Vec<RecentLaunch>, String> {
-        let guard = self
-            .inner
-            .lock()
-            .map_err(|_| "无法获取应用状态".to_string())?;
-        Ok(guard.recent_launches.clone())
-    }
-
     pub fn set_recent_launches(&self, launches: Vec<RecentLaunch>) -> Result<(), String> {
         let mut guard = self
             .inner
