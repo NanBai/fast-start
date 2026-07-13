@@ -53,8 +53,12 @@ pub fn decode_claude_project_dir(encoded: &str) -> Option<PathBuf> {
     Some(PathBuf::from(format!("/{}", trimmed.replace('-', "/"))))
 }
 
+/// 列表摘要最大 Unicode 标量长度（硬截断只发生在本函数）。
+pub const SUMMARY_MAX_CHARS: usize = 160;
+
 /// 把一份原始简介文本（claude 的 aiTitle / lastPrompt、codex 的首条用户消息）
-/// 规整成适合列表展示的短串：去首尾空白、折成单行、压连续空白、丢空串。
+/// 规整成适合列表展示的短串：去首尾空白、折成单行、压连续空白、丢空串、
+/// 再按 Unicode 标量 ≤ [`SUMMARY_MAX_CHARS`] 截断。
 /// 拿到 None 时调用方应回退到 project_name。
 pub fn clean_summary(raw: Option<&str>) -> Option<String> {
     let raw = raw?.trim();
@@ -63,9 +67,13 @@ pub fn clean_summary(raw: Option<&str>) -> Option<String> {
     }
     let collapsed: String = raw.split_whitespace().collect::<Vec<_>>().join(" ");
     if collapsed.is_empty() {
-        None
-    } else {
+        return None;
+    }
+    let count = collapsed.chars().count();
+    if count <= SUMMARY_MAX_CHARS {
         Some(collapsed)
+    } else {
+        Some(collapsed.chars().take(SUMMARY_MAX_CHARS).collect())
     }
 }
 
@@ -111,7 +119,7 @@ pub fn command_spec_for_session(session: &Session) -> Result<crate::models::Comm
 
 #[cfg(test)]
 mod tests {
-    use super::decode_claude_project_dir;
+    use super::{clean_summary, decode_claude_project_dir, SUMMARY_MAX_CHARS};
 
     #[test]
     fn decode_claude_project_dir_works_for_simple_paths() {
@@ -119,6 +127,29 @@ mod tests {
             decode_claude_project_dir("-Users-xb-Desktop-dev"),
             Some(std::path::PathBuf::from("/Users/xb/Desktop/dev"))
         );
+    }
+
+    #[test]
+    fn clean_summary_trims_and_collapses_whitespace() {
+        assert_eq!(
+            clean_summary(Some("  hello\n\tworld  ")).as_deref(),
+            Some("hello world")
+        );
+        assert_eq!(clean_summary(Some("   ")), None);
+        assert_eq!(clean_summary(None), None);
+    }
+
+    #[test]
+    fn clean_summary_truncates_to_160_unicode_scalars() {
+        let long: String = "字".repeat(200);
+        let out = clean_summary(Some(&long)).unwrap();
+        assert_eq!(out.chars().count(), SUMMARY_MAX_CHARS);
+        assert_eq!(out, "字".repeat(SUMMARY_MAX_CHARS));
+
+        let ascii: String = "a".repeat(161);
+        let out = clean_summary(Some(&ascii)).unwrap();
+        assert_eq!(out.len(), SUMMARY_MAX_CHARS);
+        assert_eq!(out.chars().count(), SUMMARY_MAX_CHARS);
     }
 
     #[test]

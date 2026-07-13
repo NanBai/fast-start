@@ -14,18 +14,18 @@ dod:
 steps:
   - action: "clean_summary ≤160 截断 + 单测"
     exit_signal: "超长输入输出 ≤160"
-    status: pending
+    status: done
   - action: "各 CLI 摘要优先级缺口与 fixture"
     exit_signal: "五家相关 fixture 绿"
-    status: pending
+    status: done
 
 checks:
   - item: "截断仅 clean_summary"
     source: 名词契约
-    status: pending
+    status: passed
   - item: "不建全文索引"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "OpenCode 不用 directory 整串当摘要"
     source: 验收场景
-    status: pending
+    status: passed

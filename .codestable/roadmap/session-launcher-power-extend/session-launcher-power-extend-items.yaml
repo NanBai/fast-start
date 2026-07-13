@@ -21,7 +21,7 @@ items:
   - slug: session-summary-enrichment
     description: 各 scanner 摘要质量与长度约定落地，fixture 测试锁定噪声过滤与 clean_summary 行为
     depends_on: []
-    status: in-progress
+    status: done
     feature: 2026-07-13-session-summary-enrichment
     minimal_loop: false
     notes: "截断仅 clean_summary ≤160；不建全文索引"
