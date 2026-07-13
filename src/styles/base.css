@@ -207,9 +207,8 @@ button {
    HEADER
    ======================================================================= */
 .app-header {
-  /* 三栏网格：左右 1fr 对称，中间 tab 始终居中，不因副标题长短位移 */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* 左品牌（可收缩截断）+ 右 tab/刷新（固定宽度）：tab 不遮字、不随副标题长短位移 */
+  display: flex;
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
@@ -220,16 +219,14 @@ button {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex: 1 1 0;
   min-width: 0;
-  justify-self: start;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  justify-self: end;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .app-icon {
@@ -261,6 +258,9 @@ button {
   font-weight: 600;
   letter-spacing: -0.022em;
   line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-subtitle {

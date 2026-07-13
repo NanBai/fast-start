@@ -49,10 +49,7 @@
   }
 
   .app-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "brand actions"
-      "tabs tabs";
+    flex-wrap: wrap;
   }
 
   .app-header h1 {
@@ -60,17 +57,18 @@
   }
 
   .brand {
-    grid-area: brand;
+    flex: 1 1 calc(100% - 48px);
+    order: 1;
   }
 
   .header-actions {
-    grid-area: actions;
+    order: 2;
   }
 
   .tool-switcher {
-    grid-area: tabs;
+    order: 3;
     width: 100%;
-    justify-self: stretch;
+    flex: 1 1 100%;
   }
 
   .tool-tab {
