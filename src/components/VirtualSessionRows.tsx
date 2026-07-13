@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type UIEvent,
+} from "react";
 import { SessionRow } from "./SessionRow";
 import {
   ambiguousSessionTitleKeys,
@@ -67,6 +74,33 @@ export function VirtualSessionRows({
       };
 
   const slice = sessions.slice(window.start, window.end);
+
+  // 键盘导航：活跃行滚入可视区（虚拟列表改 scrollTop；小列表用 scrollIntoView）
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const index = sessions.findIndex((s) => s.id === activeSessionId);
+    if (index < 0) return;
+
+    if (useVirtual) {
+      const el = scrollRef.current;
+      if (!el) return;
+      const rowTop = index * ROW_HEIGHT;
+      const rowBottom = rowTop + ROW_HEIGHT;
+      const viewTop = el.scrollTop;
+      const viewBottom = viewTop + el.clientHeight;
+      if (rowTop < viewTop) {
+        el.scrollTop = rowTop;
+      } else if (rowBottom > viewBottom) {
+        el.scrollTop = Math.max(0, rowBottom - el.clientHeight);
+      }
+      return;
+    }
+
+    const node = document.querySelector<HTMLElement>(
+      `[data-session-list-id="${CSS.escape(activeSessionId)}"]`,
+    );
+    node?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeSessionId, sessions, useVirtual]);
 
   function onScroll(event: UIEvent<HTMLDivElement>) {
     setScrollTop(event.currentTarget.scrollTop);

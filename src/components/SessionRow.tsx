@@ -56,6 +56,7 @@ export function SessionRow({
   return (
     <div
       className="session-row"
+      data-session-list-id={session.id}
       data-active={active}
       data-busy={busy}
       data-favorite={favorite}

@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  AutoRefreshToggle,
-  PortScopeSegmented,
-  ProtocolMenu,
-  SearchBox,
-  ThemeMenu,
-} from "./components/Controls";
 import { Icon } from "./components/icons/Icon";
 import { PortConfirmDialog } from "./components/PortConfirmDialog";
-import { PortWorkspace } from "./components/PortWorkspace";
-import { ProvidersWorkspace } from "./components/ProvidersWorkspace";
+import { PortToolPanel } from "./components/PortToolPanel";
+import { ProvidersToolPanel } from "./components/ProvidersToolPanel";
 import { SessionWorkspace } from "./components/SessionWorkspace";
-import { Skeleton } from "./components/Skeleton";
 import { useGrokProviders } from "./hooks/useGrokProviders";
 import { usePorts } from "./hooks/usePorts";
 import { usePreferences } from "./hooks/usePreferences";
@@ -300,79 +292,6 @@ function App() {
         </div>
       </header>
 
-      {activeTool === "ports" && (
-        <div className="control-bar">
-          <div className="control-bar-main" key={activeTool}>
-            <SearchBox
-              value={portSearchQuery}
-              onChange={setPortSearchQuery}
-              inputRef={portSearchInputRef}
-              placeholder="搜索端口、进程、PID 或路径"
-              ariaLabel="搜索端口"
-            />
-            <div className="control-groups">
-              <section className="control-group" aria-label="筛选">
-                <div className="control-group-label">
-                  <Icon.Filter />
-                  筛选
-                </div>
-                <div className="control-group-body">
-                  <PortScopeSegmented value={portScope} onChange={setPortScope} />
-                  <ProtocolMenu value={portProtocol} onChange={setPortProtocol} />
-                </div>
-              </section>
-              <section className="control-group" aria-label="刷新">
-                <div className="control-group-label">
-                  <Icon.Refresh />
-                  刷新
-                </div>
-                <div className="control-group-body">
-                  <AutoRefreshToggle
-                    enabled={portAutoRefresh}
-                    onChange={handlePortAutoRefreshChange}
-                  />
-                </div>
-              </section>
-              <section className="control-group" aria-label="外观">
-                <div className="control-group-label">
-                  <Icon.Appearance />
-                  外观
-                </div>
-                <div className="control-group-body">
-                  <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTool === "providers" && (
-        <div className="control-bar">
-          <div className="control-bar-main" key={activeTool}>
-            <div className="control-groups control-groups-providers">
-              <section className="control-group control-group-hint" aria-label="说明">
-                <div className="control-group-label">说明</div>
-                <div className="control-group-body">
-                  <p className="providers-control-hint muted">
-                    切换后<strong>新开</strong> Grok 会话才会读取新 config；不会结束已运行的会话。
-                  </p>
-                </div>
-              </section>
-              <section className="control-group" aria-label="外观">
-                <div className="control-group-label">
-                  <Icon.Appearance />
-                  外观
-                </div>
-                <div className="control-group-body">
-                  <ThemeMenu value={themeMode} onChange={handleThemeModeChange} />
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="status-line">
         {statusMessage && (
           <span
@@ -399,7 +318,7 @@ function App() {
         )}
       </div>
 
-      {activeTool === "sessions" ? (
+      {activeTool === "sessions" && (
         <SessionWorkspace
           sessions={sessions}
           scanErrors={scanErrors}
@@ -441,64 +360,68 @@ function App() {
           confirmBulkDelete={confirmBulkDelete}
           inspectHealthForSessions={inspectHealthForSessions}
         />
-      ) : (
-        <div className="workspace-panel" key={activeTool}>
-          {activeTool === "ports" ? (
-            portLoading ? (
-              <Skeleton />
-            ) : (
-              <PortWorkspace
-                ports={ports}
-                visiblePorts={visiblePorts}
-                scope={portScope}
-                loading={portLoading}
-                refreshing={portRefreshing}
-                terminatingIds={terminatingIds}
-                lastUpdated={portLastUpdated}
-                diagnosticText={portDiagnostic}
-                ignorePorts={portIgnorePorts}
-                protectPorts={portProtectPorts}
-                projectPathPrefixes={portProjectPathPrefixes}
-                onRefresh={() => void refreshPorts()}
-                onTerminate={requestTerminatePorts}
-                onNotify={notifyStatus}
-                onIgnorePortsChange={(ports) =>
-                  void handlePortIgnorePortsChange(ports).then(() => refreshPorts())
-                }
-                onProtectPortsChange={(ports) => void handlePortProtectPortsChange(ports)}
-                onProjectPathPrefixesChange={(prefixes) =>
-                  void handlePortProjectPathPrefixesChange(prefixes).then(() =>
-                    refreshPorts(),
-                  )
-                }
-              />
-            )
-          ) : grokLoading && grokStatus == null ? (
-            <Skeleton />
-          ) : (
-            <ProvidersWorkspace
-              profiles={grokProfiles}
-              status={grokStatus}
-              backups={grokBackups}
-              health={grokHealth}
-              layout={grokLayout}
-              loading={grokLoading}
-              busyId={grokBusyId}
-              onRefresh={() => void refreshGrokProviders()}
-              onActivate={(id) => void activateGrokProfile(id)}
-              onActivateOfficial={() => void activateGrokOfficial()}
-              onApplyPrivacy={() => void applyGrokPrivacy()}
-              onSaveLayout={(next) => saveGrokLayout(next)}
-              onImport={() => void importGrokCurrent()}
-              onSave={(profile, activateAfter) => saveGrokProfile(profile, activateAfter)}
-              onDelete={(id) => void removeGrokProfile(id)}
-              onRestore={(file) => void restoreGrokBackup(file)}
-              onFetchModels={fetchGrokModels}
-              onTestConnection={testGrokConnection}
-              onPreviewApply={previewGrokApply}
-            />
-          )}
-        </div>
+      )}
+
+      {activeTool === "ports" && (
+        <PortToolPanel
+          ports={ports}
+          visiblePorts={visiblePorts}
+          scope={portScope}
+          protocol={portProtocol}
+          searchQuery={portSearchQuery}
+          loading={portLoading}
+          refreshing={portRefreshing}
+          terminatingIds={terminatingIds}
+          lastUpdated={portLastUpdated}
+          diagnosticText={portDiagnostic}
+          ignorePorts={portIgnorePorts}
+          protectPorts={portProtectPorts}
+          projectPathPrefixes={portProjectPathPrefixes}
+          portAutoRefresh={portAutoRefresh}
+          themeMode={themeMode}
+          searchInputRef={portSearchInputRef}
+          onSearchChange={setPortSearchQuery}
+          onScopeChange={setPortScope}
+          onProtocolChange={setPortProtocol}
+          onPortAutoRefreshChange={handlePortAutoRefreshChange}
+          onThemeModeChange={handleThemeModeChange}
+          onRefresh={() => void refreshPorts()}
+          onTerminate={requestTerminatePorts}
+          onNotify={notifyStatus}
+          onIgnorePortsChange={(next) =>
+            void handlePortIgnorePortsChange(next).then(() => refreshPorts())
+          }
+          onProtectPortsChange={(next) => void handlePortProtectPortsChange(next)}
+          onProjectPathPrefixesChange={(prefixes) =>
+            void handlePortProjectPathPrefixesChange(prefixes).then(() => refreshPorts())
+          }
+        />
+      )}
+
+      {activeTool === "providers" && (
+        <ProvidersToolPanel
+          profiles={grokProfiles}
+          status={grokStatus}
+          backups={grokBackups}
+          health={grokHealth}
+          layout={grokLayout}
+          loading={grokLoading}
+          busyId={grokBusyId}
+          themeMode={themeMode}
+          onThemeModeChange={handleThemeModeChange}
+          onRefresh={() => void refreshGrokProviders()}
+          onActivate={(id) => void activateGrokProfile(id)}
+          onActivateOfficial={() => void activateGrokOfficial()}
+          onApplyPrivacy={() => void applyGrokPrivacy()}
+          onSaveLayout={(next) => saveGrokLayout(next)}
+          onImport={() => void importGrokCurrent()}
+          onSave={(profile, activateAfter) => saveGrokProfile(profile, activateAfter)}
+          onDelete={(id) => void removeGrokProfile(id)}
+          onRestore={(file) => void restoreGrokBackup(file)}
+          onFetchModels={fetchGrokModels}
+          onTestConnection={testGrokConnection}
+          onPreviewApply={previewGrokApply}
+        />
       )}
 
       {pendingTerminate && (
