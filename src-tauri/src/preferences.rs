@@ -138,7 +138,8 @@ pub fn save_recent_launches(app: &AppHandle, launches: Vec<RecentLaunch>) -> Res
     store.save().map_err(|err| err.to_string())
 }
 
-fn normalize_ports(ports: Vec<u16>) -> Vec<u16> {
+/// 去重、丢 0、排序；供 load/save 与 command 写回 AppState 共用。
+pub fn normalize_ports(ports: Vec<u16>) -> Vec<u16> {
     let mut out = Vec::new();
     for port in ports {
         if port == 0 || out.contains(&port) {

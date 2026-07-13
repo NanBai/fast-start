@@ -128,24 +128,30 @@ impl TerminalLauncher for WezTermLauncher {
 }
 
 fn wezterm_available() -> bool {
-    Path::new("/Applications/WezTerm.app").exists()
-        || Path::new("/Applications/WezTerm-macos-*.app").exists()
-        || resolve_wezterm_bin().is_some()
+    resolve_wezterm_bin().is_some()
 }
 
 fn resolve_wezterm_bin() -> Option<PathBuf> {
-    let candidates = [
-        "/Applications/WezTerm.app/Contents/MacOS/wezterm",
-        "/opt/homebrew/bin/wezterm",
-        "/usr/local/bin/wezterm",
+    let mut candidates = vec![
+        PathBuf::from("/Applications/WezTerm.app/Contents/MacOS/wezterm"),
+        PathBuf::from("/opt/homebrew/bin/wezterm"),
+        PathBuf::from("/usr/local/bin/wezterm"),
     ];
-    for c in candidates {
-        let p = PathBuf::from(c);
-        if p.is_file() {
-            return Some(p);
+    // 版本化安装名（WezTerm-macos-*.app）：read_dir 前缀匹配，不用假 glob
+    if let Ok(entries) = std::fs::read_dir("/Applications") {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if name.starts_with("WezTerm") && name.ends_with(".app") {
+                candidates.push(entry.path().join("Contents/MacOS/wezterm"));
+            }
         }
     }
-    // which wezterm
+    for p in &candidates {
+        if p.is_file() {
+            return Some(p.clone());
+        }
+    }
     let output = Command::new("which").arg("wezterm").output().ok()?;
     if !output.status.success() {
         return None;

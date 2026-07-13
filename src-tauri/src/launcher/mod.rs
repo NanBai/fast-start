@@ -159,20 +159,31 @@ pub fn launch_path_string() -> String {
     path
 }
 
-/// 在 launch PATH 上解析 program（存在且为普通文件即视为可解析）。
+/// 在 launch PATH 上解析 program（普通文件且具可执行位）。
 pub fn resolve_program_on_launch_path(program: &str) -> Option<PathBuf> {
     if program.is_empty() || program.contains('/') {
         // 仅允许白名单短名；带路径的 program 不走 PATH 搜索
         let p = PathBuf::from(program);
-        return if p.is_file() { Some(p) } else { None };
+        return if is_executable_file(&p) { Some(p) } else { None };
     }
     for dir in launch_path_string().split(':').filter(|d| !d.is_empty()) {
         let candidate = Path::new(dir).join(program);
-        if candidate.is_file() {
+        if is_executable_file(&candidate) {
             return Some(candidate);
         }
     }
     None
+}
+
+fn is_executable_file(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let Ok(meta) = std::fs::metadata(path) else {
+        return false;
+    };
+    if !meta.is_file() {
+        return false;
+    }
+    meta.permissions().mode() & 0o111 != 0
 }
 
 fn resolve_login_path_once() -> String {

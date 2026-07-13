@@ -68,8 +68,12 @@ export function useSessions(notifyStatus: NotifyStatus) {
     });
     const status = formatScanStatus(result);
     notifyStatus(status.message, status.type);
-    // 扫描后异步探测可见量（≤200）；失败不阻断列表
-    void inspectHealthForSessions(result.sessions);
+    // 缓存窗无 delete_target，跳过源 IO；full scan 后再探测（≤200）
+    if (result.fromCache === true) {
+      setHealthById(new Map());
+    } else {
+      void inspectHealthForSessions(result.sessions);
+    }
   }
 
   function toggleSessionSelected(sessionId: string) {

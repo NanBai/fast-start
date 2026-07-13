@@ -546,7 +546,7 @@ impl AppState {
             .inner
             .lock()
             .map_err(|_| "无法获取应用状态".to_string())?;
-        guard.port_ignore_ports = ports;
+        guard.port_ignore_ports = crate::preferences::normalize_ports(ports);
         Ok(())
     }
 
@@ -563,7 +563,7 @@ impl AppState {
             .inner
             .lock()
             .map_err(|_| "无法获取应用状态".to_string())?;
-        guard.port_protect_ports = ports;
+        guard.port_protect_ports = crate::preferences::normalize_ports(ports);
         Ok(())
     }
 
@@ -599,20 +599,26 @@ impl AppState {
         &self,
         session_list_ids: &[String],
     ) -> Result<BulkDeleteResult, String> {
-        if session_list_ids.is_empty() {
+        // 保序去重，避免同一 id 成功后再失败进 failures。
+        let mut seen = std::collections::HashSet::new();
+        let unique_ids: Vec<&String> = session_list_ids
+            .iter()
+            .filter(|id| !id.is_empty() && seen.insert(*id))
+            .collect();
+        if unique_ids.is_empty() {
             return Err("请至少选择一条 session".to_string());
         }
-        if session_list_ids.len() > BULK_DELETE_LIMIT {
+        if unique_ids.len() > BULK_DELETE_LIMIT {
             return Err(format!(
                 "单次最多删除 {} 条，当前 {}",
                 BULK_DELETE_LIMIT,
-                session_list_ids.len()
+                unique_ids.len()
             ));
         }
 
         let mut deleted_ids = Vec::new();
         let mut failures = Vec::new();
-        for id in session_list_ids {
+        for id in unique_ids {
             match self.delete_session_inner(id) {
                 Ok(()) => deleted_ids.push(id.clone()),
                 Err(message) => failures.push(BulkDeleteFailure {
@@ -1045,6 +1051,27 @@ mod tests {
         let too_many: Vec<String> = (0..51).map(|i| format!("id-{i}")).collect();
         let err = state.delete_sessions(&too_many).unwrap_err();
         assert!(err.contains("50"));
+    }
+
+    #[test]
+    fn bulk_delete_dedupes_ids_before_limit_and_work() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("a.jsonl");
+        fs::write(&file, "{}").unwrap();
+        let state = state_with_sessions(vec![test_session(
+            "only-once",
+            Some(SessionDeleteTarget {
+                root: temp.path().to_path_buf(),
+                path: file.clone(),
+                kind: SessionDeleteKind::File,
+            }),
+        )]);
+        let result = state
+            .delete_sessions(&["only-once".into(), "only-once".into()])
+            .unwrap();
+        assert_eq!(result.deleted_ids, vec!["only-once"]);
+        assert!(result.failures.is_empty());
+        assert!(!file.exists());
     }
 
     #[test]

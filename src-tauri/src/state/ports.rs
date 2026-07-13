@@ -82,26 +82,16 @@ impl AppState {
                 .map_err(|_| "无法获取应用状态".to_string())?;
             guard.port_protect_ports.clone()
         };
-        if !protect.is_empty() {
-            let mut hit: Vec<u16> = current_response
-                .ports
+        let hit = protected_port_hits(&current_response.ports, &port_ids, &protect);
+        if !hit.is_empty() {
+            let list = hit
                 .iter()
-                .filter(|p| port_ids.iter().any(|id| id == &p.id))
-                .map(|p| p.port)
-                .filter(|port| protect.contains(port))
-                .collect();
-            hit.sort_unstable();
-            hit.dedup();
-            if !hit.is_empty() {
-                let list = hit
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                return Err(format!(
-                    "操作已取消：包含受保护端口 {list}。请先从保护列表移除后再终止。"
-                ));
-            }
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(format!(
+                "操作已取消：包含受保护端口 {list}。请先从保护列表移除后再终止。"
+            ));
         }
 
         port_monitor::terminate_cached_ports(&cached_ports, &current_response.ports, &port_ids)?;
@@ -137,20 +127,37 @@ impl AppState {
     }
 }
 
+/// 在当前扫描结果中，找出 `port_ids` 命中且 port 号属于 protect 的端口号（去重排序）。
+pub(crate) fn protected_port_hits(
+    current_ports: &[crate::models::PortUsage],
+    port_ids: &[String],
+    protect: &[u16],
+) -> Vec<u16> {
+    if protect.is_empty() || port_ids.is_empty() {
+        return Vec::new();
+    }
+    let mut hit: Vec<u16> = current_ports
+        .iter()
+        .filter(|p| port_ids.iter().any(|id| id == &p.id))
+        .map(|p| p.port)
+        .filter(|port| protect.contains(port))
+        .collect();
+    hit.sort_unstable();
+    hit.dedup();
+    hit
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::{
-        LaunchMode, PortProtocol, PortScanResponse, PortUsage, TerminalType, ThemeMode,
-    };
-    use chrono::Utc;
+    use super::{protected_port_hits, AppState};
+    use crate::models::{LaunchMode, PortProtocol, PortUsage, TerminalType, ThemeMode};
 
     fn sample_port(id: &str, port: u16) -> PortUsage {
         PortUsage {
             id: id.to_string(),
             command: "node".into(),
             pid: 1234,
-            user: whoami_user(),
+            user: "test".into(),
             protocol: PortProtocol::Tcp,
             address: "127.0.0.1".into(),
             port,
@@ -163,12 +170,30 @@ mod tests {
         }
     }
 
-    fn whoami_user() -> String {
-        std::env::var("USER").unwrap_or_else(|_| "test".into())
+    #[test]
+    fn protected_port_hits_finds_selected_protected_ports() {
+        let ports = vec![
+            sample_port("p-3000", 3000),
+            sample_port("p-4000", 4000),
+            sample_port("p-3000-b", 3000),
+        ];
+        let hit = protected_port_hits(
+            &ports,
+            &["p-3000".into(), "p-4000".into()],
+            &[3000, 5432],
+        );
+        assert_eq!(hit, vec![3000]);
     }
 
     #[test]
-    fn terminate_blocks_when_protect_port_hit() {
+    fn protected_port_hits_empty_when_no_overlap() {
+        let ports = vec![sample_port("p-4000", 4000)];
+        let hit = protected_port_hits(&ports, &["p-4000".into()], &[3000]);
+        assert!(hit.is_empty());
+    }
+
+    #[test]
+    fn set_port_protect_ports_normalizes() {
         let state = AppState::new(
             TerminalType::System,
             LaunchMode::NewTab,
@@ -177,31 +202,9 @@ mod tests {
             Vec::new(),
             true,
         );
-        state.set_port_protect_ports(vec![3000]).unwrap();
-        let ports = vec![sample_port("p-3000", 3000), sample_port("p-4000", 4000)];
-        {
-            let mut guard = state.inner.lock().unwrap();
-            guard.port_scan = Some(PortScanResponse {
-                ports: ports.clone(),
-                raw_line_count: 2,
-                command_description: "test".into(),
-                scanned_at: Utc::now(),
-            });
-        }
-        // re-scan will replace cache from real lsof; unit path: inject protect check via
-        // direct call after faking current scan by temporarily stubbing is hard.
-        // 这里验证 protect 集合可读写，并在无 re-scan 分支上用内部逻辑断言。
-        assert_eq!(state.port_protect_ports().unwrap(), vec![3000]);
-
-        // 模拟「当前扫描」与缓存相同：把 terminate 中 protect 命中逻辑单独抽测困难时，
-        // 至少保证 set/get 与 normalize 行为；完整 terminate 依赖 lsof，见集成 smoke。
-        let protect = state.port_protect_ports().unwrap();
-        let hit: Vec<u16> = ports
-            .iter()
-            .filter(|p| p.id == "p-3000")
-            .map(|p| p.port)
-            .filter(|p| protect.contains(p))
-            .collect();
-        assert_eq!(hit, vec![3000]);
+        state
+            .set_port_protect_ports(vec![3000, 3000, 0, 8080])
+            .unwrap();
+        assert_eq!(state.port_protect_ports().unwrap(), vec![3000, 8080]);
     }
 }

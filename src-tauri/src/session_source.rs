@@ -90,8 +90,11 @@ fn check_opencode_row(session: &Session) -> SourceCheck {
 }
 
 fn opencode_session_row_exists(db_path: &Path, session_id: &str) -> Result<bool, String> {
-    let conn =
-        Connection::open(db_path).map_err(|err| format!("打开 opencode.db 失败: {err}"))?;
+    let conn = Connection::open_with_flags(
+        db_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|err| format!("打开 opencode.db 失败: {err}"))?;
     let mut stmt = conn
         .prepare("SELECT 1 FROM session WHERE id = ?1 LIMIT 1")
         .map_err(|err| format!("查询 opencode session 失败: {err}"))?;

@@ -13,6 +13,7 @@ use crate::preferences::{
     load_grok_provider_layout, load_session_list_mode, save_grok_provider_layout,
     save_session_list_mode,
 };
+use crate::preferences::normalize_ports;
 use crate::state::{
     save_favorite_project_dirs, save_favorite_session_ids, save_launch_mode, save_port_auto_refresh,
     save_port_ignore_ports, save_port_project_path_prefixes, save_port_protect_ports,
@@ -259,6 +260,7 @@ pub fn set_port_ignore_ports(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    let ports = normalize_ports(ports);
     save_port_ignore_ports(&app, ports.clone())?;
     state.set_port_ignore_ports(ports)?;
     state.invalidate_port_scan_cache()?;
@@ -276,6 +278,7 @@ pub fn set_port_protect_ports(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    let ports = normalize_ports(ports);
     save_port_protect_ports(&app, ports.clone())?;
     state.set_port_protect_ports(ports)?;
     Ok(())
