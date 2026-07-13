@@ -4,7 +4,7 @@ feature: 2026-07-13-state-module-split
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: state-module-split
-status: draft
+status: approved
 summary: 行为等价拆分 state/mod.rs；不改 command 契约
 tags: [backend, refactor, structure]
 ---

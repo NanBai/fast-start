@@ -14,18 +14,18 @@ dod:
 steps:
   - action: "新增 SessionWorkspace 并迁入 sessions 工具页 JSX/handlers"
     exit_signal: "App 仅挂载 <SessionWorkspace .../>"
-    status: pending
+    status: done
   - action: "核对快捷键与 props 边界；pnpm build"
     exit_signal: "build 绿；无行为契约变更"
-    status: pending
+    status: done
 
 checks:
   - item: "行为等价：启动/删除/筛选/批量/磁盘"
     source: 验收场景
-    status: pending
+    status: passed
   - item: "不改 Tauri command 名与 payload"
     source: 范围守护
-    status: pending
+    status: passed
   - item: "App.tsx 行数显著下降"
     source: 结构健康度
-    status: pending
+    status: passed

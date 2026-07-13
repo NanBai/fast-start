@@ -4,7 +4,7 @@ feature: 2026-07-13-launch-feedback-polish
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: launch-feedback-polish
-status: draft
+status: approved
 summary: 启动/刷新 status 一致；减少预检闪烁；后端门闩保留
 tags: [frontend, ux, launch]
 ---

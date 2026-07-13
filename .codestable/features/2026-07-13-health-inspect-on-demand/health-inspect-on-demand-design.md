@@ -4,7 +4,7 @@ feature: 2026-07-13-health-inspect-on-demand
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: health-inspect-on-demand
-status: draft
+status: approved
 summary: inspect 按需触发；角标仅有缓存时显示
 tags: [session, performance, health]
 ---

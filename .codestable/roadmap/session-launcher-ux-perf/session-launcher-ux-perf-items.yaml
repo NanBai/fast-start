@@ -5,7 +5,7 @@ items:
   - slug: app-shell-split
     description: 将 Session 列表/筛选/批量/磁盘/最近启动从 App.tsx 迁入 SessionWorkspace；App 仅保留 tool 壳与全局 status/快捷键分发
     depends_on: []
-    status: planned
+    status: done
     feature: 2026-07-13-app-shell-split
     minimal_loop: true
     notes: "最小闭环；行为等价优先；pnpm build 门闩"

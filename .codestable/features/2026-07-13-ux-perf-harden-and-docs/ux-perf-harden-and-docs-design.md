@@ -4,7 +4,7 @@ feature: 2026-07-13-ux-perf-harden-and-docs
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: ux-perf-harden-and-docs
-status: draft
+status: approved
 summary: 文档对齐 + next-wave completed + 交叉回归
 tags: [docs, harden]
 ---

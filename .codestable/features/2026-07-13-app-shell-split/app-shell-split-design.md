@@ -4,7 +4,7 @@ feature: 2026-07-13-app-shell-split
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: app-shell-split
-status: draft
+status: approved
 summary: App 壳与 SessionWorkspace 拆分；行为等价
 tags: [frontend, structure, ux]
 ---

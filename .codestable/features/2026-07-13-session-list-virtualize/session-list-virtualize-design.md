@@ -4,7 +4,7 @@ feature: 2026-07-13-session-list-virtualize
 requirement: quick-session-access
 roadmap: session-launcher-ux-perf
 roadmap_item: session-list-virtualize
-status: draft
+status: approved
 summary: Session 行窗口化渲染；保留键盘与多选
 tags: [frontend, performance, list]
 ---
