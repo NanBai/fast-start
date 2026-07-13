@@ -85,6 +85,29 @@ export function useSessions(notifyStatus: NotifyStatus) {
     setSelectedIds(new Set());
   }
 
+  /**
+   * 批量勾选给定 id。超过单次删除上限（50）时截断并提示。
+   * @returns 实际勾选数量
+   */
+  function selectSessionIds(ids: string[]): number {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    const limit = 50;
+    if (unique.length === 0) {
+      setSelectedIds(new Set());
+      return 0;
+    }
+    if (unique.length > limit) {
+      setSelectedIds(new Set(unique.slice(0, limit)));
+      notifyStatus(
+        `符合 ${unique.length} 条，已勾选前 ${limit} 条（单次删除上限）`,
+        "info",
+      );
+      return limit;
+    }
+    setSelectedIds(new Set(unique));
+    return unique.length;
+  }
+
   function requestBulkDelete() {
     if (selectedIds.size === 0) {
       notifyStatus("请先勾选要删除的 session", "error");
@@ -331,6 +354,7 @@ export function useSessions(notifyStatus: NotifyStatus) {
     inspectHealthForSessions,
     toggleSessionSelected,
     clearSessionSelection,
+    selectSessionIds,
     requestBulkDelete,
     cancelBulkDelete,
     confirmBulkDelete,

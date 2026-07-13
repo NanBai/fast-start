@@ -92,6 +92,7 @@ function App() {
     confirmDeleteSession,
     toggleSessionSelected,
     clearSessionSelection,
+    selectSessionIds,
     requestBulkDelete,
     cancelBulkDelete,
     confirmBulkDelete,
@@ -355,6 +356,7 @@ function App() {
           confirmDeleteSession={confirmDeleteSession}
           toggleSessionSelected={toggleSessionSelected}
           clearSessionSelection={clearSessionSelection}
+          selectSessionIds={selectSessionIds}
           requestBulkDelete={requestBulkDelete}
           cancelBulkDelete={cancelBulkDelete}
           confirmBulkDelete={confirmBulkDelete}

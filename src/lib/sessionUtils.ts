@@ -163,6 +163,25 @@ export function filterSessionsByRecentDays(
   });
 }
 
+/**
+ * 最后活跃早于「现在 − days 天」的 session（用于批量勾选清理）。
+ * 无效时间戳的条目不入选。
+ */
+export function sessionsOlderThanDays(
+  sessions: SessionData[],
+  days: number,
+): SessionData[] {
+  if (days <= 0) return [];
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return sessions.filter((session) => {
+    const activeAt = new Date(session.lastActiveAt).getTime();
+    if (Number.isNaN(activeAt)) {
+      return false;
+    }
+    return activeAt < cutoff;
+  });
+}
+
 export function filterSessionsForQuickAccess(
   sessions: SessionData[],
   options: QuickAccessOptions,

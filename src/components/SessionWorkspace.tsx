@@ -24,6 +24,7 @@ import {
   sanitizeFavoriteProjectDirs,
   sanitizeFavoriteSessionIds,
   sessionHealthBadge,
+  sessionsOlderThanDays,
 } from "../lib/sessionUtils";
 import {
   CLI_LABELS,
@@ -83,6 +84,7 @@ export type SessionWorkspaceProps = {
   confirmDeleteSession: () => Promise<void>;
   toggleSessionSelected: (sessionId: string) => void;
   clearSessionSelection: () => void;
+  selectSessionIds: (ids: string[]) => number;
   requestBulkDelete: () => void;
   cancelBulkDelete: () => void;
   confirmBulkDelete: () => Promise<void>;
@@ -126,11 +128,14 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
     confirmDeleteSession,
     toggleSessionSelected,
     clearSessionSelection,
+    selectSessionIds,
     requestBulkDelete,
     cancelBulkDelete,
     confirmBulkDelete,
     inspectHealthForSessions,
   } = props;
+
+  const OLDER_SELECT_DAYS = [7, 14, 30] as const;
 
   const [recentDays, setRecentDays] = useState<RecentDaysFilter>("7");
   const [healthFilter, setHealthFilter] = useState<SessionHealthFilter>("all");
@@ -262,6 +267,26 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
 
   const showHint =
     preferredTerminal === "system" && launchMode === "new-tab";
+
+  function selectOlderThan(days: number) {
+    // 基于已加载的全部 session，不限当前「最近 N 天」筛选
+    const matches = sessionsOlderThanDays(sessions, days);
+    const n = selectSessionIds(matches.map((s) => s.id));
+    if (n === 0) {
+      notifyStatus(`没有「${days} 天前」的 session`, "info");
+    } else if (matches.length <= 50) {
+      notifyStatus(`已勾选 ${n} 条（${days} 天前）`, "info");
+    }
+  }
+
+  function selectVisibleAll() {
+    const n = selectSessionIds(visibleSessions.map((s) => s.id));
+    if (n === 0) {
+      notifyStatus("当前列表没有可勾选的 session", "info");
+    } else if (visibleSessions.length <= 50) {
+      notifyStatus(`已勾选当前列表 ${n} 条`, "info");
+    }
+  }
 
   function moveActiveSession(delta: 1 | -1) {
     if (quickAccess.sessions.length === 0) {
@@ -406,21 +431,51 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
         </div>
       )}
 
-      {/* 勾选后吸顶，滚动列表时仍可点批量删除 */}
-      {selectedIds.size > 0 && (
-        <div className="bulk-select-bar" aria-label="批量选择">
-          <span>已选 {selectedIds.size} 条</span>
-          <button type="button" className="btn" onClick={clearSessionSelection}>
-            取消选择
-          </button>
-          <button
-            type="button"
-            className="btn danger"
-            disabled={bulkDeleting}
-            onClick={requestBulkDelete}
-          >
-            批量删除
-          </button>
+      {/* 快速勾选 + 已选操作；有选中时 sticky 吸顶 */}
+      {!loading && sessions.length > 0 && (
+        <div
+          className="bulk-select-bar"
+          data-sticky={selectedIds.size > 0 ? "true" : "false"}
+          aria-label="批量选择"
+        >
+          <span className="bulk-select-label">快速勾选</span>
+          <div className="bulk-select-quick" role="group" aria-label="按时间勾选">
+            {OLDER_SELECT_DAYS.map((days) => (
+              <button
+                key={days}
+                type="button"
+                className="btn bulk-quick-btn"
+                title={`勾选最后活跃早于 ${days} 天的全部 session（最多 50）`}
+                onClick={() => selectOlderThan(days)}
+              >
+                {days} 天前
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn bulk-quick-btn"
+              title="勾选当前筛选结果中的全部（最多 50）"
+              onClick={selectVisibleAll}
+            >
+              当前列表
+            </button>
+          </div>
+          {selectedIds.size > 0 && (
+            <>
+              <span className="bulk-select-count">已选 {selectedIds.size} 条</span>
+              <button type="button" className="btn" onClick={clearSessionSelection}>
+                取消选择
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                disabled={bulkDeleting}
+                onClick={requestBulkDelete}
+              >
+                批量删除
+              </button>
+            </>
+          )}
         </div>
       )}
 
