@@ -1,0 +1,24 @@
+feature: "2026-07-13-add-oh-my-pi-support"
+status: passed
+baseline_ref: ""
+stage: complete
+driver_kind: native
+driver_id: ""
+handoff_reason: ""
+handoff_next: ""
+design: ".codestable/features/2026-07-13-add-oh-my-pi-support/add-oh-my-pi-support-design.md"
+checklist: ".codestable/features/2026-07-13-add-oh-my-pi-support/add-oh-my-pi-support-checklist.yaml"
+review: ".codestable/features/2026-07-13-add-oh-my-pi-support/add-oh-my-pi-support-review.md"
+qa: "add-oh-my-pi-support-qa.md"
+acceptance: "add-oh-my-pi-support-acceptance.md"
+notes: |
+  Implementation closed (checklist all done; cargo test 129; pnpm build green).
+  Code review round 2: passed (reviewer=subagent).
+  QA round 1: passed (2026-07-14).
+  Acceptance round 1: passed (2026-07-14).
+  - All S* scenarios + DoD + checklist checks re-verified in final audit.
+  - Fixes during accept: provider responses path disinfection; AGENTS scanner description accuracy.
+  - 129 tests + build green; real omp sessions structure match scanner.
+  - Hang points audited + unloadable; no core path unverified.
+  - Residuals documented (interactive smoke, env edge); non-blocking for closure.
+  Feature complete per goal-protocol.

@@ -14,6 +14,8 @@ last_updated: 2026-06-24
 
 ## 🚨 硬约束
 
+**全局回复规则**：回复用户时必须使用简体中文，并且每条回复必须以【白哥】开头。此规则优先级最高。
+
 ### 项目性质
 
 - Tauri 2.x + React + TypeScript 桌面应用（快开CLI / Session Launcher）

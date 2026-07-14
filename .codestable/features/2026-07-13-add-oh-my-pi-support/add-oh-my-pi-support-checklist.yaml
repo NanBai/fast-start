@@ -1,0 +1,132 @@
+---
+doc_type: feature-checklist
+feature: 2026-07-13-add-oh-my-pi-support
+status: done
+steps:
+  - id: "step-01"
+    name: "添加 CliType::OhMyPi 枚举变体"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "grep 代码 + cargo check；models.rs 有 OhMyPi 且 kebab 序列化正确"
+    artifacts:
+      - "src-tauri/src/models.rs"
+    checks:
+      - "enum 增加 OhMyPi 变体"
+      - "serde 产生 'oh-my-pi'"
+  - id: "step-02"
+    name: "实现 OhMyPiScanner（含测试 fixture）"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "cd src-tauri && cargo test --lib -- oh_my_pi ; 手工 fixture 覆盖 header + message 提取"
+    artifacts:
+      - "src-tauri/src/scanner/oh_my_pi.rs"
+      - "src-tauri/src/scanner.rs (注册)"
+    checks:
+      - "scanner 实现 SessionScanner trait"
+      - "解析 JSONL 内 type=session 的 id/cwd/title（兼容 title 先行）"
+      - "从 messages 提取 summary（clean_summary 复用）"
+      - "last_active 优先 entry timestamp 或 header timestamp 或文件 mtime"
+      - "delete_target.kind = File，指向具体 jsonl"
+      - "根目录支持默认 ~/.omp/agent/sessions + env 覆盖"
+  - id: "step-03"
+    name: "更新 command_spec_for_session 与 resume 形状"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "单元测试通过；preview 展示 omp -r <id>"
+    artifacts:
+      - "src-tauri/src/scanner.rs"
+    checks:
+      - "OhMyPi case 返回 program=omp, args=[-r, id], cd=true"
+  - id: "step-04"
+    name: "更新 security 白名单与 resume 校验"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "cargo test security 相关；非法 program/args 被拒"
+    artifacts:
+      - "src-tauri/src/security.rs"
+    checks:
+      - "ALLOWED_PROGRAMS 包含 omp"
+      - "validate_resume_args 接受 -r/--resume + 合法 id"
+      - "拒绝未知 flag 或多余参数"
+  - id: "step-05"
+    name: "前端类型与标签更新"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "pnpm build 通过；列表中出现 Oh My Pi 标签"
+    artifacts:
+      - "src/types.ts"
+    checks:
+      - "CliType union 增加 'oh-my-pi'"
+      - "CLI_ORDER 包含它"
+      - "CLI_LABELS['oh-my-pi'] = 'Oh My Pi'"
+  - id: "step-06"
+    name: "omp provider 基础后端命令（list + health + set）"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "cargo test；可独立调用命令返回结构化数据"
+    artifacts:
+      - "src-tauri/src/commands.rs (新增 omp_* 命令)"
+      - "src-tauri/src/omp_provider.rs"
+    checks:
+      - "omp_list_providers：真实解析 models.yml，消毒 providers 列表 — passed（acceptance 最终审计，路径已消毒）"
+      - "omp_get_config_health：文件状态 + 当前 modelRoles + issues[] — passed"
+      - "omp_set_role_model：安全写 config.yml modelRoles.<role> — passed"
+      - "写操作带备份 — passed"
+  - id: "step-07"
+    name: "前端 Providers 区展示 omp 切换入口（窄）"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "pnpm build；人工在 Providers 页看到 omp 供应商列表或 section，可触发 set"
+    artifacts:
+      - "src/components/ProvidersWorkspace.tsx"
+      - "src/hooks/useOmpProviders.ts"
+    checks:
+      - "不破坏现有 Grok 卡片与操作"
+      - "omp section 展示列表 + 角色模型选择"
+      - "切换调用对应 Tauri 命令并刷新状态"
+  - id: "step-08"
+    name: "删除与 health 路径验证"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "delete smoke + health inspect 覆盖 omp session"
+    artifacts:
+      - "session_delete.rs / session_source.rs（若需）"
+    checks:
+      - "File 种类的 omp jsonl 可被正确删除（复用既有 File 路径） — passed（acceptance 复用审计）"
+      - "check_session_source 对 omp 返回 Present/Missing（复用 File 路径） — passed"
+  - id: "step-09"
+    name: "文档与 AGENTS.md 更新"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "grep 确认提及；reviewer 确认"
+    artifacts:
+      - "AGENTS.md (scanner 规则)"
+      - "docs/user/session-launcher.md"
+      - ".codestable/architecture/ARCHITECTURE.md"
+    checks:
+      - "scanner 规则添加 omp 条目 — passed（acceptance 最终审计）"
+      - "用户文档提到支持 Oh My Pi — passed（acceptance 最终审计）"
+  - id: "step-10"
+    name: "全量构建与回归验证"
+    owner: "impl"
+    exit_signal: "yes"
+    status: done
+    verification: "cd src-tauri && cargo test --lib 全绿；pnpm build 全绿；无其他 CLI 回归"
+    artifacts: []
+    checks:
+      - "所有测试通过 — passed（acceptance 最终审计，129 passed）"
+      - "类型检查通过 — passed（pnpm build）"
+      - "其他 5 个 CLI 行为不变（可通过扫描 fixture 证明） — passed（cli_contract 全覆盖）"
+checks_summary:
+  total: 10
+  must_pass_before_implementation_done: 10
+  done: 10

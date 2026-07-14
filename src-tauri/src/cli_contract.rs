@@ -9,13 +9,14 @@ mod tests {
     use chrono::Utc;
     use std::path::PathBuf;
 
-    fn all_cli_types() -> [CliType; 5] {
+    fn all_cli_types() -> [CliType; 6] {
         [
             CliType::Codex,
             CliType::ClaudeCode,
             CliType::Cursor,
             CliType::GrokBuild,
             CliType::OpenCode,
+            CliType::OhMyPi,
         ]
     }
 
@@ -26,6 +27,7 @@ mod tests {
             CliType::Cursor => "cursor-agent",
             CliType::GrokBuild => "grok",
             CliType::OpenCode => "opencode",
+            CliType::OhMyPi => "omp",
         }
     }
 

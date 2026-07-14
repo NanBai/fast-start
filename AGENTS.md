@@ -1,5 +1,6 @@
 # AGENTS.md
 |IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning for any project tasks.
+|IMPORTANT: 回复用户时必须使用中文，并且每条回复都必须在开头加上【白哥】。此为全局强制规则。
 |Project:Session Launcher|macOS-first Tauri 2 desktop app|聚合 Codex/Claude Code/Cursor/Grok Build/OpenCode 本地 session|一键外部终端恢复工作现场
 |Language:项目文档和用户可见说明默认简体中文|路径/命令/代码标识保留英文
 |Stack:React 19|TypeScript strict|Vite 7|Tauri 2|Rust 2021|rusqlite bundled|tauri-plugin-store
@@ -16,10 +17,10 @@
 |Frontend:src/App.tsx orchestrates UI|src/types.ts owns enums/labels|src/hooks own Tauri invoke|src/lib/sessionUtils.ts owns filtering/sorting|src/styles split by surface
 |Frontend Contract:search filters loaded sessions only|favorites are projectDir-level|Cmd+K/Esc/arrows/Enter keyboard flow|delete uses context menu + confirm dialog
 |Backend:src-tauri/src/commands.rs thin Tauri boundary|src-tauri/src/state.rs cache/preferences/orchestration|src-tauri/src/models.rs shared contracts
-|Scanners:src-tauri/src/scanner.rs dispatch|codex jsonl under ~/.codex/sessions|claude jsonl under ~/.claude/projects|cursor meta/store.db under ~/.cursor/chats|grok summary.json under ~/.grok/sessions|opencode sqlite under ~/.local/share/opencode/opencode.db
-|Scanner Rule:all current CLI resumes use cd=true|Cursor cwd must come from Workspace Path in store.db|do not reverse-decode Cursor workspace hash|Grok cwd prefers summary.info.cwd then .cwd/percent-decode group dir|OpenCode cwd from session.directory
+|Scanners:src-tauri/src/scanner.rs dispatch|codex jsonl under ~/.codex/sessions|claude jsonl under ~/.claude/projects|cursor meta/store.db under ~/.cursor/chats|grok summary.json under ~/.grok/sessions|opencode sqlite under ~/.local/share/opencode/opencode.db|oh-my-pi jsonl under ~/.omp/agent/sessions (type=session header with id/cwd; title line may precede)
+|Scanner Rule:all current CLI resumes use cd=true|Cursor cwd must come from Workspace Path in store.db|do not reverse-decode Cursor workspace hash|Grok cwd prefers summary.info.cwd then .cwd/percent-decode group dir|OpenCode cwd from session.directory|Oh My Pi (omp) uses header.cwd + resume via `omp -r <id>` (or --resume)
 |Launcher:src-tauri/src/launcher.rs|Terminal.app cannot open tabs|iTerm AppleScript app name=iTerm|Ghostty must run wrapper path, never direct multi-word command
-|Launch Safety:src-tauri/src/security.rs|allowed programs={codex,claude,cursor-agent,grok,opencode}|validate cwd/session id before wrapper|avoid sh -c from session data
+|Launch Safety:src-tauri/src/security.rs|allowed programs={codex,claude,cursor-agent,grok,opencode,omp}|validate cwd/session id before wrapper|avoid sh -c from session data
 |Delete Safety:src-tauri/src/session_delete.rs|frontend passes only Session.id|delete_target skipped from JSON|canonicalize root/path|reject root itself and root-outside paths|OpenCode deletes SQLite row not db file
 |Persistence:preferences.json via tauri-plugin-store|keys={preferred_terminal,launch_mode,theme_mode,favorite_project_dirs,favorite_session_ids,session_list_mode,port_auto_refresh,port_ignore_ports,port_protect_ports,port_project_path_prefixes,recent_launches,grok_provider_order,grok_pinned_provider_ids}|sanitize favorites/history against scanned sessions
 |Security:src-tauri/tauri.conf.json CSP must stay non-null|src-tauri/capabilities/default.json currently core/opener/store only|no network/cloud sync/account system

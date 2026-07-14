@@ -8,6 +8,8 @@ import type {
   GrokProfile,
   GrokProviderLayout,
   GrokProviderStatus,
+  OmpConfigHealth,
+  OmpProvider,
   ThemeMode,
 } from "../types";
 
@@ -33,9 +35,16 @@ export type ProvidersToolPanelProps = {
   onFetchModels: (profile: GrokProfile) => Promise<string[] | null>;
   onTestConnection: (profile: GrokProfile) => Promise<unknown>;
   onPreviewApply: (profile: GrokProfile) => Promise<string | null>;
+  // Oh My Pi 窄支持
+  ompProviders: OmpProvider[];
+  ompHealth: OmpConfigHealth | null;
+  ompLoading: boolean;
+  ompBusy: boolean;
+  onOmpRefresh: () => void;
+  onOmpSetRole: (role: string, model: string) => Promise<boolean>;
 };
 
-/** Grok 工具页：控制栏 + ProvidersWorkspace（从 App 壳拆出）。 */
+/** Providers 工具页：控制栏 + ProvidersWorkspace（Grok 区 + Oh My Pi 区）。 */
 export function ProvidersToolPanel({
   profiles,
   status,
@@ -58,6 +67,12 @@ export function ProvidersToolPanel({
   onFetchModels,
   onTestConnection,
   onPreviewApply,
+  ompProviders,
+  ompHealth,
+  ompLoading,
+  ompBusy,
+  onOmpRefresh,
+  onOmpSetRole,
 }: ProvidersToolPanelProps) {
   return (
     <>
@@ -68,7 +83,7 @@ export function ProvidersToolPanel({
               <div className="control-group-label">说明</div>
               <div className="control-group-body">
                 <p className="providers-control-hint muted">
-                  切换后<strong>新开</strong> Grok 会话才会读取新 config；不会结束已运行的会话。
+                  切换后<strong>新开</strong>对应 CLI 会话才会读取新配置；不会结束已运行的会话。
                 </p>
               </div>
             </section>
@@ -114,6 +129,13 @@ export function ProvidersToolPanel({
             onFetchModels={onFetchModels}
             onTestConnection={onTestConnection}
             onPreviewApply={onPreviewApply}
+            // OMP
+            ompProviders={ompProviders}
+            ompHealth={ompHealth}
+            ompLoading={ompLoading}
+            ompBusy={ompBusy}
+            onOmpRefresh={onOmpRefresh}
+            onOmpSetRole={onOmpSetRole}
           />
         )}
       </div>

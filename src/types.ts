@@ -1,4 +1,4 @@
-export type CliType = "codex" | "claude-code" | "cursor" | "grok-build" | "opencode";
+export type CliType = "codex" | "claude-code" | "cursor" | "grok-build" | "opencode" | "oh-my-pi";
 export type TerminalType = "system" | "iterm2" | "ghostty" | "wezterm";
 export type LaunchMode = "new-tab" | "new-window";
 export type SessionListMode = "by-agent" | "by-project";
@@ -137,6 +137,7 @@ export const CLI_ORDER: CliType[] = [
   "cursor",
   "grok-build",
   "opencode",
+  "oh-my-pi",
 ];
 
 export const CLI_LABELS: Record<CliType, string> = {
@@ -145,6 +146,7 @@ export const CLI_LABELS: Record<CliType, string> = {
   cursor: "Cursor",
   "grok-build": "Grok Build",
   opencode: "OpenCode",
+  "oh-my-pi": "Oh My Pi",
 };
 
 export const TERMINAL_LABELS: Record<TerminalType, string> = {
@@ -197,7 +199,8 @@ export const THEME_MODE_LABELS: Record<ThemeMode, string> = {
 export const APP_TOOL_LABELS: Record<AppTool, string> = {
   sessions: "Session",
   ports: "Port",
-  providers: "Grok",
+  /** 多 CLI 上游/模型切换工作区（Grok + Oh My Pi 等），不再叫 Grok。 */
+  providers: "Providers",
 };
 
 export interface GrokModelDef {
@@ -295,3 +298,26 @@ export const PORT_PROTOCOL_LABELS: Record<PortProtocol, string> = {
   tcp: "TCP",
   udp: "UDP",
 };
+
+// Oh My Pi (omp) 供应商切换支持（窄实现）
+export interface OmpProvider {
+  name: string;
+  models: string[];
+  defaultFor?: string[];
+}
+
+export interface OmpConfigHealth {
+  modelsYmlExists: boolean;
+  configYmlExists: boolean;
+  currentRoles: Record<string, string>;
+  issues: string[];
+}
+
+export interface OmpSetRoleResult {
+  ok: boolean;
+  role: string;
+  model: string;
+  previous?: string | null;
+  backup?: string | null;
+  message: string;
+}

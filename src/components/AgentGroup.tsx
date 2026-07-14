@@ -11,6 +11,7 @@ const AGENT_HINTS: Record<CliType, string> = {
   cursor: "Cursor Agent 工作区会话",
   "grok-build": "Grok Build 历史会话",
   opencode: "OpenCode 历史会话",
+  "oh-my-pi": "Oh My Pi 历史会话",
 };
 
 type ProjectSessionGroup = {
@@ -102,7 +103,7 @@ export function AgentGroup({
         <span className="agent-stats">
           <span className="agent-stat">
             <strong>{projectGroups.length}</strong>
-            <span>目录</span>
+            <span>项目</span>
           </span>
           <span className="agent-stat">
             <strong>{sessions.length}</strong>

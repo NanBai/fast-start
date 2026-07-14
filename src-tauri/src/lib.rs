@@ -4,6 +4,8 @@ mod grok_provider;
 mod launch_preflight;
 mod launcher;
 mod models;
+mod omp_provider;
+
 mod port_monitor;
 mod preferences;
 mod scanner;
@@ -23,6 +25,7 @@ use commands::{
     grok_config_health, grok_create_profile, grok_delete_profile, grok_fetch_models,
     grok_import_current, grok_list_backups, grok_list_profiles, grok_preview_apply,
     grok_provider_status,
+    omp_get_config_health, omp_list_providers, omp_set_role_model,
     grok_restore_backup, grok_test_connection, grok_update_profile, launch_session,
     inspect_session_health, list_available_terminals, preflight_launch, preview_launch_command,
     refresh_ports, refresh_sessions, scan_ports, scan_sessions, set_favorite_project_dirs,
@@ -151,6 +154,9 @@ pub fn run() {
             grok_restore_backup,
             get_grok_provider_layout,
             set_grok_provider_layout,
+            omp_list_providers,
+            omp_get_config_health,
+            omp_set_role_model,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -16,6 +16,9 @@ const Brand = {
   opencode: (
     <path d="M4 7.5h16v9H4v-9Zm2 2v5h12v-5H6Zm3.5 1.2h1.6v2.6H9.5v-2.6Zm3.4 0h1.6v2.6h-1.6v-2.6Z" />
   ),
+  "oh-my-pi": (
+    <path d="M12 3a9 9 0 100 18 9 9 0 000-18zm-1 5v4H7v2h4v4h2v-4h4v-2h-4V8h-2z" />
+  ),
 } as const;
 
 export function BrandMark({ cliType }: { cliType: CliType }) {
