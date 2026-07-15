@@ -8,8 +8,6 @@ import type {
   GrokProfile,
   GrokProviderLayout,
   GrokProviderStatus,
-  OmpConfigHealth,
-  OmpProvider,
   ThemeMode,
 } from "../types";
 
@@ -35,16 +33,9 @@ export type ProvidersToolPanelProps = {
   onFetchModels: (profile: GrokProfile) => Promise<string[] | null>;
   onTestConnection: (profile: GrokProfile) => Promise<unknown>;
   onPreviewApply: (profile: GrokProfile) => Promise<string | null>;
-  // Oh My Pi 窄支持
-  ompProviders: OmpProvider[];
-  ompHealth: OmpConfigHealth | null;
-  ompLoading: boolean;
-  ompBusy: boolean;
-  onOmpRefresh: () => void;
-  onOmpSetRole: (role: string, model: string) => Promise<boolean>;
 };
 
-/** Providers 工具页：控制栏 + ProvidersWorkspace（Grok 区 + Oh My Pi 区）。 */
+/** Providers 工具页：控制栏 + ProvidersWorkspace（Grok 区）。 */
 export function ProvidersToolPanel({
   profiles,
   status,
@@ -67,12 +58,6 @@ export function ProvidersToolPanel({
   onFetchModels,
   onTestConnection,
   onPreviewApply,
-  ompProviders,
-  ompHealth,
-  ompLoading,
-  ompBusy,
-  onOmpRefresh,
-  onOmpSetRole,
 }: ProvidersToolPanelProps) {
   return (
     <>
@@ -129,13 +114,6 @@ export function ProvidersToolPanel({
             onFetchModels={onFetchModels}
             onTestConnection={onTestConnection}
             onPreviewApply={onPreviewApply}
-            // OMP
-            ompProviders={ompProviders}
-            ompHealth={ompHealth}
-            ompLoading={ompLoading}
-            ompBusy={ompBusy}
-            onOmpRefresh={onOmpRefresh}
-            onOmpSetRole={onOmpSetRole}
           />
         )}
       </div>

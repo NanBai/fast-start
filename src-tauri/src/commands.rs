@@ -13,7 +13,7 @@ use crate::preferences::{
     load_grok_provider_layout, load_session_list_mode, save_grok_provider_layout,
     save_session_list_mode,
 };
-use crate::omp_provider;
+
 use crate::preferences::normalize_ports;
 use crate::state::{
     save_favorite_project_dirs, save_favorite_session_ids, save_launch_mode, save_port_auto_refresh,
@@ -397,28 +397,6 @@ pub fn grok_activate_official(
 ) -> Result<GrokActivateOfficialResult, String> {
     state.activate_official()
 }
-
-// --- Oh My Pi (omp) provider switching (narrow / MVP) ---
-
-#[tauri::command]
-pub fn omp_list_providers() -> Result<serde_json::Value, String> {
-    let agent_dir = omp_provider::default_agent_dir()?;
-    Ok(omp_provider::list_providers(&agent_dir))
-}
-
-#[tauri::command]
-pub fn omp_get_config_health() -> Result<serde_json::Value, String> {
-    let agent_dir = omp_provider::default_agent_dir()?;
-    let health = omp_provider::get_config_health(&agent_dir);
-    serde_json::to_value(health).map_err(|e| format!("序列化 health 失败: {e}"))
-}
-
-#[tauri::command]
-pub fn omp_set_role_model(role: String, model: String) -> Result<serde_json::Value, String> {
-    let agent_dir = omp_provider::default_agent_dir()?;
-    omp_provider::set_role_model(&agent_dir, &role, &model)
-}
-
 
 #[tauri::command]
 pub fn grok_apply_privacy_protection(

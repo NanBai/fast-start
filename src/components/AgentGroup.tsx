@@ -11,7 +11,6 @@ const AGENT_HINTS: Record<CliType, string> = {
   cursor: "Cursor Agent 工作区会话",
   "grok-build": "Grok Build 历史会话",
   opencode: "OpenCode 历史会话",
-  "oh-my-pi": "Oh My Pi 历史会话",
 };
 
 type ProjectSessionGroup = {

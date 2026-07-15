@@ -10,7 +10,6 @@ pub enum CliType {
     Cursor,
     GrokBuild,
     OpenCode,
-    OhMyPi,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -212,7 +211,6 @@ fn cli_type_stable_key(cli_type: CliType) -> &'static str {
         CliType::Cursor => "cursor",
         CliType::GrokBuild => "grok-build",
         CliType::OpenCode => "opencode",
-        CliType::OhMyPi => "oh-my-pi",
     }
 }
 

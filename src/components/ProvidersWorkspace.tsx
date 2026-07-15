@@ -6,8 +6,6 @@ import {
   GrokProfile,
   GrokProviderLayout,
   GrokProviderStatus,
-  OmpConfigHealth,
-  OmpProvider,
 } from "../types";
 import {
   buildProviderCards,
@@ -42,13 +40,6 @@ export function ProvidersWorkspace({
   onFetchModels,
   onTestConnection,
   onPreviewApply,
-  // OMP narrow support
-  ompProviders,
-  ompHealth,
-  ompLoading,
-  ompBusy,
-  onOmpRefresh,
-  onOmpSetRole,
 }: {
   profiles: GrokProfile[];
   status: GrokProviderStatus | null;
@@ -69,23 +60,12 @@ export function ProvidersWorkspace({
   onFetchModels: (profile: GrokProfile) => Promise<string[] | null>;
   onTestConnection: (profile: GrokProfile) => Promise<unknown>;
   onPreviewApply: (profile: GrokProfile) => Promise<string | null>;
-  // OMP
-  ompProviders: OmpProvider[];
-  ompHealth: OmpConfigHealth | null;
-  ompLoading: boolean;
-  ompBusy: boolean;
-  onOmpRefresh: () => void;
-  onOmpSetRole: (role: string, model: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState<GrokProfile | null>(null);
   const [query, setQuery] = useState("");
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-
-  // OMP narrow support local state
-  const [ompSelectedRole, setOmpSelectedRole] = useState("default");
-  const [ompSelectedModel, setOmpSelectedModel] = useState("");
 
   const cards = useMemo(
     () => buildProviderCards(profiles, status, layout),
@@ -264,53 +244,6 @@ export function ProvidersWorkspace({
           ))}
         </div>
       )}
-
-      {/* Oh My Pi 窄支持 section - 按 design 增加 */}
-      <section className="providers-omp" style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px dashed #444" }}>
-        <h3>Oh My Pi 模型供应商（窄实现）</h3>
-        <p style={{ fontSize: "0.8rem", color: "#aaa" }}>编辑 ~/.omp/agent/config.yml 的 modelRoles。设置后新启动的 omp 会话生效。</p>
-
-        <button className="btn" onClick={onOmpRefresh} disabled={ompLoading || ompBusy} style={{ margin: "0.5rem 0" }}>
-          {ompLoading ? "刷新中" : "刷新 OMP 配置"}
-        </button>
-
-        {ompHealth && (
-          <div style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-            config 存在: {ompHealth.configYmlExists ? "✓" : "✗"} | 当前角色:
-            {Object.keys(ompHealth.currentRoles || {}).length > 0
-              ? Object.entries(ompHealth.currentRoles).map(([r, m]) => ` ${r}=${m}`).join(",")
-              : " (默认)"}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-          <select value={ompSelectedRole} onChange={e => setOmpSelectedRole(e.target.value)} disabled={ompBusy}>
-            <option value="default">default</option>
-            <option value="smol">smol</option>
-            <option value="plan">plan</option>
-          </select>
-          <input
-            value={ompSelectedModel}
-            onChange={e => setOmpSelectedModel(e.target.value)}
-            placeholder="anthropic/claude-3-5-sonnet-20241022"
-            style={{ width: "260px" }}
-            disabled={ompBusy}
-          />
-          <button
-            className="btn primary"
-            disabled={ompBusy || !ompSelectedModel.trim()}
-            onClick={() => void onOmpSetRole(ompSelectedRole, ompSelectedModel.trim())}
-          >
-            {ompBusy ? "应用中..." : "应用角色"}
-          </button>
-        </div>
-
-        {ompProviders.length > 0 && (
-          <div style={{ fontSize: "0.8rem", marginTop: "4px", color: "#888" }}>
-            参考: {ompProviders.map(p => p.name).join(" / ")}
-          </div>
-        )}
-      </section>
 
       <section className="providers-backups">
         <h3>配置备份</h3>

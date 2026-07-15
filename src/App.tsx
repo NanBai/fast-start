@@ -5,7 +5,6 @@ import { PortToolPanel } from "./components/PortToolPanel";
 import { ProvidersToolPanel } from "./components/ProvidersToolPanel";
 import { SessionWorkspace } from "./components/SessionWorkspace";
 import { useGrokProviders } from "./hooks/useGrokProviders";
-import { useOmpProviders } from "./hooks/useOmpProviders";
 import { usePorts } from "./hooks/usePorts";
 import { usePreferences } from "./hooks/usePreferences";
 import { useSessions } from "./hooks/useSessions";
@@ -136,15 +135,6 @@ function App() {
     previewApply: previewGrokApply,
   } = useGrokProviders(notifyStatus);
 
-  const {
-    providers: ompProviders,
-    health: ompHealth,
-    loading: ompLoading,
-    busy: ompBusy,
-    refresh: refreshOmp,
-    setRoleModel: setOmpRoleModel,
-  } = useOmpProviders(notifyStatus);
-
   useEffect(() => {
     void (async () => {
       const prefs = loadPreferences().catch((error) => {
@@ -197,7 +187,6 @@ function App() {
       return;
     }
     void refreshGrokProviders(false);
-    void refreshOmp(false);
   }, [activeTool]);
 
   useEffect(() => {
@@ -233,8 +222,8 @@ function App() {
               {activeTool === "ports"
                 ? "监控本机开发端口，一键关闭残留服务"
                 : activeTool === "providers"
-                  ? "切换 Grok / Oh My Pi 上游与模型角色"
-                  : "聚合 codex · claude-code · cursor · grok-build · opencode · oh-my-pi，一键恢复工作现场"}
+                  ? "切换 Grok 上游与模型"
+                  : "聚合 codex · claude-code · cursor · grok-build · opencode，一键恢复工作现场"}
             </p>
           </div>
         </div>
@@ -424,7 +413,6 @@ function App() {
           onThemeModeChange={handleThemeModeChange}
           onRefresh={() => {
             void refreshGrokProviders();
-            void refreshOmp();
           }}
           onActivate={(id) => void activateGrokProfile(id)}
           onActivateOfficial={() => void activateGrokOfficial()}
@@ -437,13 +425,6 @@ function App() {
           onFetchModels={fetchGrokModels}
           onTestConnection={testGrokConnection}
           onPreviewApply={previewGrokApply}
-          // Oh My Pi narrow
-          ompProviders={ompProviders}
-          ompHealth={ompHealth}
-          ompLoading={ompLoading}
-          ompBusy={ompBusy}
-          onOmpRefresh={() => void refreshOmp()}
-          onOmpSetRole={setOmpRoleModel}
         />
       )}
 

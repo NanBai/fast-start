@@ -1,7 +1,7 @@
 use crate::models::CommandSpec;
 use std::path::{Path, PathBuf};
 
-const ALLOWED_PROGRAMS: &[&str] = &["codex", "claude", "cursor-agent", "grok", "opencode", "omp"];
+const ALLOWED_PROGRAMS: &[&str] = &["codex", "claude", "cursor-agent", "grok", "opencode"];
 
 pub fn validate_program(program: &str) -> Result<(), String> {
     if ALLOWED_PROGRAMS.contains(&program) {
@@ -67,10 +67,6 @@ fn validate_resume_args(program: &str, args: &[String]) -> Result<(), String> {
             [flag, id] if flag == "--session" => validate_session_id(id),
             _ => Err("opencode 参数形状无效，期望: --session <session-id>".to_string()),
         },
-        "omp" => match args {
-            [flag, id] if flag == "-r" || flag == "--resume" => validate_session_id(id),
-            _ => Err("omp 参数形状无效，期望: -r <session-id> 或 --resume <session-id>".to_string()),
-        },
         other => Err(format!("不允许的程序: {other}")),
     }
 }
@@ -106,8 +102,6 @@ mod tests {
         validate_resume_args("cursor-agent", &["--resume".into(), "abc-123".into()]).unwrap();
         validate_resume_args("grok", &["--resume".into(), "abc-123".into()]).unwrap();
         validate_resume_args("opencode", &["--session".into(), "ses_abc123".into()]).unwrap();
-        validate_resume_args("omp", &["-r".into(), "abc123".into()]).unwrap();
-        validate_resume_args("omp", &["--resume".into(), "abc123".into()]).unwrap();
     }
 
     #[test]

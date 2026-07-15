@@ -5,7 +5,6 @@ pub mod claude_code;
 pub mod codex;
 pub mod cursor;
 pub mod grok_build;
-pub mod oh_my_pi;
 pub mod opencode;
 
 #[derive(Debug)]
@@ -43,7 +42,6 @@ pub fn scanners() -> Vec<Box<dyn SessionScanner + Send + Sync>> {
         Box::new(cursor::CursorScanner::default()),
         Box::new(grok_build::GrokBuildScanner::default()),
         Box::new(opencode::OpenCodeScanner::default()),
-        Box::new(oh_my_pi::OhMyPiScanner::default()),
     ]
 }
 
@@ -106,16 +104,11 @@ pub fn command_spec_for_session(session: &Session) -> Result<crate::models::Comm
             "opencode",
             vec!["--session".to_string(), session.session_id.clone()],
         ),
-        CliType::OhMyPi => (
-            "omp",
-            vec!["-r".to_string(), session.session_id.clone()],
-        ),
     };
 
     // 各 CLI 都是"cd 到工作目录 && resume/continue <id>"模式：
     // codex/claude/grok/opencode 的 id 虽全局唯一，但 cd 到原目录方便用户继续操作；
     // cursor 的 chatId 是 workspace 范围的，必须 cd 到正确目录 resume 才生效。
-    // omp 使用 -r <id>（支持前缀），推荐 cd 后使用。
     Ok(CommandSpec {
         cwd: session.project_dir.clone(),
         program: program.to_string(),
@@ -172,7 +165,6 @@ mod tests {
             CliType::Cursor,
             CliType::GrokBuild,
             CliType::OpenCode,
-            CliType::OhMyPi,
         ] {
             let session = Session {
                 id: format!("{cli_type:?}"),
