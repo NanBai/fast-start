@@ -118,6 +118,17 @@ pub(crate) fn write_command_wrapper(
          \x20\x20PATH=\"$HOME/.grok/bin:$PATH\"\n\
          fi\n\
          export PATH\n\
+         # 防御：若此时仍无 node（常见于 nvm/fnm 仅在 rc 里生效的情况），\n\
+         # 尝试把已存在的 node 目录并入 PATH。codex 等是 env node shebang。\n\
+         if ! command -v node >/dev/null 2>&1; then\n\
+         \x20\x20for d in \"$HOME/.nvm/versions/node\"/*/bin /opt/homebrew/bin /usr/local/bin \"$HOME/.local/bin\" \"$HOME/.asdf/shims\"; do\n\
+         \x20\x20\x20\x20if [ -x \"$d/node\" ]; then\n\
+         \x20\x20\x20\x20\x20\x20PATH=\"$d:$PATH\"\n\
+         \x20\x20\x20\x20\x20\x20break\n\
+         \x20\x20\x20\x20fi\n\
+         \x20\x20done\n\
+         \x20\x20export PATH\n\
+         fi\n\
          {cd_clause}exec {command}\n",
         path = shell_escape(login_path),
     );
@@ -187,78 +198,107 @@ fn is_executable_file(path: &Path) -> bool {
 }
 
 fn resolve_login_path_once() -> String {
+    // 优先尝试非交互 login（快），再尝试交互 login（能 source ~/.zshrc 等，捕获 nvm/fnm）。
+    // 很多 node 版本管理器只在 rc 文件里改 PATH，纯 -lc 拿不到。
     for shell in ["zsh", "bash"] {
-        let Ok(output) = Command::new(shell)
-            .args(["-lc", r#"printf %s "$PATH""#])
-            .output()
-        else {
-            continue;
-        };
-        if !output.status.success() {
-            continue;
-        }
-        let raw = String::from_utf8_lossy(&output.stdout);
-        // banner/插件常污染 stdout 前部：取最后一行非空。
-        let Some(line) = raw.lines().rev().find(|l| !l.trim().is_empty()) else {
-            continue;
-        };
-        let candidate = line.trim();
-        if is_plausible_path(candidate) {
-            return candidate.to_string();
+        for login_args in [vec!["-lc"], vec!["-ilc"]] {
+            let mut cmd_args: Vec<&str> = login_args;
+            cmd_args.push(r#"printf %s "$PATH""#);
+            let Ok(output) = Command::new(shell).args(&cmd_args).output() else {
+                continue;
+            };
+            if !output.status.success() {
+                continue;
+            }
+            let raw = String::from_utf8_lossy(&output.stdout);
+            // banner/插件常污染 stdout 前部：取最后一行非空。
+            let Some(line) = raw.lines().rev().find(|l| !l.trim().is_empty()) else {
+                continue;
+            };
+            let candidate = line.trim();
+            if is_plausible_path(candidate) {
+                // 即便 login PATH 成功，也合并关键目录 + 动态 nvm 目录，
+                // 确保 codex/claude 等 `#!/usr/bin/env node` 能找到 node。
+                return merge_critical_path_dirs(candidate);
+            }
         }
     }
     fallback_path_string()
 }
 
+/// 判断是否像 PATH 列表，而非 shell banner。
+///
+/// 允许条目内空格（如 `Application Support`）；拒绝无冒号却含空格的整句 banner。
 fn is_plausible_path(path: &str) -> bool {
-    !path.is_empty()
-        && path.contains('/')
-        && !path
-            .chars()
-            .any(|ch| ch.is_whitespace() || matches!(ch, '\n' | '\r'))
+    if path.is_empty() || !path.contains('/') {
+        return false;
+    }
+    if path.chars().any(|ch| matches!(ch, '\n' | '\r' | '\0')) {
+        return false;
+    }
+    // "hello world from zsh" 这类无 PATH 分隔符的句子
+    if path.contains(' ') && !path.contains(':') {
+        return false;
+    }
+    true
 }
 
-/// 当登录 shell 解析失败时的兜底 PATH。
-fn fallback_path_string() -> String {
-    let mut entries: Vec<String> = std::env::var("PATH")
-        .unwrap_or_default()
+/// 把常见 CLI/node 安装目录并入 PATH（已存在则不重复）。
+fn merge_critical_path_dirs(base: &str) -> String {
+    let mut entries: Vec<String> = base
         .split(':')
         .filter(|s| !s.is_empty())
         .map(str::to_string)
         .collect();
 
-    let candidates = [
-        "/opt/homebrew/bin",
-        "/opt/homebrew/sbin",
-        "/usr/local/bin",
-        "/usr/local/sbin",
-    ];
-    for c in candidates {
-        if !entries.iter().any(|e| e == c) {
-            entries.push(c.to_string());
+    for dir in critical_path_dirs() {
+        if !entries.iter().any(|e| e == &dir) {
+            entries.push(dir);
         }
     }
+    entries.join(":")
+}
 
+fn critical_path_dirs() -> Vec<String> {
+    let mut dirs = vec![
+        "/opt/homebrew/bin".to_string(),
+        "/opt/homebrew/sbin".to_string(),
+        "/usr/local/bin".to_string(),
+        "/usr/local/sbin".to_string(),
+    ];
     if let Some(home) = std::env::var_os("HOME") {
-        let home = home.to_string_lossy().into_owned();
+        let home = home.to_string_lossy();
         for sub in [
             ".local/bin",
             ".grok/bin",
             ".opencode/bin",
             ".bun/bin",
             ".cargo/bin",
-            ".nvm/versions/node",
             ".volta/bin",
             ".asdf/shims",
         ] {
-            let p = format!("{home}/{sub}");
-            if !entries.iter().any(|e| e == &p) {
-                entries.push(p);
+            dirs.push(format!("{home}/{sub}"));
+        }
+
+        // nvm 常见位置：~/.nvm/versions/node/vXX.Y.Z/bin
+        // 许多 codex / node 系 CLI 用 nvm 管理，纯 login shell 常拿不到这些目录。
+        let nvm_base = PathBuf::from(home.as_ref()).join(".nvm/versions/node");
+        if let Ok(read_dir) = std::fs::read_dir(&nvm_base) {
+            for entry in read_dir.flatten() {
+                let bin_dir = entry.path().join("bin");
+                if bin_dir.join("node").is_file() {
+                    dirs.push(bin_dir.to_string_lossy().to_string());
+                }
             }
         }
     }
+    dirs
+}
 
-    entries.join(":")
+/// 当登录 shell 解析失败时的兜底 PATH。
+fn fallback_path_string() -> String {
+    let process_path = std::env::var("PATH").unwrap_or_default();
+    merge_critical_path_dirs(&process_path)
 }
 
 #[cfg(test)]
@@ -280,11 +320,32 @@ mod tests {
     }
 
     #[test]
-    fn plausible_path_rejects_banner_and_spaces() {
+    fn plausible_path_allows_application_support_rejects_banner() {
         assert!(is_plausible_path("/usr/bin:/bin:/Users/x/.local/bin"));
+        assert!(is_plausible_path(
+            "/opt/homebrew/bin:/Users/x/Library/Application Support/JetBrains/Toolbox/scripts:/usr/bin"
+        ));
         assert!(!is_plausible_path("hello world from zsh"));
         assert!(!is_plausible_path(""));
         assert!(!is_plausible_path("nopath"));
+    }
+
+    #[test]
+    fn merge_critical_path_dirs_appends_homebrew_when_missing() {
+        use super::merge_critical_path_dirs;
+        let merged = merge_critical_path_dirs("/usr/bin:/bin:/Users/x/.local/bin");
+        assert!(
+            merged.contains("/opt/homebrew/bin"),
+            "must append homebrew so env node works for codex shebang"
+        );
+        assert!(merged.starts_with("/usr/bin:/bin:/Users/x/.local/bin"));
+        // 不重复
+        let again = merge_critical_path_dirs(&merged);
+        assert_eq!(
+            again.matches("/opt/homebrew/bin").count(),
+            1,
+            "must not duplicate homebrew"
+        );
     }
 
     #[test]
@@ -336,6 +397,11 @@ mod tests {
         assert!(
             content.contains("PATH="),
             "wrapper should export a pre-resolved PATH"
+        );
+        // 防御 node 缺失的逻辑必须存在（针对 nvm 等 rc-only node 场景）
+        assert!(
+            content.contains("command -v node"),
+            "wrapper should defensively ensure node is in PATH for env-shebang CLIs like codex"
         );
         let _ = std::fs::remove_file(&wrapper);
     }
