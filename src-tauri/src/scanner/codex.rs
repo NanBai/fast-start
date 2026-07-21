@@ -124,6 +124,10 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
 
         // session_meta 行拿 id / cwd（幂等，重复行无妨）。
         if parsed.line_type.as_deref() == Some("session_meta") {
+            // multi-agent 子线程各自有独立 rollout，但属于同一次对话；列表只保留主会话。
+            if is_codex_subagent(payload) {
+                return Ok(None);
+            }
             if session_id.is_none() {
                 session_id = payload
                     .get("id")
@@ -185,6 +189,17 @@ fn parse_codex_file(root: &Path, path: &Path) -> Result<Option<Session>, ScanErr
     }))
 }
 
+/// Codex multi-agent 子线程：`thread_source=subagent`，或 `source` 为带 `subagent` 键的对象。
+fn is_codex_subagent(payload: &serde_json::Value) -> bool {
+    if payload.get("thread_source").and_then(|value| value.as_str()) == Some("subagent") {
+        return true;
+    }
+    payload
+        .get("source")
+        .and_then(|value| value.as_object())
+        .is_some_and(|source| source.contains_key("subagent"))
+}
+
 /// 从一条 response_item payload 里取第一条「真实」用户消息文本。
 /// codex 的 user message 形如 `{type:"message", role:"user", content:[{type:"input_text", text}]}`，
 /// 但 content 里可能混着指令 / 环境上下文注入，要逐段过滤。返回 None 表示这条没有可用文本。
@@ -242,10 +257,63 @@ fn file_mtime(path: &Path) -> Result<DateTime<Utc>, ScanError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{first_real_user_message, is_injected_context, CodexScanner};
+    use super::{first_real_user_message, is_codex_subagent, is_injected_context, CodexScanner};
     use crate::scanner::SessionScanner;
     use serde_json::json;
     use std::fs;
+
+    #[test]
+    fn is_codex_subagent_detects_thread_source_and_source_object() {
+        assert!(is_codex_subagent(&json!({
+            "thread_source": "subagent",
+            "id": "child",
+            "cwd": "/tmp"
+        })));
+        assert!(is_codex_subagent(&json!({
+            "source": {"subagent": {"thread_spawn": {"parent_thread_id": "parent"}}},
+            "id": "child",
+            "cwd": "/tmp"
+        })));
+        assert!(!is_codex_subagent(&json!({
+            "thread_source": "user",
+            "source": "cli",
+            "id": "parent",
+            "cwd": "/tmp"
+        })));
+    }
+
+    #[test]
+    fn scanner_skips_subagent_rollouts_keeps_parent() {
+        let temp = tempfile::tempdir().unwrap();
+        let parent = temp.path().join("parent.jsonl");
+        let child = temp.path().join("child.jsonl");
+        fs::write(
+            &parent,
+            [
+                r#"{"timestamp":"2026-07-21T02:24:43Z","type":"session_meta","payload":{"id":"codex-parent","cwd":"/tmp/temp","thread_source":"user","source":"cli"}}"#,
+                r#"{"timestamp":"2026-07-21T02:25:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"主会话需求"}]}}"#,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+        fs::write(
+            &child,
+            [
+                r#"{"timestamp":"2026-07-21T02:30:00Z","type":"session_meta","payload":{"id":"codex-child","cwd":"/tmp/temp","thread_source":"subagent","parent_thread_id":"codex-parent","source":{"subagent":{"thread_spawn":{"parent_thread_id":"codex-parent","agent_nickname":"Curie"}}}}}"#,
+                r#"{"timestamp":"2026-07-21T02:30:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"子会话不应出现"}]}}"#,
+            ]
+            .join("\n"),
+        )
+        .unwrap();
+
+        let sessions = CodexScanner::with_root(temp.path().to_path_buf())
+            .scan_sessions()
+            .unwrap();
+
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].session_id, "codex-parent");
+        assert_eq!(sessions[0].summary.as_deref(), Some("主会话需求"));
+    }
 
     #[test]
     fn is_injected_context_flags_codex_context_blocks() {
