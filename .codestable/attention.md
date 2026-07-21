@@ -46,6 +46,7 @@ last_updated: 2026-06-24
 - **Ghostty** 在 macOS 上 `-e`/`--command` 会被 `/usr/bin/login` 套壳，多词命令弹误报；用 wrapper 脚本规避。开 tab 走 AppleScript `new tab with configuration`，无 CLI 方式。
 - **iTerm2** AppleScript app 名是 `iTerm` 不是 `iTerm2`，否则 `create tab` 语法报错。
 - **Terminal.app** 无法从 AppleScript 开新 tab（硬限制），冷启动 `do script` 会多开一个空默认窗口。
+- **login PATH 校验**：真实 PATH 可含空格（如 `Application Support`），不可当 banner 整段拒绝；解析成功后仍须 merge homebrew 等关键目录，否则 bash -lc 漏 PATH 会让 `#!/usr/bin/env node` 的 codex 报 `env: node: No such file or directory`。
 
 ---
 
